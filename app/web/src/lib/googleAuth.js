@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -10,8 +10,8 @@ const firebaseConfig = {
   messagingSenderId: "230460246055"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase safely
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const googleAuth = getAuth(app);
 
 export const googleProvider = new GoogleAuthProvider();

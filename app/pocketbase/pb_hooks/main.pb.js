@@ -49,36 +49,6 @@ function validateCheckoutSignature(sig) {
   return true;
 }
 
-function inferPaymentCategory(method) {
-  const cat = method.get("category");
-  if (cat) return cat;
-  const code = method.get("code") || "";
-  const type = method.get("type") || "";
-  if (code === "balcao") return "balcao";
-  if (code === "entrega") return "on_delivery";
-  if (type === "p2p" || type === "transfer") return "gateway";
-  if (type === "offline") return "on_delivery";
-  return "gateway";
-}
-
-function findEnabledPaymentMethod(code) {
-  if (!code) return null;
-  try {
-    return $app.findFirstRecordByFilter(
-      "payment_methods",
-      "code = {:code} && enabled = true",
-      { code: code }
-    );
-  } catch (err) {
-    return null;
-  }
-}
-
-function resolvePaymentStatus(category, type) {
-  if (category === "gateway") return "awaiting_confirmation";
-  return "pending";
-}
-
 function sanitizeIntegrationConfig(code, config) {
   if (!config || typeof config !== "object") return {};
   if (code === "google_drive") {
@@ -409,30 +379,63 @@ routerAdd("GET", "/api/app/book-collections", (e) => {
 
 // --- Métodos de pagamento activos ---
 routerAdd("GET", "/api/app/payment-methods", (e) => {
-  let records = [];
-  try {
-    const result = $app.findRecordsByFilter("payment_methods", "enabled = true", 50, 0, "sort_order");
-    records = result || [];
-  } catch (err) {
-    try {
-      records = $app.findAllRecords("payment_methods").filter((r) => r.get("enabled"));
-    } catch (err) {}
+  function inferCat(r) {
+    const cat = r.get("category");
+    if (cat) return cat;
+    const code = r.get("code") || "";
+    const type = r.get("type") || "";
+    if (code === "balcao") return "balcao";
+    if (code === "entrega") return "on_delivery";
+    if (type === "p2p" || type === "transfer") return "gateway";
+    if (type === "offline") return "on_delivery";
+    return "gateway";
   }
-  const methods = records.map((r) => ({
-    id: r.get("id"),
-    name: r.get("name"),
-    code: r.get("code"),
-    type: r.get("type") || "offline",
-    category: inferPaymentCategory(r),
-    gateway_provider: r.get("gateway_provider") || "",
-    requires_reference: !!r.get("requires_reference"),
-    instructions: r.get("instructions") || "",
-    account_info: r.get("account_info") || "",
-    qr_url: r.get("qr_url") || fileUrl(r, "qr_code"),
-    icon: r.get("icon") || "",
-    sort_order: Number(r.get("sort_order")) || 0,
-  }));
-  return e.json(200, { methods: methods });
+  function getQrUrl(r) {
+    const direct = r.get("qr_url") || "";
+    const f = r.get("qr_code");
+    if (!f) return direct;
+    try {
+      return $app.files().getUrl(r, f);
+    } catch (err) {
+      return direct;
+    }
+  }
+  try {
+    let records = [];
+    try {
+      const result = $app.findRecordsByFilter("payment_methods", "enabled != false", 50, 0, "sort_order");
+      if (result && result.length) records = result;
+    } catch (err) {}
+    if (!records.length) {
+      try {
+        const all = $app.findAllRecords("payment_methods");
+        for (let i = 0; i < all.length; i++) {
+          if (all[i].get("enabled") !== false) records.push(all[i]);
+        }
+      } catch (err) {}
+    }
+    const methods = [];
+    for (let i = 0; i < records.length; i++) {
+      const r = records[i];
+      methods.push({
+        id: r.get("id"),
+        name: r.get("name"),
+        code: r.get("code"),
+        type: r.get("type") || "offline",
+        category: inferCat(r),
+        gateway_provider: r.get("gateway_provider") || "",
+        requires_reference: r.get("requires_reference") === true,
+        instructions: String(r.get("instructions") || ""),
+        account_info: r.get("account_info") || "",
+        qr_url: getQrUrl(r),
+        icon: r.get("icon") || "",
+        sort_order: Number(r.get("sort_order")) || 0,
+      });
+    }
+    return e.json(200, { methods: methods });
+  } catch (err) {
+    return e.json(400, { message: err.message || String(err) });
+  }
 });
 
 // --- Rastreio de encomenda (email + número) ---
@@ -748,6 +751,36 @@ routerAdd("POST", "/api/app/checkout", (e) => {
     return true;
   }
 
+  function inferCat(r) {
+    const cat = r.get("category");
+    if (cat) return cat;
+    const code = r.get("code") || "";
+    const type = r.get("type") || "";
+    if (code === "balcao") return "balcao";
+    if (code === "entrega") return "on_delivery";
+    if (type === "p2p" || type === "transfer") return "gateway";
+    if (type === "offline") return "on_delivery";
+    return "gateway";
+  }
+
+  function findPay(code) {
+    if (!code) return null;
+    try {
+      return $app.findFirstRecordByFilter(
+        "payment_methods",
+        "code = {:code} && enabled != false",
+        { code: code }
+      );
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function payStatus(category) {
+    if (category === "gateway") return "awaiting_confirmation";
+    return "pending";
+  }
+
   try {
   const data = e.requestInfo().body;
   const items = data.items || [];
@@ -857,7 +890,7 @@ routerAdd("POST", "/api/app/checkout", (e) => {
   const paymentCategoryInput = data.paymentCategory || "";
   const paymentRef = (data.paymentReference || "").trim();
 
-  const paymentRecord = findEnabledPaymentMethod(paymentCode);
+  const paymentRecord = findPay(paymentCode);
   let paymentName = paymentCode;
   let paymentCategory = paymentCategoryInput;
   let paymentType = "offline";
@@ -865,7 +898,7 @@ routerAdd("POST", "/api/app/checkout", (e) => {
 
   if (paymentRecord) {
     paymentName = paymentRecord.get("name") || paymentCode;
-    paymentCategory = paymentCategory || inferPaymentCategory(paymentRecord);
+    paymentCategory = paymentCategory || inferCat(paymentRecord);
     paymentType = paymentRecord.get("type") || "offline";
     requiresReference = !!paymentRecord.get("requires_reference");
     if (paymentCategory === "gateway" && !paymentRecord.get("requires_reference") && paymentRecord.get("requires_reference") !== false) {
@@ -888,7 +921,7 @@ routerAdd("POST", "/api/app/checkout", (e) => {
     throw new BadRequestError("Indique a referência ou comprovativo de pagamento.");
   }
 
-  const paymentStatus = resolvePaymentStatus(paymentCategory, paymentType);
+  const paymentStatus = payStatus(paymentCategory);
   const saleChannel = data.saleChannel || data.orderType || "web_purchase";
   const isWhatsApp = saleChannel === "whatsapp";
 

@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Master Gate: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // Schema Validation Helper
+    function isValidWishlistItem(data) {
+      return data.keys().hasAll(['userId', 'bookId', 'bookTitle', 'bookCover', 'bookPrice', 'addedAt'])
+        && data.keys().size() == 6
+        && data.userId is string && data.userId == request.auth.uid
+        && data.bookId is string && data.bookId.size() <= 128
+        && data.bookTitle is string && data.bookTitle.size() <= 200
+        && data.bookCover is string && data.bookCover.size() <= 1024
+        && (data.bookPrice is number || data.bookPrice is int) && data.bookPrice >= 0
+        && data.addedAt == request.time;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['userId', 'userName', 'bookId', 'rating', 'comment', 'createdAt'])
+        && data.keys().size() <= 8
+        && data.userId is string && data.userId == request.auth.uid
+        && data.userName is string && data.userName.size() <= 100
+        && (!data.keys().hasAll(['userAvatar']) || data.userAvatar == null || data.userAvatar is string)
+        && (!data.keys().hasAll(['isVerified']) || data.isVerified is bool)
+        && data.bookId is string && data.bookId.size() <= 128
+        && (data.rating is number || data.rating is int) && data.rating >= 1 && data.rating <= 5
+        && data.comment is string && data.comment.size() <= 1000
+        && data.createdAt == request.time;
+    }
+
+    // 2. Wishlist Security Rules
+    match /wishlists/{wishlistItemId} {
+      
+      // Allow single document get only if user is the owner
+      allow get: if isSignedIn() && existing().userId == request.auth.uid;
+      
+      // Secure List Queries (Query Enforcer): Client must explicitly filter where userId == auth.uid
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Allow creation only with correct ID format and valid payload
+      allow create: if isSignedIn()
+        && wishlistItemId == request.auth.uid + '_' + incoming().bookId
+        && isValidWishlistItem(incoming());
+        
+      // Wishlist items are immutable once created (no update allowed)
+      allow update: if false;
+      
+      // Allow delete only if user is the owner
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // 3. Book Reviews Security Rules
+    match /reviews/{reviewId} {
+      // Reviews are readable by anyone
+      allow read, list: if true;
+
+      // Authenticated users can create their own review (one per book)
+      allow create: if isSignedIn()
+        && reviewId == request.auth.uid + '_' + incoming().bookId
+        && isValidReview(incoming());
+
+      // Authenticated users can update or delete their own reviews
+      allow update: if isSignedIn()
+        && existing().userId == request.auth.uid
+        && incoming().userId == request.auth.uid
+        && incoming().bookId == existing().bookId
+        && isValidReview(incoming());
+
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}

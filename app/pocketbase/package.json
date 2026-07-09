@@ -1,0 +1,12 @@
+{
+  "name": "pocketbase-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/start.js",
+    "start": "node scripts/start.js",
+    "seed": "node scripts/seed.js",
+    "seed:books": "node scripts/seed.js --books-only"
+  }
+}

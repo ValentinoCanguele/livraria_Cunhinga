@@ -1,0 +1,2400 @@
+{
+  "version": "RGPH-2024",
+  "source": "INE Angola - Recenseamento Geral 2024",
+  "reference_date": "2024-09-19",
+  "provinces": [
+    {
+      "name": "Cabinda",
+      "slug": "cabinda",
+      "capital": "Cabinda",
+      "sort_order": 1,
+      "municipalities": [
+        {
+          "name": "Cabinda",
+          "slug": "cabinda",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Cacongo",
+          "slug": "cacongo",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Buco Zau",
+          "slug": "buco-zau",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Belize",
+          "slug": "belize",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Tando Zinze",
+          "slug": "tando-zinze",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Ngoio",
+          "slug": "ngoio",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Liambo",
+          "slug": "liambo",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Massabi",
+          "slug": "massabi",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Necuto",
+          "slug": "necuto",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Miconje",
+          "slug": "miconje",
+          "sort_order": 10,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Zaire",
+      "slug": "zaire",
+      "capital": "Mbanza Kongo",
+      "sort_order": 2,
+      "municipalities": [
+        {
+          "name": "Soyo",
+          "slug": "soyo",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Mbanza Kongo",
+          "slug": "mbanza-kongo",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Nzeto",
+          "slug": "nzeto",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Tomboco",
+          "slug": "tomboco",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Cuimba",
+          "slug": "cuimba",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Nóqui",
+          "slug": "noqui",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Quindeje",
+          "slug": "quindeje",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Serra de Canda",
+          "slug": "serra-de-canda",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Luvo",
+          "slug": "luvo",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Lufico",
+          "slug": "lufico",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Quêlo",
+          "slug": "quelo",
+          "sort_order": 11,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Uíge",
+      "slug": "uige",
+      "capital": "Uíge",
+      "sort_order": 3,
+      "municipalities": [
+        {
+          "name": "Dange Quitexe",
+          "slug": "dange-quitexe",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Bungo",
+          "slug": "bungo",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Ambuíla",
+          "slug": "ambuila",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Negage",
+          "slug": "negage",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Puri",
+          "slug": "puri",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Maquela do Zombo",
+          "slug": "maquela-do-zombo",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Damba",
+          "slug": "damba",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Sanza Pombo",
+          "slug": "sanza-pombo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Bembe",
+          "slug": "bembe",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Milunga",
+          "slug": "milunga",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Songo",
+          "slug": "songo",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Quimbele",
+          "slug": "quimbele",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Cangola",
+          "slug": "cangola",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Uíge",
+          "slug": "uige",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Mucaba",
+          "slug": "mucaba",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Nova Esperança",
+          "slug": "nova-esperanca",
+          "sort_order": 16,
+          "localities": []
+        },
+        {
+          "name": "Sacandica",
+          "slug": "sacandica",
+          "sort_order": 17,
+          "localities": []
+        },
+        {
+          "name": "Quipedro",
+          "slug": "quipedro",
+          "sort_order": 18,
+          "localities": []
+        },
+        {
+          "name": "Alto Zaza",
+          "slug": "alto-zaza",
+          "sort_order": 19,
+          "localities": []
+        },
+        {
+          "name": "Massau",
+          "slug": "massau",
+          "sort_order": 20,
+          "localities": []
+        },
+        {
+          "name": "Nsosso",
+          "slug": "nsosso",
+          "sort_order": 21,
+          "localities": []
+        },
+        {
+          "name": "Vista Alegre",
+          "slug": "vista-alegre",
+          "sort_order": 22,
+          "localities": []
+        },
+        {
+          "name": "Lucunga",
+          "slug": "lucunga",
+          "sort_order": 23,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Bengo",
+      "slug": "bengo",
+      "capital": "Caxito",
+      "sort_order": 4,
+      "municipalities": [
+        {
+          "name": "Dande",
+          "slug": "dande",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Quibaxe",
+          "slug": "quibaxe",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Nambuangongo",
+          "slug": "nambuangongo",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Bula-Atumba",
+          "slug": "bula-atumba",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Ambriz",
+          "slug": "ambriz",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Pango Aluquém",
+          "slug": "pango-aluquem",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Quicunzo",
+          "slug": "quicunzo",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Muxaluando",
+          "slug": "muxaluando",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Úcua",
+          "slug": "ucua",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Piri",
+          "slug": "piri",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Panguila",
+          "slug": "panguila",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Barra do Dande",
+          "slug": "barra-do-dande",
+          "sort_order": 12,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Luanda",
+      "slug": "luanda",
+      "capital": "Luanda",
+      "sort_order": 5,
+      "municipalities": [
+        {
+          "name": "Ingombota",
+          "slug": "ingombota",
+          "sort_order": 1,
+          "localities": [
+            {
+              "name": "Ingombota",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Maculusso",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Mutamba",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Sambizanga",
+          "slug": "sambizanga",
+          "sort_order": 2,
+          "localities": [
+            {
+              "name": "Sambizanga",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Rocha Pinto",
+              "type": "bairro",
+              "sort_order": 2
+            }
+          ]
+        },
+        {
+          "name": "Maianga",
+          "slug": "maianga",
+          "sort_order": 3,
+          "localities": [
+            {
+              "name": "Maianga",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Prenda",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Alvalade",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Cacuaco",
+          "slug": "cacuaco",
+          "sort_order": 4,
+          "localities": [
+            {
+              "name": "Cacuaco",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Funda",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Kicolo",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Cazenga",
+          "slug": "cazenga",
+          "sort_order": 5,
+          "localities": [
+            {
+              "name": "Hoji ya Henda",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Cazenga",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Tala Hady",
+              "type": "bairro",
+              "sort_order": 3
+            },
+            {
+              "name": "Kikolo",
+              "type": "bairro",
+              "sort_order": 4
+            }
+          ]
+        },
+        {
+          "name": "Viana",
+          "slug": "viana",
+          "sort_order": 6,
+          "localities": [
+            {
+              "name": "Viana",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Estalagem",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Zango",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Belas",
+          "slug": "belas",
+          "sort_order": 7,
+          "localities": [
+            {
+              "name": "Belas",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Camama",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Kilamba",
+              "type": "bairro",
+              "sort_order": 3
+            },
+            {
+              "name": "Vida Pacífica",
+              "type": "bairro",
+              "sort_order": 4
+            }
+          ]
+        },
+        {
+          "name": "Kilamba Kiaxi",
+          "slug": "kilamba-kiaxi",
+          "sort_order": 8,
+          "localities": [
+            {
+              "name": "Golfe",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Palanca",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Sapú",
+              "type": "bairro",
+              "sort_order": 3
+            },
+            {
+              "name": "Gaiatos",
+              "type": "bairro",
+              "sort_order": 4
+            }
+          ]
+        },
+        {
+          "name": "Talatona",
+          "slug": "talatona",
+          "sort_order": 9,
+          "localities": [
+            {
+              "name": "Talatona",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Benfica",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Mussulo",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Mulenvos",
+          "slug": "mulenvos",
+          "sort_order": 10,
+          "localities": [
+            {
+              "name": "Mulenvos",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Zango IV",
+              "type": "bairro",
+              "sort_order": 2
+            }
+          ]
+        },
+        {
+          "name": "Camama",
+          "slug": "camama",
+          "sort_order": 11,
+          "localities": [
+            {
+              "name": "Camama",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Benfica",
+              "type": "bairro",
+              "sort_order": 2
+            }
+          ]
+        },
+        {
+          "name": "Kilamba",
+          "slug": "kilamba",
+          "sort_order": 12,
+          "localities": [
+            {
+              "name": "Kilamba",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Nova Vida",
+              "type": "bairro",
+              "sort_order": 2
+            }
+          ]
+        },
+        {
+          "name": "Hoji ya Henda",
+          "slug": "hoji-ya-henda",
+          "sort_order": 13,
+          "localities": [
+            {
+              "name": "Hoji ya Henda",
+              "type": "bairro",
+              "sort_order": 1
+            }
+          ]
+        },
+        {
+          "name": "Rangel",
+          "slug": "rangel",
+          "sort_order": 14,
+          "localities": [
+            {
+              "name": "Rangel",
+              "type": "bairro",
+              "sort_order": 1
+            }
+          ]
+        },
+        {
+          "name": "Samba",
+          "slug": "samba",
+          "sort_order": 15,
+          "localities": [
+            {
+              "name": "Samba",
+              "type": "bairro",
+              "sort_order": 1
+            }
+          ]
+        },
+        {
+          "name": "Mussulo",
+          "slug": "mussulo",
+          "sort_order": 16,
+          "localities": [
+            {
+              "name": "Mussulo",
+              "type": "bairro",
+              "sort_order": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Icolo e Bengo",
+      "slug": "icolo-e-bengo",
+      "capital": "Catete",
+      "sort_order": 6,
+      "municipalities": [
+        {
+          "name": "Catete",
+          "slug": "catete",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Quiçama",
+          "slug": "quicama",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Sequele",
+          "slug": "sequele",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Calumbo",
+          "slug": "calumbo",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Cabo Ledo",
+          "slug": "cabo-ledo",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Bom Jesus",
+          "slug": "bom-jesus",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Cabiri",
+          "slug": "cabiri",
+          "sort_order": 7,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Cuanza Norte",
+      "slug": "cuanza-norte",
+      "capital": "Ndalatando",
+      "sort_order": 7,
+      "municipalities": [
+        {
+          "name": "Cazengo",
+          "slug": "cazengo",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Golungo Alto",
+          "slug": "golungo-alto",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Cambambe",
+          "slug": "cambambe",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Samba Cajú",
+          "slug": "samba-caju",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Ambaca",
+          "slug": "ambaca",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Lucala",
+          "slug": "lucala",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Banga",
+          "slug": "banga",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Bolongongo",
+          "slug": "bolongongo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Quiculungo",
+          "slug": "quiculungo",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Ngonguembo",
+          "slug": "ngonguembo",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Terreiro",
+          "slug": "terreiro",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Tango",
+          "slug": "tango",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Luínga",
+          "slug": "luinga",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Cêrca",
+          "slug": "cerca",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Caculo Cabaça",
+          "slug": "caculo-cabaca",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Aldeia Nova",
+          "slug": "aldeia-nova",
+          "sort_order": 16,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Cuanza Sul",
+      "slug": "cuanza-sul",
+      "capital": "Sumbe",
+      "sort_order": 8,
+      "municipalities": [
+        {
+          "name": "Sumbe",
+          "slug": "sumbe",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Calulo",
+          "slug": "calulo",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Gabela",
+          "slug": "gabela",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Cassongue",
+          "slug": "cassongue",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Porto Amboím",
+          "slug": "porto-amboim",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Quibala",
+          "slug": "quibala",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Seles",
+          "slug": "seles",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Waku Kungo",
+          "slug": "waku-kungo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Mussende",
+          "slug": "mussende",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Quilenda",
+          "slug": "quilenda",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Ebo",
+          "slug": "ebo",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Conda",
+          "slug": "conda",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Lonhe",
+          "slug": "lonhe",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Quirimbo",
+          "slug": "quirimbo",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Quenha",
+          "slug": "quenha",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Munenga",
+          "slug": "munenga",
+          "sort_order": 16,
+          "localities": []
+        },
+        {
+          "name": "Quissongo",
+          "slug": "quissongo",
+          "sort_order": 17,
+          "localities": []
+        },
+        {
+          "name": "Condé",
+          "slug": "conde",
+          "sort_order": 18,
+          "localities": []
+        },
+        {
+          "name": "Sanga",
+          "slug": "sanga",
+          "sort_order": 19,
+          "localities": []
+        },
+        {
+          "name": "Pambangala",
+          "slug": "pambangala",
+          "sort_order": 20,
+          "localities": []
+        },
+        {
+          "name": "Gangula",
+          "slug": "gangula",
+          "sort_order": 21,
+          "localities": []
+        },
+        {
+          "name": "Gungo",
+          "slug": "gungo",
+          "sort_order": 22,
+          "localities": []
+        },
+        {
+          "name": "Amboiva",
+          "slug": "amboiva",
+          "sort_order": 23,
+          "localities": []
+        },
+        {
+          "name": "Boa Entrada",
+          "slug": "boa-entrada",
+          "sort_order": 24,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Malanje",
+      "slug": "malanje",
+      "capital": "Malanje",
+      "sort_order": 9,
+      "municipalities": [
+        {
+          "name": "Calandula",
+          "slug": "calandula",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Malanje",
+          "slug": "malanje",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Cacuso",
+          "slug": "cacuso",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Massango",
+          "slug": "massango",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Marimba",
+          "slug": "marimba",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Quela",
+          "slug": "quela",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Quirima",
+          "slug": "quirima",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Cangandala",
+          "slug": "cangandala",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Cahombo",
+          "slug": "cahombo",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Kunda dya Baze",
+          "slug": "kunda-dya-baze",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Cambundi Catembo",
+          "slug": "cambundi-catembo",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Caculama",
+          "slug": "caculama",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Kiwaba Nzoji",
+          "slug": "kiwaba-nzoji",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Luquembo",
+          "slug": "luquembo",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Quihuhu",
+          "slug": "quihuhu",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Milando",
+          "slug": "milando",
+          "sort_order": 16,
+          "localities": []
+        },
+        {
+          "name": "Xandel",
+          "slug": "xandel",
+          "sort_order": 17,
+          "localities": []
+        },
+        {
+          "name": "Muquixe",
+          "slug": "muquixe",
+          "sort_order": 18,
+          "localities": []
+        },
+        {
+          "name": "Capunda",
+          "slug": "capunda",
+          "sort_order": 19,
+          "localities": []
+        },
+        {
+          "name": "Mbanji ya Ngola",
+          "slug": "mbanji-ya-ngola",
+          "sort_order": 20,
+          "localities": []
+        },
+        {
+          "name": "Cambo Suinginge",
+          "slug": "cambo-suinginge",
+          "sort_order": 21,
+          "localities": []
+        },
+        {
+          "name": "Quitapa",
+          "slug": "quitapa",
+          "sort_order": 22,
+          "localities": []
+        },
+        {
+          "name": "Cateco Cangola",
+          "slug": "cateco-cangola",
+          "sort_order": 23,
+          "localities": []
+        },
+        {
+          "name": "Cuale",
+          "slug": "cuale",
+          "sort_order": 24,
+          "localities": []
+        },
+        {
+          "name": "Pungu a Ndongo",
+          "slug": "pungu-a-ndongo",
+          "sort_order": 25,
+          "localities": []
+        },
+        {
+          "name": "Ngola Luiji",
+          "slug": "ngola-luiji",
+          "sort_order": 26,
+          "localities": []
+        },
+        {
+          "name": "Quêssua",
+          "slug": "quessua",
+          "sort_order": 27,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Lunda Norte",
+      "slug": "lunda-norte",
+      "capital": "Dundo",
+      "sort_order": 10,
+      "municipalities": [
+        {
+          "name": "Cuilo",
+          "slug": "cuilo",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Caungula",
+          "slug": "caungula",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Dundo",
+          "slug": "dundo",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Lubalo",
+          "slug": "lubalo",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Capenda Camulemba",
+          "slug": "capenda-camulemba",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Cuango",
+          "slug": "cuango",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Lucapa",
+          "slug": "lucapa",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Cambulo",
+          "slug": "cambulo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Xá Muteba",
+          "slug": "xa-muteba",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Lóvua",
+          "slug": "lovua",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Luangue",
+          "slug": "luangue",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Chitato",
+          "slug": "chitato",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Mussungue",
+          "slug": "mussungue",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Canzar",
+          "slug": "canzar",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Camaxilo",
+          "slug": "camaxilo",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Luremo",
+          "slug": "luremo",
+          "sort_order": 16,
+          "localities": []
+        },
+        {
+          "name": "Xá Cassau",
+          "slug": "xa-cassau",
+          "sort_order": 17,
+          "localities": []
+        },
+        {
+          "name": "Cassanje Calucala",
+          "slug": "cassanje-calucala",
+          "sort_order": 18,
+          "localities": []
+        },
+        {
+          "name": "Cafunfo",
+          "slug": "cafunfo",
+          "sort_order": 19,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Lunda Sul",
+      "slug": "lunda-sul",
+      "capital": "Saurimo",
+      "sort_order": 11,
+      "municipalities": [
+        {
+          "name": "Saurimo",
+          "slug": "saurimo",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Muconda",
+          "slug": "muconda",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Cacolo",
+          "slug": "cacolo",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Dala",
+          "slug": "dala",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Chiluage",
+          "slug": "chiluage",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Alto Chicapa",
+          "slug": "alto-chicapa",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Luma Cassai",
+          "slug": "luma-cassai",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Sombo",
+          "slug": "sombo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Cassengo",
+          "slug": "cassengo",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Cassai-Sul",
+          "slug": "cassai-sul",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Cazage",
+          "slug": "cazage",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Muangueji",
+          "slug": "muangueji",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Muriege",
+          "slug": "muriege",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Xassengue",
+          "slug": "xassengue",
+          "sort_order": 14,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Moxico",
+      "slug": "moxico",
+      "capital": "Luena",
+      "sort_order": 12,
+      "municipalities": [
+        {
+          "name": "Luena",
+          "slug": "luena",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Cangamba",
+          "slug": "cangamba",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Cangumbe",
+          "slug": "cangumbe",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Lumbala Nguimbo",
+          "slug": "lumbala-nguimbo",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Lucusse",
+          "slug": "lucusse",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Lutuai",
+          "slug": "lutuai",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Alto Cuito",
+          "slug": "alto-cuito",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Lutembo",
+          "slug": "lutembo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Léua",
+          "slug": "leua",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Ninda",
+          "slug": "ninda",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Chiúme",
+          "slug": "chiume",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Camanongue",
+          "slug": "camanongue",
+          "sort_order": 12,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Moxico Leste",
+      "slug": "moxico-leste",
+      "capital": "Cazombo",
+      "sort_order": 13,
+      "municipalities": [
+        {
+          "name": "Luau",
+          "slug": "luau",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Cazombo",
+          "slug": "cazombo",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Luacano",
+          "slug": "luacano",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Cameia",
+          "slug": "cameia",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Lago Dilolo",
+          "slug": "lago-dilolo",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Macondo",
+          "slug": "macondo",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Lóvua do Zambeze",
+          "slug": "lovua-do-zambeze",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Nana Candundo",
+          "slug": "nana-candundo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Caianda",
+          "slug": "caianda",
+          "sort_order": 9,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Bié",
+      "slug": "bie",
+      "capital": "Kuito",
+      "sort_order": 14,
+      "municipalities": [
+        {
+          "name": "Andulo",
+          "slug": "andulo",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Chitembo",
+          "slug": "chitembo",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Cuito",
+          "slug": "cuito",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Camacupa",
+          "slug": "camacupa",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Chinguar",
+          "slug": "chinguar",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Catabola",
+          "slug": "catabola",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Cunhinga",
+          "slug": "cunhinga",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Cuemba",
+          "slug": "cuemba",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Nharêa",
+          "slug": "nharea",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Calucinga",
+          "slug": "calucinga",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Lúbia",
+          "slug": "lubia",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Cambândua",
+          "slug": "cambandua",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Chicala",
+          "slug": "chicala",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Belo Horizonte",
+          "slug": "belo-horizonte",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Mumbué",
+          "slug": "mumbue",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Luando",
+          "slug": "luando",
+          "sort_order": 16,
+          "localities": []
+        },
+        {
+          "name": "Chipeta",
+          "slug": "chipeta",
+          "sort_order": 17,
+          "localities": []
+        },
+        {
+          "name": "Ringoma",
+          "slug": "ringoma",
+          "sort_order": 18,
+          "localities": []
+        },
+        {
+          "name": "Umpulo",
+          "slug": "umpulo",
+          "sort_order": 19,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Huambo",
+      "slug": "huambo",
+      "capital": "Huambo",
+      "sort_order": 15,
+      "municipalities": [
+        {
+          "name": "Bailundo",
+          "slug": "bailundo",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Huambo",
+          "slug": "huambo",
+          "sort_order": 2,
+          "localities": [
+            {
+              "name": "São João",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Alto Hama",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Acácias",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Londuimbali",
+          "slug": "londuimbali",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Caála",
+          "slug": "caala",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Chicala Choloanga",
+          "slug": "chicala-choloanga",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Cachiungo",
+          "slug": "cachiungo",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Mungo",
+          "slug": "mungo",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Longonjo",
+          "slug": "longonjo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Ucuma",
+          "slug": "ucuma",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Ecunha",
+          "slug": "ecunha",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Chinjenje",
+          "slug": "chinjenje",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Bimbe",
+          "slug": "bimbe",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Cuíma",
+          "slug": "cuima",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Sambo",
+          "slug": "sambo",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Chilata",
+          "slug": "chilata",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Alto Hama",
+          "slug": "alto-hama",
+          "sort_order": 16,
+          "localities": []
+        },
+        {
+          "name": "Galanga",
+          "slug": "galanga",
+          "sort_order": 17,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Benguela",
+      "slug": "benguela",
+      "capital": "Benguela",
+      "sort_order": 16,
+      "municipalities": [
+        {
+          "name": "Benguela",
+          "slug": "benguela",
+          "sort_order": 1,
+          "localities": [
+            {
+              "name": "Centro",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "São João",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Praia Morena",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Ganda",
+          "slug": "ganda",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Lobito",
+          "slug": "lobito",
+          "sort_order": 3,
+          "localities": [
+            {
+              "name": "Centro",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Canata",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Bairro da Saúde",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Catumbela",
+          "slug": "catumbela",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Bocoio",
+          "slug": "bocoio",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Balombo",
+          "slug": "balombo",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Cubal",
+          "slug": "cubal",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Baia Farta",
+          "slug": "baia-farta",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Caimbambo",
+          "slug": "caimbambo",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Chongorói",
+          "slug": "chongoroi",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Egito Praia",
+          "slug": "egito-praia",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Biópio",
+          "slug": "biopio",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Chila",
+          "slug": "chila",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Chindumbo",
+          "slug": "chindumbo",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Dombe Grande",
+          "slug": "dombe-grande",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Canhamela",
+          "slug": "canhamela",
+          "sort_order": 16,
+          "localities": []
+        },
+        {
+          "name": "Catengue",
+          "slug": "catengue",
+          "sort_order": 17,
+          "localities": []
+        },
+        {
+          "name": "Bolonguera",
+          "slug": "bolonguera",
+          "sort_order": 18,
+          "localities": []
+        },
+        {
+          "name": "Iambala",
+          "slug": "iambala",
+          "sort_order": 19,
+          "localities": []
+        },
+        {
+          "name": "Capupa",
+          "slug": "capupa",
+          "sort_order": 20,
+          "localities": []
+        },
+        {
+          "name": "Babaera",
+          "slug": "babaera",
+          "sort_order": 21,
+          "localities": []
+        },
+        {
+          "name": "Chicuma",
+          "slug": "chicuma",
+          "sort_order": 22,
+          "localities": []
+        },
+        {
+          "name": "Navegantes",
+          "slug": "navegantes",
+          "sort_order": 23,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Namibe",
+      "slug": "namibe",
+      "capital": "Moçâmedes",
+      "sort_order": 17,
+      "municipalities": [
+        {
+          "name": "Moçâmedes",
+          "slug": "mocamedes",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Tômbwa",
+          "slug": "tombwa",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Bibala",
+          "slug": "bibala",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Virei",
+          "slug": "virei",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Camucuio",
+          "slug": "camucuio",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Lucira",
+          "slug": "lucira",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Cacimbas",
+          "slug": "cacimbas",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Sacomar",
+          "slug": "sacomar",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Iona",
+          "slug": "iona",
+          "sort_order": 9,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Huíla",
+      "slug": "huila",
+      "capital": "Lubango",
+      "sort_order": 18,
+      "municipalities": [
+        {
+          "name": "Caconda",
+          "slug": "caconda",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Gambos",
+          "slug": "gambos",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Humpata",
+          "slug": "humpata",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Lubango",
+          "slug": "lubango",
+          "sort_order": 4,
+          "localities": [
+            {
+              "name": "Centro",
+              "type": "bairro",
+              "sort_order": 1
+            },
+            {
+              "name": "Da Humpata",
+              "type": "bairro",
+              "sort_order": 2
+            },
+            {
+              "name": "Tchipopiro",
+              "type": "bairro",
+              "sort_order": 3
+            }
+          ]
+        },
+        {
+          "name": "Cuvango",
+          "slug": "cuvango",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Quipungo",
+          "slug": "quipungo",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Chibia",
+          "slug": "chibia",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Quilengues",
+          "slug": "quilengues",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Caluquembe",
+          "slug": "caluquembe",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Matala",
+          "slug": "matala",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Jamba Mineira",
+          "slug": "jamba-mineira",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Chipindo",
+          "slug": "chipindo",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Chicomba",
+          "slug": "chicomba",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Cacula",
+          "slug": "cacula",
+          "sort_order": 14,
+          "localities": []
+        },
+        {
+          "name": "Galangue",
+          "slug": "galangue",
+          "sort_order": 15,
+          "localities": []
+        },
+        {
+          "name": "Dongo",
+          "slug": "dongo",
+          "sort_order": 16,
+          "localities": []
+        },
+        {
+          "name": "Capelongo",
+          "slug": "capelongo",
+          "sort_order": 17,
+          "localities": []
+        },
+        {
+          "name": "Capunda Cavilongo",
+          "slug": "capunda-cavilongo",
+          "sort_order": 18,
+          "localities": []
+        },
+        {
+          "name": "Viti Vivali",
+          "slug": "viti-vivali",
+          "sort_order": 19,
+          "localities": []
+        },
+        {
+          "name": "Chituto",
+          "slug": "chituto",
+          "sort_order": 20,
+          "localities": []
+        },
+        {
+          "name": "Hoque",
+          "slug": "hoque",
+          "sort_order": 21,
+          "localities": []
+        },
+        {
+          "name": "Chicungo",
+          "slug": "chicungo",
+          "sort_order": 22,
+          "localities": []
+        },
+        {
+          "name": "Palanca",
+          "slug": "palanca",
+          "sort_order": 23,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Cunene",
+      "slug": "cunene",
+      "capital": "Ondjiva",
+      "sort_order": 19,
+      "municipalities": [
+        {
+          "name": "Ombadja",
+          "slug": "ombadja",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Cuanhama",
+          "slug": "cuanhama",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Curoca",
+          "slug": "curoca",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Chitado",
+          "slug": "chitado",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Cahama",
+          "slug": "cahama",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Cuvelai",
+          "slug": "cuvelai",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Namacunde",
+          "slug": "namacunde",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Nehone",
+          "slug": "nehone",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Cafima",
+          "slug": "cafima",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Chissuata",
+          "slug": "chissuata",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Mupa",
+          "slug": "mupa",
+          "sort_order": 11,
+          "localities": []
+        },
+        {
+          "name": "Chiéde",
+          "slug": "chiede",
+          "sort_order": 12,
+          "localities": []
+        },
+        {
+          "name": "Humbe",
+          "slug": "humbe",
+          "sort_order": 13,
+          "localities": []
+        },
+        {
+          "name": "Naulila",
+          "slug": "naulila",
+          "sort_order": 14,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Cubango",
+      "slug": "cubango",
+      "capital": "Menongue",
+      "sort_order": 20,
+      "municipalities": [
+        {
+          "name": "Menongue",
+          "slug": "menongue",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Cuchi",
+          "slug": "cuchi",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Cuangar",
+          "slug": "cuangar",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Calai",
+          "slug": "calai",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Nancova",
+          "slug": "nancova",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Mavengue",
+          "slug": "mavengue",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Savate",
+          "slug": "savate",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Longa",
+          "slug": "longa",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Chinguanja",
+          "slug": "chinguanja",
+          "sort_order": 9,
+          "localities": []
+        },
+        {
+          "name": "Cutato",
+          "slug": "cutato",
+          "sort_order": 10,
+          "localities": []
+        },
+        {
+          "name": "Caiundo",
+          "slug": "caiundo",
+          "sort_order": 11,
+          "localities": []
+        }
+      ]
+    },
+    {
+      "name": "Cuando",
+      "slug": "cuando",
+      "capital": "Mavinga",
+      "sort_order": 21,
+      "municipalities": [
+        {
+          "name": "Mavinga",
+          "slug": "mavinga",
+          "sort_order": 1,
+          "localities": []
+        },
+        {
+          "name": "Cuito Cuanavale",
+          "slug": "cuito-cuanavale",
+          "sort_order": 2,
+          "localities": []
+        },
+        {
+          "name": "Dirico",
+          "slug": "dirico",
+          "sort_order": 3,
+          "localities": []
+        },
+        {
+          "name": "Rivungo",
+          "slug": "rivungo",
+          "sort_order": 4,
+          "localities": []
+        },
+        {
+          "name": "Luíana",
+          "slug": "luiana",
+          "sort_order": 5,
+          "localities": []
+        },
+        {
+          "name": "Luengue",
+          "slug": "luengue",
+          "sort_order": 6,
+          "localities": []
+        },
+        {
+          "name": "Dima",
+          "slug": "dima",
+          "sort_order": 7,
+          "localities": []
+        },
+        {
+          "name": "Xipundo",
+          "slug": "xipundo",
+          "sort_order": 8,
+          "localities": []
+        },
+        {
+          "name": "Mucusso",
+          "slug": "mucusso",
+          "sort_order": 9,
+          "localities": []
+        }
+      ]
+    }
+  ]
+}

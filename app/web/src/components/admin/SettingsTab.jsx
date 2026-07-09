@@ -1,0 +1,556 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store } from 'lucide-react';
+import pb from '@/lib/pocketbaseClient';
+import { useToast } from '@/hooks/use-toast';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ImageField, { uploadImageToRecord, removeImageFromRecord, syncUploadedImageUrl } from '@/components/admin/ImageField';
+import { sanitizeImageUrlForSave } from '@/lib/imageUrl';
+import { pbErrorMessage } from '@/lib/mediaSave';
+import StoresTab from '@/components/admin/StoresTab';
+import PhoneInput from '@/components/PhoneInput';
+import { formatAngolaPhone } from '@/lib/angolaPhone';
+
+const empty = {
+  site_name: 'Livraria Adventista',
+  tagline: '',
+  primary_color: '#0ea5c9',
+  logo_url: '',
+  favicon_url: '',
+  login_bg_url: '',
+  contact_email: '',
+  contact_phone: '',
+  contact_address: '',
+  whatsapp: '',
+  facebook: '',
+  instagram: '',
+  pwa_enabled: true,
+  pwa_name: '',
+  pwa_short_name: 'LA',
+  pwa_theme_color: '#0c4a6e',
+  shipping_free_threshold: 20000,
+  shipping_cost: 1500,
+  maintenance_mode: false,
+  google_oauth_enabled: false,
+  header_welcome_logged: 'Bem-vindo de volta, {nome}',
+  header_welcome_guest: 'Envio em todo o país · Crie a sua conta para acompanhar encomendas',
+  header_cta_text: 'Explorar novidades',
+  header_cta_link: '/shop',
+  footer_tagline: '',
+  footer_copyright: '',
+  footer_columns: null,
+  show_stores_in_footer: true,
+  shop_hero_title: 'Todos os Livros',
+  shop_hero_subtitle: 'O catálogo completo da livraria — pesquisa avançada, pré-visualização e compra segura.',
+  shop_hero_badge: 'Catálogo Premium',
+  shop_default_sort: 'featured',
+  shop_per_page: 24,
+  shop_show_featured: true,
+  shop_show_collections: true,
+  shop_show_low_stock: true,
+  shop_grid_columns: 4,
+  shipping_express_cost: 3000,
+  ui_glass_enabled: true,
+  ui_glass_opacity: 0.72,
+  shop_bg_mode: 'gradient',
+  shop_bg_image_url: '',
+  shop_bg_video_url: '',
+  shop_bg_overlay: 0.55,
+  google_maps_embed_key: '',
+};
+
+export default function SettingsTab() {
+  const { toast } = useToast();
+  const { refresh } = useSiteSettings();
+  const { driveImageConfig } = useIntegrations();
+  const [recordId, setRecordId] = useState(null);
+  const [form, setForm] = useState(empty);
+  const [logoFile, setLogoFile] = useState(null);
+  const [faviconFile, setFaviconFile] = useState(null);
+  const [logoRemoved, setLogoRemoved] = useState(false);
+  const [faviconRemoved, setFaviconRemoved] = useState(false);
+  const [hadLogoFile, setHadLogoFile] = useState(false);
+  const [hadFaviconFile, setHadFaviconFile] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const list = await pb.collection('site_settings').getFullList();
+      if (list.length > 0) {
+        const r = list[0];
+        setRecordId(r.id);
+        setHadLogoFile(!!r.logo);
+        setHadFaviconFile(!!r.favicon);
+        setLogoRemoved(false);
+        setFaviconRemoved(false);
+        setLogoFile(null);
+        setFaviconFile(null);
+        const logoFromFile = r.logo ? pb.files.getURL(r, r.logo) : '';
+        const favFromFile = r.favicon ? pb.files.getURL(r, r.favicon) : '';
+        setForm({
+          site_name: r.site_name || empty.site_name,
+          tagline: r.tagline || '',
+          primary_color: r.primary_color || '#0ea5c9',
+          logo_url: logoFromFile || sanitizeImageUrlForSave(r.logo_url) || '',
+          favicon_url: favFromFile || sanitizeImageUrlForSave(r.favicon_url) || '',
+          login_bg_url: r.login_bg_url || '',
+          contact_email: r.contact_email || '',
+          contact_phone: r.contact_phone ? formatAngolaPhone(r.contact_phone) : '',
+          contact_address: r.contact_address || '',
+          whatsapp: r.whatsapp ? formatAngolaPhone(r.whatsapp) : '',
+          facebook: r.facebook || '',
+          instagram: r.instagram || '',
+          pwa_enabled: !!r.pwa_enabled,
+          pwa_name: r.pwa_name || '',
+          pwa_short_name: r.pwa_short_name || 'LA',
+          pwa_theme_color: r.pwa_theme_color || '#0c4a6e',
+          shipping_free_threshold: r.shipping_free_threshold ?? 20000,
+          shipping_cost: r.shipping_cost ?? 1500,
+          maintenance_mode: !!r.maintenance_mode,
+          google_oauth_enabled: !!r.google_oauth_enabled,
+          header_welcome_logged: r.header_welcome_logged || empty.header_welcome_logged,
+          header_welcome_guest: r.header_welcome_guest || empty.header_welcome_guest,
+          header_cta_text: r.header_cta_text || empty.header_cta_text,
+          header_cta_link: r.header_cta_link || empty.header_cta_link,
+          footer_tagline: r.footer_tagline || '',
+          footer_copyright: r.footer_copyright || '',
+          footer_columns: r.footer_columns || null,
+          show_stores_in_footer: r.show_stores_in_footer !== false,
+          shop_hero_title: r.shop_hero_title || empty.shop_hero_title,
+          shop_hero_subtitle: r.shop_hero_subtitle || empty.shop_hero_subtitle,
+          shop_hero_badge: r.shop_hero_badge || empty.shop_hero_badge,
+          shop_default_sort: r.shop_default_sort || empty.shop_default_sort,
+          shop_per_page: r.shop_per_page ?? empty.shop_per_page,
+          shop_show_featured: r.shop_show_featured !== false,
+          shop_show_collections: r.shop_show_collections !== false,
+          shop_show_low_stock: r.shop_show_low_stock !== false,
+          shop_grid_columns: r.shop_grid_columns ?? empty.shop_grid_columns,
+          shipping_express_cost: r.shipping_express_cost ?? empty.shipping_express_cost,
+          ui_glass_enabled: r.ui_glass_enabled !== false,
+          ui_glass_opacity: r.ui_glass_opacity ?? empty.ui_glass_opacity,
+          shop_bg_mode: r.shop_bg_mode || empty.shop_bg_mode,
+          shop_bg_image_url: r.shop_bg_image_url || '',
+          shop_bg_video_url: r.shop_bg_video_url || '',
+          shop_bg_overlay: r.shop_bg_overlay ?? empty.shop_bg_overlay,
+          google_maps_embed_key: r.google_maps_embed_key || '',
+        });
+      }
+    } catch {
+      // coleção ainda não migrada
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const data = {
+        ...form,
+        logo_url: form.logo_url?.startsWith('blob:') ? '' : sanitizeImageUrlForSave(form.logo_url),
+        favicon_url: form.favicon_url?.startsWith('blob:') ? '' : sanitizeImageUrlForSave(form.favicon_url),
+        login_bg_url: sanitizeImageUrlForSave(form.login_bg_url),
+        shop_bg_image_url: sanitizeImageUrlForSave(form.shop_bg_image_url),
+        shipping_free_threshold: Number(form.shipping_free_threshold),
+        shipping_cost: Number(form.shipping_cost),
+        shipping_express_cost: Number(form.shipping_express_cost),
+        shop_per_page: Number(form.shop_per_page) || 24,
+        shop_grid_columns: Number(form.shop_grid_columns) || 4,
+        ui_glass_opacity: Number(form.ui_glass_opacity) || 0.72,
+        shop_bg_overlay: Number(form.shop_bg_overlay) || 0.55,
+        shop_bg_mode: form.shop_bg_mode || 'gradient',
+        primary_color: form.primary_color || '#0ea5c9',
+        pwa_theme_color: form.pwa_theme_color || '#0c4a6e',
+        footer_columns: typeof form.footer_columns === 'string'
+          ? (() => { try { return JSON.parse(form.footer_columns); } catch { return null; } })()
+          : form.footer_columns,
+      };
+
+      let id = recordId;
+      if (logoRemoved && id) {
+        await removeImageFromRecord('site_settings', id, 'logo', 'logo_url');
+        data.logo_url = '';
+      }
+      if (faviconRemoved && id) {
+        await removeImageFromRecord('site_settings', id, 'favicon', 'favicon_url');
+        data.favicon_url = '';
+      }
+
+      if (id) {
+        await pb.collection('site_settings').update(id, data);
+      } else {
+        const created = await pb.collection('site_settings').create(data);
+        id = created.id;
+        setRecordId(id);
+      }
+
+      if (logoFile && id) {
+        await uploadImageToRecord('site_settings', id, 'logo', logoFile);
+        await syncUploadedImageUrl('site_settings', id, 'logo', 'logo_url');
+      } else if (data.logo_url && !logoRemoved && hadLogoFile && !logoFile) {
+        await removeImageFromRecord('site_settings', id, 'logo');
+      }
+
+      if (faviconFile && id) {
+        await uploadImageToRecord('site_settings', id, 'favicon', faviconFile);
+        await syncUploadedImageUrl('site_settings', id, 'favicon', 'favicon_url');
+      } else if (data.favicon_url && !faviconRemoved && hadFaviconFile && !faviconFile) {
+        await removeImageFromRecord('site_settings', id, 'favicon');
+      }
+
+      setLogoFile(null);
+      setFaviconFile(null);
+      setLogoRemoved(false);
+      setFaviconRemoved(false);
+
+      await refresh();
+      toast({ title: 'Configurações guardadas' });
+      load();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro', description: pbErrorMessage(err) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-6">
+      <Tabs defaultValue="brand">
+        <TabsList className="mb-6 flex-wrap h-auto">
+          <TabsTrigger value="brand"><Palette className="h-4 w-4 mr-1.5" />Marca</TabsTrigger>
+          <TabsTrigger value="images">Imagens</TabsTrigger>
+          <TabsTrigger value="contact">Contacto</TabsTrigger>
+          <TabsTrigger value="pwa"><Smartphone className="h-4 w-4 mr-1.5" />PWA / Mobile</TabsTrigger>
+          <TabsTrigger value="shipping"><Truck className="h-4 w-4 mr-1.5" />Envio</TabsTrigger>
+          <TabsTrigger value="shop"><Store className="h-4 w-4 mr-1.5" />Loja / Shop</TabsTrigger>
+          <TabsTrigger value="theme"><Palette className="h-4 w-4 mr-1.5" />Tema UI</TabsTrigger>
+          <TabsTrigger value="header"><MessageSquare className="h-4 w-4 mr-1.5" />Barra Superior</TabsTrigger>
+          <TabsTrigger value="footer"><LayoutTemplate className="h-4 w-4 mr-1.5" />Rodapé</TabsTrigger>
+          <TabsTrigger value="stores">Lojas Físicas</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="brand" className="space-y-4 max-w-xl">
+          <div className="space-y-2">
+            <Label>Nome do Sistema *</Label>
+            <Input value={form.site_name} onChange={(e) => set('site_name', e.target.value)} required />
+          </div>
+          <div className="space-y-2">
+            <Label>Slogan / Tagline</Label>
+            <Input value={form.tagline} onChange={(e) => set('tagline', e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Cor Principal</Label>
+            <div className="flex gap-2">
+              <Input type="color" value={form.primary_color} onChange={(e) => set('primary_color', e.target.value)} className="w-14 h-10 p-1" />
+              <Input value={form.primary_color} onChange={(e) => set('primary_color', e.target.value)} className="font-mono" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Switch checked={form.maintenance_mode} onCheckedChange={(v) => set('maintenance_mode', v)} />
+            <Label>Modo manutenção (bloqueia checkout)</Label>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Switch checked={form.google_oauth_enabled} onCheckedChange={(v) => set('google_oauth_enabled', v)} />
+            <div>
+              <Label>Login com Google</Label>
+              <p className="text-xs text-muted-foreground">Requer configurar OAuth no PocketBase Admin → Settings → Auth providers</p>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="images" className="space-y-6 max-w-2xl">
+          <ImageField
+            label="Logotipo"
+            value={form.logo_url}
+            onChange={(v) => { set('logo_url', v); setLogoRemoved(false); }}
+            onFileChange={(f) => { setLogoFile(f); if (f) setLogoRemoved(false); }}
+            onClear={() => setLogoRemoved(true)}
+            aspect="quadrado ou horizontal"
+            hint="Logotipo: PNG/SVG com fundo transparente · 200×200px mínimo · Aparece em todo o site (header, login, admin, rodapé)"
+            previewClassName="h-20 w-40"
+            driveConfig={driveImageConfig}
+          />
+          <ImageField
+            label="Favicon"
+            value={form.favicon_url}
+            onChange={(v) => { set('favicon_url', v); setFaviconRemoved(false); }}
+            onFileChange={(f) => { setFaviconFile(f); if (f) setFaviconRemoved(false); }}
+            onClear={() => setFaviconRemoved(true)}
+            aspect="1:1"
+            maxSizeMB={0.5}
+            hint="Favicon: PNG ou ICO · 32×32 ou 64×64px · Ícone do separador do browser e PWA"
+            previewClassName="h-12 w-12"
+            driveConfig={driveImageConfig}
+          />
+          <ImageField
+            label="Imagem de fundo do Login"
+            value={form.login_bg_url}
+            onChange={(v) => set('login_bg_url', v)}
+            aspect="16:9"
+            hint="Fundo login: JPG/WebP · 1920×1080px recomendado"
+            previewClassName="h-24 w-40"
+            driveConfig={driveImageConfig}
+          />
+        </TabsContent>
+
+        <TabsContent value="contact" className="space-y-4 max-w-xl">
+          <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.contact_email} onChange={(e) => set('contact_email', e.target.value)} /></div>
+          <div className="space-y-2"><Label>Telefone</Label><PhoneInput value={form.contact_phone} onChange={(v) => set('contact_phone', v)} /></div>
+          <div className="space-y-2"><Label>Morada</Label><Input value={form.contact_address} onChange={(e) => set('contact_address', e.target.value)} /></div>
+          <div className="space-y-2"><Label>WhatsApp</Label><PhoneInput value={form.whatsapp} onChange={(v) => set('whatsapp', v)} /></div>
+          <div className="space-y-2"><Label>Facebook URL</Label><Input value={form.facebook} onChange={(e) => set('facebook', e.target.value)} /></div>
+          <div className="space-y-2"><Label>Instagram URL</Label><Input value={form.instagram} onChange={(e) => set('instagram', e.target.value)} /></div>
+        </TabsContent>
+
+        <TabsContent value="pwa" className="space-y-4 max-w-xl">
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Switch checked={form.pwa_enabled} onCheckedChange={(v) => set('pwa_enabled', v)} />
+            <Label>Permitir instalação como app (PWA)</Label>
+          </div>
+          <div className="space-y-2"><Label>Nome da App</Label><Input value={form.pwa_name} onChange={(e) => set('pwa_name', e.target.value)} placeholder={form.site_name} /></div>
+          <div className="space-y-2"><Label>Nome Curto (ícone)</Label><Input value={form.pwa_short_name} onChange={(e) => set('pwa_short_name', e.target.value)} maxLength={12} /></div>
+          <div className="space-y-2">
+            <Label>Cor do Tema Mobile</Label>
+            <div className="flex gap-2">
+              <Input type="color" value={form.pwa_theme_color} onChange={(e) => set('pwa_theme_color', e.target.value)} className="w-14 h-10 p-1" />
+              <Input value={form.pwa_theme_color} onChange={(e) => set('pwa_theme_color', e.target.value)} className="font-mono" />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="shipping" className="space-y-4 max-w-xl">
+          <div className="space-y-2">
+            <Label>Envio grátis acima de (Kz)</Label>
+            <Input type="number" value={form.shipping_free_threshold} onChange={(e) => set('shipping_free_threshold', e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Custo de envio padrão (Kz)</Label>
+            <Input type="number" value={form.shipping_cost} onChange={(e) => set('shipping_cost', e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Custo de envio expresso (Kz)</Label>
+            <Input type="number" value={form.shipping_express_cost} onChange={(e) => set('shipping_express_cost', e.target.value)} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="shop" className="space-y-4 max-w-2xl">
+          <p className="text-sm text-muted-foreground">
+            Personalize a página <strong>/shop</strong> — centro do catálogo. A cor principal (aba Marca) aplica-se automaticamente ao hero e botões.
+          </p>
+          <div className="space-y-2">
+            <Label>Badge do hero</Label>
+            <Input value={form.shop_hero_badge} onChange={(e) => set('shop_hero_badge', e.target.value)} placeholder="Catálogo Premium" />
+          </div>
+          <div className="space-y-2">
+            <Label>Título do hero</Label>
+            <Input value={form.shop_hero_title} onChange={(e) => set('shop_hero_title', e.target.value)} placeholder="Todos os Livros" />
+          </div>
+          <div className="space-y-2">
+            <Label>Subtítulo do hero</Label>
+            <Textarea rows={2} value={form.shop_hero_subtitle} onChange={(e) => set('shop_hero_subtitle', e.target.value)} />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Ordenação por defeito</Label>
+              <Select value={form.shop_default_sort} onValueChange={(v) => set('shop_default_sort', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="featured">Destaques</SelectItem>
+                  <SelectItem value="title">A – Z</SelectItem>
+                  <SelectItem value="price-low">Preço ↑</SelectItem>
+                  <SelectItem value="price-high">Preço ↓</SelectItem>
+                  <SelectItem value="newest">Mais recentes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Livros por página</Label>
+              <Input type="number" min={12} max={96} value={form.shop_per_page} onChange={(e) => set('shop_per_page', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Colunas da grelha (desktop)</Label>
+              <Select value={String(form.shop_grid_columns)} onValueChange={(v) => set('shop_grid_columns', Number(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">3 colunas</SelectItem>
+                  <SelectItem value="4">4 colunas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-3 p-4 rounded-xl border">
+            <p className="text-sm font-medium">Secções visíveis na loja</p>
+            <div className="flex items-center gap-3">
+              <Switch checked={form.shop_show_featured} onCheckedChange={(v) => set('shop_show_featured', v)} />
+              <Label>Destaques no topo</Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={form.shop_show_collections} onCheckedChange={(v) => set('shop_show_collections', v)} />
+              <Label>Explorar por coleção</Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={form.shop_show_low_stock} onCheckedChange={(v) => set('shop_show_low_stock', v)} />
+              <Label>Últimas unidades</Label>
+            </div>
+          </div>
+          <div className="rounded-xl border p-4 text-sm" style={{ background: `linear-gradient(135deg, ${form.pwa_theme_color || '#0c4a6e'}, ${form.primary_color || '#0ea5c9'})` }}>
+            <p className="text-white/80 text-xs mb-1">Pré-visualização do hero</p>
+            <p className="text-white font-bold text-lg">{form.shop_hero_title || 'Todos os Livros'}</p>
+            <p className="text-white/85 text-sm">{form.shop_hero_subtitle || form.tagline}</p>
+          </div>
+          <div className="space-y-3 p-4 rounded-xl border">
+            <p className="text-sm font-medium">Fundo do hero da loja</p>
+            <Select value={form.shop_bg_mode} onValueChange={(v) => set('shop_bg_mode', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gradient">Gradiente (cores da marca)</SelectItem>
+                <SelectItem value="image">Imagem (JPG, PNG, SVG)</SelectItem>
+                <SelectItem value="video">Vídeo (MP4/WebM)</SelectItem>
+                <SelectItem value="slides">Slider da loja (slides com localização «shop»)</SelectItem>
+              </SelectContent>
+            </Select>
+            {(form.shop_bg_mode === 'image' || form.shop_bg_mode === 'video') && (
+              <>
+                <ImageField
+                  label="Imagem de fundo do hero da loja"
+                  value={form.shop_bg_image_url}
+                  onChange={(v) => set('shop_bg_image_url', v)}
+                  aspect="16:9"
+                  previewClassName="h-24 w-40"
+                  driveConfig={driveImageConfig}
+                  hint="JPG, PNG, WebP ou SVG · 1920×1080 recomendado"
+                />
+                {form.shop_bg_mode === 'video' && (
+                  <div className="space-y-2">
+                    <Label>URL do vídeo</Label>
+                    <Input value={form.shop_bg_video_url} onChange={(e) => set('shop_bg_video_url', e.target.value)} placeholder="https://...mp4" />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label>Opacidade do overlay (0–1)</Label>
+                  <Input type="number" step="0.05" min="0" max="1" value={form.shop_bg_overlay} onChange={(e) => set('shop_bg_overlay', e.target.value)} />
+                </div>
+              </>
+            )}
+            {form.shop_bg_mode === 'slides' && (
+              <p className="text-xs text-muted-foreground">Crie slides em Admin → Slider com localização «Loja» ou «Ambos».</p>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="theme" className="space-y-4 max-w-xl">
+          <p className="text-sm text-muted-foreground">Opacidade suave estilo macOS — translúcido com blur, sem efeitos extra.</p>
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Switch checked={form.ui_glass_enabled} onCheckedChange={(v) => set('ui_glass_enabled', v)} />
+            <Label>Activar superfícies opacas (header, rodapé, painéis)</Label>
+          </div>
+          <div className="space-y-2">
+            <Label>Opacidade do vidro (0.5 – 0.95)</Label>
+            <Input type="number" step="0.05" min="0.5" max="0.95" value={form.ui_glass_opacity} onChange={(e) => set('ui_glass_opacity', e.target.value)} />
+            <p className="text-xs text-muted-foreground">Recomendado: 0.72 (similar ao macOS)</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Google Maps Embed API Key (opcional)</Label>
+            <Input value={form.google_maps_embed_key} onChange={(e) => set('google_maps_embed_key', e.target.value)} placeholder="AIza..." className="font-mono text-sm" />
+            <p className="text-xs text-muted-foreground">Para mapas embutidos nas lojas físicas. Sem chave, usa links Google Maps.</p>
+          </div>
+          <div className={`p-4 rounded-xl border glass-surface ${!form.ui_glass_enabled ? 'opacity-60' : ''}`}>
+            <p className="text-sm font-medium">Pré-visualização do efeito vidro</p>
+            <p className="text-xs text-muted-foreground mt-1">Header e rodapé usam este estilo quando activado.</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="header" className="space-y-4 max-w-xl">
+          <p className="text-sm text-muted-foreground">
+            Personalize a barra superior do site. Use <code className="text-[#0ea5c9]">{'{nome}'}</code> para inserir o primeiro nome do utilizador.
+          </p>
+          <div className="space-y-2">
+            <Label>Mensagem (utilizador logado)</Label>
+            <Input value={form.header_welcome_logged} onChange={(e) => set('header_welcome_logged', e.target.value)} placeholder="Bem-vindo de volta, {nome}" />
+          </div>
+          <div className="space-y-2">
+            <Label>Mensagem (visitante)</Label>
+            <Input value={form.header_welcome_guest} onChange={(e) => set('header_welcome_guest', e.target.value)} />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Texto do link CTA</Label>
+              <Input value={form.header_cta_text} onChange={(e) => set('header_cta_text', e.target.value)} placeholder="Explorar novidades" />
+            </div>
+            <div className="space-y-2">
+              <Label>Link CTA</Label>
+              <Input value={form.header_cta_link} onChange={(e) => set('header_cta_link', e.target.value)} placeholder="/shop" />
+            </div>
+          </div>
+          <div className="rounded-lg border p-3 bg-muted/30 text-sm">
+            <p className="text-muted-foreground mb-1">Pré-visualização (logado):</p>
+            <p>
+              {(form.header_welcome_logged || '').replace('{nome}', 'Maria')}
+              {' · '}
+              <span className="underline">{form.header_cta_text || 'Explorar'}</span>
+            </p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="footer" className="space-y-4 max-w-2xl">
+          <div className="space-y-2">
+            <Label>Tagline do Rodapé</Label>
+            <Input value={form.footer_tagline} onChange={(e) => set('footer_tagline', e.target.value)} placeholder="Literatura cristã, educação e inspiração..." />
+          </div>
+          <div className="space-y-2">
+            <Label>Texto de Copyright</Label>
+            <Input value={form.footer_copyright} onChange={(e) => set('footer_copyright', e.target.value)} placeholder="© 2026 Livraria Adventista. Todos os direitos reservados." />
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Switch checked={form.show_stores_in_footer} onCheckedChange={(v) => set('show_stores_in_footer', v)} />
+            <Label>Mostrar lojas físicas no rodapé</Label>
+          </div>
+          <div className="space-y-2">
+            <Label>Colunas do Rodapé (JSON)</Label>
+            <Textarea
+              rows={10}
+              value={form.footer_columns ? JSON.stringify(form.footer_columns, null, 2) : ''}
+              onChange={(e) => {
+                try {
+                  const parsed = e.target.value ? JSON.parse(e.target.value) : null;
+                  set('footer_columns', parsed);
+                } catch {
+                  set('footer_columns', e.target.value);
+                }
+              }}
+              placeholder={'[\n  {\n    "title": "Apoio ao Cliente",\n    "links": [{"label": "FAQ", "url": "/faq", "internal": true}]\n  }\n]'}
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">Deixe vazio para usar colunas padrão. Cada link: label, url, internal (true para rotas internas).</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="stores">
+          <StoresTab />
+        </TabsContent>
+      </Tabs>
+
+      <Button type="submit" className="btn-primary" disabled={saving}>
+        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        <Save className="mr-2 h-4 w-4" /> Guardar Configurações
+      </Button>
+    </form>
+  );
+}

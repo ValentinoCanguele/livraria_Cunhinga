@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "description": "Represents a book saved to the user's wishlist",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The Firebase Auth UID of the owner"
+        },
+        "bookId": {
+          "type": "string",
+          "description": "The unique ID of the book in PocketBase"
+        },
+        "bookTitle": {
+          "type": "string",
+          "description": "The title of the book"
+        },
+        "bookCover": {
+          "type": "string",
+          "description": "The cover image URL of the book"
+        },
+        "bookPrice": {
+          "type": "number",
+          "description": "The price of the book"
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The server-side timestamp when added"
+        }
+      },
+      "required": ["userId", "bookId", "bookTitle", "bookCover", "bookPrice", "addedAt"]
+    },
+    "BookReview": {
+      "title": "BookReview",
+      "description": "A user review and rating for a specific book",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The Firebase Auth UID of the reviewer"
+        },
+        "userName": {
+          "type": "string",
+          "description": "The display name of the reviewer"
+        },
+        "userAvatar": {
+          "type": "string",
+          "description": "Optional avatar URL of the reviewer"
+        },
+        "bookId": {
+          "type": "string",
+          "description": "The book's PocketBase ID"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Rating from 1 to 5"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Review text"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of creation"
+        },
+        "isVerified": {
+          "type": "boolean",
+          "description": "Whether the user purchased the book before reviewing"
+        }
+      },
+      "required": ["userId", "userName", "bookId", "rating", "comment", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/wishlists/{wishlistItemId}": {
+      "schema": "WishlistItem",
+      "description": "Collection storing all user wishlists"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "BookReview",
+      "description": "Collection storing book reviews and star ratings"
+    }
+  }
+}

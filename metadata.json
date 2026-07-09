@@ -1,0 +1,6 @@
+{
+  "name": "Livraria Adventista",
+  "description": "Literatura cristã, educação e inspiração — experiência de compra digital premium",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

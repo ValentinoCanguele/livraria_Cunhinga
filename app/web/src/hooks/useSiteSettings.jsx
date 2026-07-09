@@ -77,4 +77,14 @@ export function SiteSettingsProvider({ children }) {
   );
 }
 
-export const useSiteSettings = () => useContext(SiteSettingsContext);
+export const useSiteSettings = () => {
+  const ctx = useContext(SiteSettingsContext);
+  if (!ctx) {
+    return {
+      settings: { ...BRAND, ...THEME_DEFAULTS, site_name: BRAND.name, maintenance_mode: false },
+      loading: false,
+      refresh: async () => {},
+    };
+  }
+  return ctx;
+};

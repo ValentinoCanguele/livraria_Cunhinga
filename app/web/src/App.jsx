@@ -24,17 +24,53 @@ import AdminPage from '@/pages/AdminPage.jsx';
 import ProfilePage from '@/pages/ProfilePage.jsx';
 import CollectionsPage from '@/pages/CollectionsPage.jsx';
 import PwaInstallBanner from '@/components/PwaInstallBanner.jsx';
+import MaintenancePage from '@/pages/MaintenancePage.jsx';
+import MaintenanceBanner from '@/components/MaintenanceBanner.jsx';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'react-router-dom';
 
-function App() {
-  return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="livraria-theme">
-    <SiteSettingsProvider>
-    <IntegrationsProvider>
-    <AuthProvider>
-    <CartProvider>
-      <Router>
+const MAINTENANCE_ALLOWED_PATHS = ['/login', '/forgot-password', '/reset-password', '/admin', '/track'];
+
+function isMaintenanceAllowedPath(pathname) {
+  return MAINTENANCE_ALLOWED_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+}
+
+function AppRoutes() {
+  const { settings, loading } = useSiteSettings();
+  const { isAuthed, canAccessAdmin } = useAuth();
+  const { pathname } = useLocation();
+
+  const staffBypass = isAuthed && canAccessAdmin;
+  const showMaintenancePage = !!settings?.maintenance_mode
+    && !staffBypass
+    && !isMaintenanceAllowedPath(pathname);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-9 w-9 rounded-full border-2 border-[#0ea5c9] border-t-transparent animate-spin" aria-label="A carregar" />
+      </div>
+    );
+  }
+
+  if (showMaintenancePage) {
+    return (
+      <>
         <ScrollToTop />
-        <Routes>
+        <MaintenancePage />
+        <Toaster />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ScrollToTop />
+      <MaintenanceBanner />
+      <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />
           <Route path="/colecoes" element={<CollectionsPage />} />
@@ -64,6 +100,19 @@ function App() {
         </Routes>
         <Toaster />
         <PwaInstallBanner />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="livraria-theme">
+    <SiteSettingsProvider>
+    <IntegrationsProvider>
+    <AuthProvider>
+    <CartProvider>
+      <Router>
+        <AppRoutes />
       </Router>
     </CartProvider>
     </AuthProvider>

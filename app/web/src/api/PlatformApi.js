@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS = {
   shop_show_low_stock: true,
   shop_grid_columns: 4,
   maintenance_mode: false,
+  maintenance_message: '',
   google_oauth_enabled: false,
   header_welcome_logged: 'Bem-vindo de volta, {nome}',
   header_welcome_guest: 'Envio em todo o país · Crie a sua conta para acompanhar encomendas',
@@ -49,12 +50,21 @@ const DEFAULT_SETTINGS = {
 export async function getSiteSettings() {
   try {
     const res = await fetch(`${PB_URL}/api/app/settings`);
-    if (!res.ok) return DEFAULT_SETTINGS;
-    const merged = { ...DEFAULT_SETTINGS, ...await res.json() };
+    if (!res.ok) return { ...DEFAULT_SETTINGS };
+    const raw = await res.json();
+    const merged = { ...DEFAULT_SETTINGS, ...raw };
     merged.shop_bg_mode = resolveShopBgMode(merged);
+    merged.maintenance_mode = !!merged.maintenance_mode;
+    merged.pwa_enabled = merged.pwa_enabled !== false;
+    merged.ui_glass_enabled = merged.ui_glass_enabled !== false;
+    merged.primary_color = merged.primary_color || DEFAULT_SETTINGS.primary_color;
+    merged.pwa_theme_color = merged.pwa_theme_color || DEFAULT_SETTINGS.pwa_theme_color;
+    if (merged.footer_columns != null && !Array.isArray(merged.footer_columns)) {
+      merged.footer_columns = null;
+    }
     return merged;
   } catch {
-    return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS };
   }
 }
 

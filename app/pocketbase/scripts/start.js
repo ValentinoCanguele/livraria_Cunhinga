@@ -55,7 +55,12 @@ async function main() {
   console.log('Starting PocketBase at http://127.0.0.1:8090');
   console.log('Admin UI: http://127.0.0.1:8090/_/');
 
-  const child = spawn(binary, ['serve', '--dir', pbDataDir, '--http=127.0.0.1:8090'], {
+  const child = spawn(binary, [
+    'serve',
+    '--dir', pbDataDir,
+    '--http=127.0.0.1:8090',
+    '--hooksWatch=false',
+  ], {
     cwd: rootDir,
     stdio: 'inherit',
   });

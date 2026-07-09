@@ -221,6 +221,13 @@ const Header = ({ onCartOpen }) => {
                   )}
                   <button
                     type="button"
+                    onClick={() => { logout(); closeMobile(); navigate('/login'); }}
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg hover:bg-muted w-full text-left"
+                  >
+                    <User className="h-4 w-4 text-[#0ea5c9]" /> Trocar de Conta
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleLogout}
                     className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg hover:bg-destructive/10 text-destructive w-full text-left"
                   >

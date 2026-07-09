@@ -12,6 +12,7 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 import BrandLogo from '@/components/BrandLogo';
 import { pageTitle } from '@/lib/brand';
 import { withCacheBust } from '@/lib/imageUrl';
+import { canAccessAdmin } from '@/lib/permissions';
 
 const LoginPage = () => {
   const [mode, setMode] = useState('login');
@@ -19,7 +20,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, signup, loginWithGoogle } = useAuth();
+  const { user, isAuthed, canAccessAdmin: isStaff, login, signup, loginWithGoogle, logout } = useAuth();
   const { settings } = useSiteSettings();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -29,14 +30,17 @@ const LoginPage = () => {
     settings.assets_version,
   );
 
+  const postLoginPath = (record) => (canAccessAdmin(record) ? '/admin' : '/profile');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === 'login') await login(email, password);
-      else await signup(email, password, name);
+      const auth = mode === 'login'
+        ? await login(email, password)
+        : await signup(email, password, name);
       toast({ title: 'Bem-vindo!' });
-      navigate('/profile');
+      navigate(postLoginPath(auth.record));
     } catch {
       toast({ variant: 'destructive', title: 'Erro de autenticação', description: 'Verifique as suas credenciais.' });
     } finally {
@@ -47,9 +51,9 @@ const LoginPage = () => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      await loginWithGoogle();
+      const auth = await loginWithGoogle();
       toast({ title: 'Bem-vindo!' });
-      navigate('/profile');
+      navigate(postLoginPath(auth.record));
     } catch {
       toast({
         variant: 'destructive',
@@ -85,6 +89,33 @@ const LoginPage = () => {
             <p className="text-muted-foreground text-sm mb-8">
               {mode === 'login' ? 'Aceda à sua conta para comprar e acompanhar encomendas.' : 'Junte-se em segundos.'}
             </p>
+
+            {isAuthed && (
+              <div className="mb-6 rounded-xl border border-[#0ea5c9]/30 bg-[#0ea5c9]/5 p-4 space-y-3">
+                <p className="text-sm">
+                  Sessão iniciada como <strong>{user?.email}</strong>.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => navigate(isStaff ? '/admin' : '/profile')}>
+                    Continuar com esta conta
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="flex-1 text-destructive hover:text-destructive"
+                    onClick={() => {
+                      logout();
+                      setEmail('');
+                      setPassword('');
+                      setName('');
+                    }}
+                  >
+                    Trocar de conta
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {settings.google_oauth_enabled && (
               <>

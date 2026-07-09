@@ -37,6 +37,7 @@ const empty = {
   shipping_free_threshold: 20000,
   shipping_cost: 1500,
   maintenance_mode: false,
+  maintenance_message: '',
   google_oauth_enabled: false,
   header_welcome_logged: 'Bem-vindo de volta, {nome}',
   header_welcome_guest: 'Envio em todo o país · Crie a sua conta para acompanhar encomendas',
@@ -115,6 +116,7 @@ export default function SettingsTab() {
           shipping_free_threshold: r.shipping_free_threshold ?? 20000,
           shipping_cost: r.shipping_cost ?? 1500,
           maintenance_mode: !!r.maintenance_mode,
+          maintenance_message: r.maintenance_message || '',
           google_oauth_enabled: !!r.google_oauth_enabled,
           header_welcome_logged: r.header_welcome_logged || empty.header_welcome_logged,
           header_welcome_guest: r.header_welcome_guest || empty.header_welcome_guest,
@@ -264,8 +266,21 @@ export default function SettingsTab() {
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg border">
             <Switch checked={form.maintenance_mode} onCheckedChange={(v) => set('maintenance_mode', v)} />
-            <Label>Modo manutenção (bloqueia checkout)</Label>
+            <div>
+              <Label>Modo manutenção</Label>
+              <p className="text-xs text-muted-foreground">Visitantes veem página de manutenção; checkout e loja ficam indisponíveis (admin continua com acesso)</p>
+            </div>
           </div>
+          {form.maintenance_mode && (
+            <div className="space-y-2">
+              <Label>Mensagem de manutenção</Label>
+              <Input
+                value={form.maintenance_message || ''}
+                onChange={(e) => set('maintenance_message', e.target.value)}
+                placeholder="Estamos a melhorar a loja. Voltamos em breve."
+              />
+            </div>
+          )}
           <div className="flex items-center gap-3 p-3 rounded-lg border">
             <Switch checked={form.google_oauth_enabled} onCheckedChange={(v) => set('google_oauth_enabled', v)} />
             <div>

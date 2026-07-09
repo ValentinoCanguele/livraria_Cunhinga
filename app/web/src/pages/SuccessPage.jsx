@@ -11,6 +11,7 @@ import { pageTitle } from '@/lib/brand';
 import { useAuth } from '@/hooks/useAuth';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { loadLastOrder, downloadReceipt, sendReceiptViaWhatsApp } from '@/lib/receipt';
+import { PAYMENT_CATEGORIES } from '@/lib/paymentUtils';
 
 const SuccessPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -42,11 +43,45 @@ const SuccessPage = () => {
 
   const isWhatsApp = orderType === 'whatsapp';
   const hasOrder = !!(orderId || orderNumber);
+  const paymentCategory = orderData?.paymentCategory || 'gateway';
 
   const title = isWhatsApp ? 'Pedido WhatsApp Registado!' : 'Compra Confirmada!';
   const subtitle = isWhatsApp
     ? 'O seu pedido foi registado no sistema. Continue a conversa no WhatsApp para confirmar pagamento e entrega.'
-    : 'Obrigado pela sua compra. A nossa equipa irá processar o pedido em breve.';
+    : paymentCategory === 'balcao'
+      ? 'Encomenda registada. Dirija-se ao balcão com o número da encomenda para efectuar o pagamento.'
+      : paymentCategory === 'gateway'
+        ? 'Obrigado pela sua compra. A equipa irá confirmar o pagamento e processar o pedido em breve.'
+        : 'Obrigado pela sua compra. A nossa equipa irá processar o pedido em breve.';
+
+  const gatewaySteps = [
+    { step: 1, title: 'Confirmação de pagamento', desc: 'A equipa verifica a referência Multicaixa ou transferência em 1-2 dias úteis.' },
+    { step: 2, title: 'Preparação', desc: 'Após confirmação, os livros são embalados para envio.' },
+    { step: 3, title: 'Entrega', desc: 'Receberá contacto para coordenar a entrega na sua morada.' },
+  ];
+  const balcaoSteps = [
+    { step: 1, title: 'Ir ao balcão', desc: 'Apresente o número da encomenda numa das nossas lojas físicas.' },
+    { step: 2, title: 'Pagamento', desc: 'Pague em dinheiro, Multicaixa ou cartão no balcão.' },
+    { step: 3, title: 'Levantamento / envio', desc: 'Após pagamento, levante na loja ou aguarde o envio conforme seleccionado.' },
+  ];
+  const deliverySteps = [
+    { step: 1, title: 'Confirmação', desc: 'Verificamos a compra e o stock em 1-2 dias úteis.' },
+    { step: 2, title: 'Preparação', desc: 'Os livros são embalados com cuidado para envio.' },
+    { step: 3, title: 'Entrega e pagamento', desc: 'Pague quando receber a encomenda em casa.' },
+  ];
+  const whatsAppSteps = [
+    { step: 1, title: 'WhatsApp', desc: 'A equipa confirma disponibilidade e forma de pagamento no chat.' },
+    { step: 2, title: 'Pagamento', desc: 'Efectue o pagamento conforme indicado (Multicaixa, balcão, etc.).' },
+    { step: 3, title: 'Entrega', desc: 'Após confirmação, coordenamos a entrega na sua morada.' },
+  ];
+
+  const nextSteps = isWhatsApp
+    ? whatsAppSteps
+    : paymentCategory === 'balcao'
+      ? balcaoSteps
+      : paymentCategory === 'on_delivery'
+        ? deliverySteps
+        : gatewaySteps;
 
   const handleReceiptWhatsApp = () => {
     if (!orderData) return;
@@ -60,17 +95,9 @@ const SuccessPage = () => {
     downloadReceipt(orderData);
   };
 
-  const nextSteps = isWhatsApp
-    ? [
-        { step: 1, title: 'WhatsApp', desc: 'A equipa confirma disponibilidade e forma de pagamento no chat.' },
-        { step: 2, title: 'Pagamento', desc: 'Efectue o pagamento conforme indicado (Multicaixa, transferência, etc.).' },
-        { step: 3, title: 'Entrega', desc: 'Após confirmação, coordenamos a entrega na sua morada.' },
-      ]
-    : [
-        { step: 1, title: 'Confirmação', desc: 'Verificamos a compra e o stock em 1-2 dias úteis.' },
-        { step: 2, title: 'Preparação', desc: 'Os livros são embalados com cuidado para envio.' },
-        { step: 3, title: 'Entrega', desc: 'Receberá contacto para coordenar a entrega na sua morada.' },
-      ];
+  const paymentBadge = paymentCategory && PAYMENT_CATEGORIES[paymentCategory]
+    ? PAYMENT_CATEGORIES[paymentCategory].label
+    : null;
 
   return (
     <>
@@ -116,6 +143,18 @@ const SuccessPage = () => {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total</span>
                     <span className="font-bold">Kz {Number(total).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {orderData?.paymentMethod && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Pagamento</span>
+                    <span className="font-medium">{orderData.paymentMethod}</span>
+                  </div>
+                )}
+                {paymentBadge && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Modo</span>
+                    <span className="font-medium text-[#0ea5c9]">{paymentBadge}</span>
                   </div>
                 )}
               </div>

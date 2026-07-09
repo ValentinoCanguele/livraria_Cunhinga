@@ -21,7 +21,9 @@ import { calcShippingCents, SHIPPING_METHODS, getShippingLabel } from '@/lib/shi
 import { saveLastOrder } from '@/lib/receipt';
 import AngolaAddressSelector, { validateAngolaAddress, angolaAddressToPayload } from '@/components/AngolaAddressSelector';
 import SignaturePad from '@/components/SignaturePad';
+import PaymentCheckoutSection from '@/components/PaymentCheckoutSection';
 import PhoneInput from '@/components/PhoneInput';
+import { getDefaultPaymentSelection, groupPaymentMethods, methodRequiresReference } from '@/lib/paymentUtils';
 import { normalizeAngolaPhone, isValidAngolaPhone } from '@/lib/angolaPhone';
 
 const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
@@ -43,7 +45,8 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
     phone: '',
     address: '',
     city: 'Luanda',
-    paymentMethod: 'entrega',
+    paymentCategory: 'gateway',
+    paymentMethod: 'multicaixa',
     paymentReference: '',
     notes: '',
     shippingMethod: 'delivery',
@@ -69,8 +72,18 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
       getPaymentMethods().then((res) => {
         const methods = res.methods || [];
         setPaymentMethods(methods);
-        if (methods.length > 0 && !methods.find((m) => m.code === form.paymentMethod)) {
-          setForm((f) => ({ ...f, paymentMethod: methods[0].code }));
+        if (methods.length > 0) {
+          const grouped = groupPaymentMethods(methods);
+          const current = grouped[form.paymentCategory]?.find((m) => m.code === form.paymentMethod);
+          if (!current) {
+            const defaults = getDefaultPaymentSelection(methods);
+            setForm((f) => ({
+              ...f,
+              paymentCategory: defaults.paymentCategory,
+              paymentMethod: defaults.paymentMethod,
+              paymentReference: '',
+            }));
+          }
         }
       });
       getPhysicalStores().then(setPhysicalStores);
@@ -154,6 +167,12 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
       return;
     }
 
+    const selectedPayMethod = paymentMethods.find((m) => m.code === form.paymentMethod);
+    if (selectedPayMethod && methodRequiresReference(selectedPayMethod) && !form.paymentReference.trim()) {
+      toast({ variant: 'destructive', title: 'Referência obrigatória', description: 'Indique a referência ou comprovativo do pagamento.' });
+      return;
+    }
+
     setCheckingOut(true);
     try {
       const items = cartItems.map((item) => ({
@@ -173,6 +192,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
         phone: effectivePhone,
         ...addressPayload,
         paymentMethodCode: form.paymentMethod,
+        paymentCategory: form.paymentCategory,
         paymentReference: form.paymentReference,
         notes: form.notes.trim(),
         shippingCost: shippingCents / 100,
@@ -205,6 +225,8 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
         shippingLabel: getShippingLabel(form.shippingMethod),
         pickupStore: form.pickupStore,
         paymentMethod: paymentLabel,
+        paymentCategory: form.paymentCategory,
+        paymentReference: form.paymentReference,
         orderType: isWhatsApp ? 'whatsapp' : 'purchase',
         items: orderItemsForReceipt,
         createdAt: new Date().toISOString(),
@@ -424,37 +446,16 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                     <div className="flex items-center gap-2 text-sm font-medium text-[#0ea5c9]">
                       <CreditCard className="h-4 w-4" /> Método de Pagamento
                     </div>
-                    <RadioGroup value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v, paymentReference: '' })}>
-                      {paymentMethods.length > 0 ? paymentMethods.map((m) => (
-                        <div key={m.code} className="space-y-2">
-                          <div className={`flex items-start space-x-2 p-3 rounded-lg border transition-colors cursor-pointer ${form.paymentMethod === m.code ? 'border-[var(--brand-primary)] bg-[rgb(var(--brand-primary-rgb)/0.05)]' : 'hover:bg-muted/50'}`}>
-                            <RadioGroupItem value={m.code} id={m.code} className="mt-1" />
-                            <Label htmlFor={m.code} className="cursor-pointer flex-1">
-                              <span className="font-medium flex items-center gap-2">
-                                {m.icon && <span>{m.icon}</span>}
-                                {m.name}
-                                <span className="text-[10px] uppercase text-muted-foreground font-normal">{m.type}</span>
-                              </span>
-                              {m.account_info && <span className="block text-xs text-muted-foreground font-mono mt-0.5">{m.account_info}</span>}
-                              {form.paymentMethod === m.code && m.instructions && (
-                                <p className="text-xs text-muted-foreground mt-2 p-2 rounded-md bg-muted/50 whitespace-pre-wrap">{m.instructions}</p>
-                              )}
-                            </Label>
-                          </div>
-                          {form.paymentMethod === m.code && (m.type === 'p2p' || m.type === 'transfer') && (
-                            <div className="ml-6 space-y-2">
-                              {m.qr_url && <img src={m.qr_url} alt="QR pagamento" className="h-32 w-32 rounded-lg border" />}
-                              <Input placeholder="Referência / comprovativo de pagamento" value={form.paymentReference} onChange={(e) => setForm({ ...form, paymentReference: e.target.value })} />
-                            </div>
-                          )}
-                        </div>
-                      )) : (
-                        <>
-                          <div className="flex items-center space-x-2 p-3 rounded-lg border"><RadioGroupItem value="entrega" id="entrega" /><Label htmlFor="entrega">Pagamento na entrega</Label></div>
-                          <div className="flex items-center space-x-2 p-3 rounded-lg border"><RadioGroupItem value="transferencia" id="transferencia" /><Label htmlFor="transferencia">Transferência bancária</Label></div>
-                        </>
-                      )}
-                    </RadioGroup>
+                    <PaymentCheckoutSection
+                      methods={paymentMethods}
+                      paymentCategory={form.paymentCategory}
+                      paymentMethod={form.paymentMethod}
+                      paymentReference={form.paymentReference}
+                      physicalStores={physicalStores}
+                      onCategoryChange={(cat, code) => setForm({ ...form, paymentCategory: cat, paymentMethod: code, paymentReference: '' })}
+                      onMethodChange={(code) => setForm({ ...form, paymentMethod: code, paymentReference: '' })}
+                      onReferenceChange={(v) => setForm({ ...form, paymentReference: v })}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -597,8 +598,8 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                       </Button>
                     )}
                     <p className="text-[10px] text-center text-muted-foreground">
-                      <strong>Compra online</strong> — pagamento e entrega pela loja.{' '}
-                      <strong>WhatsApp</strong> — pedido registado e conversa directa com a equipa.
+                      <strong>Pagar</strong> — gateway online (Multicaixa, transferência).{' '}
+                      <strong>Balcão</strong> — pague presencialmente na loja.
                     </p>
                   </>
                 )}

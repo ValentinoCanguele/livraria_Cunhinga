@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import UserAvatar from '@/components/UserAvatar';
 import { getUserDisplayName } from '@/lib/userUtils';
 import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_METHODS, getPaymentStatusLabel, getDeliveryStatusLabel, getDeliveryStatusColor } from '@/lib/orderUtils';
+import { resolveOrderPaymentLabel } from '@/lib/paymentUtils';
 import { displayAngolaPhone, formatAngolaPhone } from '@/lib/angolaPhone';
 import PhoneInput from '@/components/PhoneInput';
 
@@ -256,9 +257,9 @@ const ProfilePage = () => {
                                   <Phone className="h-3 w-3" /> {displayAngolaPhone(o.phone)}
                                 </p>
                               )}
-                              {o.payment_method && (
+                              {(o.payment_method_code || o.payment_method || o.payment_method_name) && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  {PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method}
+                                  {resolveOrderPaymentLabel(o, PAYMENT_METHODS)}
                                   {o.payment_status && (
                                     <> · {getPaymentStatusLabel(o.payment_status)}</>
                                   )}

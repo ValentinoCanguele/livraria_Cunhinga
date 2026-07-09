@@ -18,8 +18,9 @@ import { Label } from '@/components/ui/label';
 import DeliveryConfirmPanel from '@/components/DeliveryConfirmPanel';
 import {
   getOrderStatusLabel, getOrderStatusColor, getDeliveryStatusLabel, getDeliveryStatusColor,
-  getPaymentStatusLabel, getPaymentStatusColor,
+  getPaymentStatusLabel, getPaymentStatusColor, PAYMENT_METHODS,
 } from '@/lib/orderUtils';
+import { resolveOrderPaymentLabel, PAYMENT_CATEGORIES } from '@/lib/paymentUtils';
 import { displayAngolaPhone } from '@/lib/angolaPhone';
 
 const STEPS = ['received', 'confirmed', 'preparing', 'shipped', 'in_transit', 'out_for_delivery', 'delivered'];
@@ -171,6 +172,15 @@ export default function TrackOrderPage() {
                       <div>
                         <span className="text-muted-foreground flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> Contacto</span>
                         <p className="font-medium">{displayAngolaPhone(order.phone)}</p>
+                      </div>
+                    )}
+                    {(order.payment_method_name || order.payment_method_code) && (
+                      <div>
+                        <span className="text-muted-foreground">Pagamento</span>
+                        <p className="font-medium">{resolveOrderPaymentLabel(order, PAYMENT_METHODS)}</p>
+                        {order.payment_category && PAYMENT_CATEGORIES[order.payment_category] && (
+                          <p className="text-xs text-muted-foreground">{PAYMENT_CATEGORIES[order.payment_category].description}</p>
+                        )}
                       </div>
                     )}
                     {(order.delivery_relative_name || order.delivery_relative_phone) && (

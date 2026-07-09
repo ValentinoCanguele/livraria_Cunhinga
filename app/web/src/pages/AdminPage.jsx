@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SalesReportsPanel from '@/components/admin/SalesReportsPanel';
 import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_METHODS, ORDER_STATUS, getPaymentStatusLabel, getDeliveryStatusLabel, getDeliveryStatusColor } from '@/lib/orderUtils';
+import { PAYMENT_CATEGORIES, resolveOrderPaymentLabel } from '@/lib/paymentUtils';
 import { displayAngolaPhone } from '@/lib/angolaPhone';
 import { getLowStockBooks, clearStockAlert } from '@/api/EcommerceApi';
 
@@ -45,6 +46,7 @@ const AdminPage = () => {
   const [orderSearch, setOrderSearch] = useState('');
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [lowStockBooks, setLowStockBooks] = useState([]);
+  const [paymentMethodsMap, setPaymentMethodsMap] = useState(PAYMENT_METHODS);
 
   useEffect(() => {
     if (!isAuthed) navigate('/login');
@@ -60,16 +62,20 @@ const AdminPage = () => {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [booksList, slidesList, ordersList, lowStock] = await Promise.all([
+      const [booksList, slidesList, ordersList, lowStock, payMethods] = await Promise.all([
         pb.collection('stock_books').getFullList({ sort: '-featured,title' }),
         pb.collection('hero_slides').getFullList({ sort: 'sort_order' }).catch(() => []),
         canManageOrders ? pb.collection('orders').getFullList({ sort: '-created' }).catch(() => []) : [],
         canManageCatalog ? getLowStockBooks() : [],
+        pb.collection('payment_methods').getFullList({ sort: 'sort_order' }).catch(() => []),
       ]);
       setBooks(booksList);
       setSlides(slidesList);
       setOrders(ordersList);
       setLowStockBooks(lowStock);
+      const map = { ...PAYMENT_METHODS };
+      for (const m of payMethods) map[m.code] = m.name;
+      setPaymentMethodsMap(map);
     } catch (err) {
       console.error(err);
     } finally {
@@ -489,9 +495,17 @@ const AdminPage = () => {
                                   </span>
                                 </p>
                               )}
-                              {o.payment_method && (
+                              {(o.payment_method_code || o.payment_method || o.payment_method_name) && (
                                 <p className="text-muted-foreground">
-                                  Pagamento: {PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method}
+                                  Pagamento: {resolveOrderPaymentLabel(o, paymentMethodsMap)}
+                                  {o.payment_category && PAYMENT_CATEGORIES[o.payment_category] && (
+                                    <span className="text-xs text-muted-foreground"> ({PAYMENT_CATEGORIES[o.payment_category].shortLabel})</span>
+                                  )}
+                                </p>
+                              )}
+                              {o.payment_reference && (
+                                <p className="text-muted-foreground text-sm font-mono">
+                                  Ref. pagamento: {o.payment_reference}
                                 </p>
                               )}
                               {o.payment_status && (
@@ -522,7 +536,7 @@ const AdminPage = () => {
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-muted-foreground">Confirmar pagamento</p>
                               <div className="flex flex-wrap gap-1">
-                                {['pending', 'awaiting_confirmation', 'paid', 'failed'].map((ps) => (
+                                {['pending', 'awaiting_confirmation', 'paid', 'failed', 'refunded'].map((ps) => (
                                   <Button key={ps} size="sm" variant={o.payment_status === ps ? 'default' : 'outline'} className={`text-xs h-7 ${o.payment_status === ps ? 'btn-primary' : ''}`} onClick={() => handlePaymentStatus(o, ps)}>
                                     {getPaymentStatusLabel(ps)}
                                   </Button>

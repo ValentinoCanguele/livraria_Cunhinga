@@ -49,6 +49,36 @@ function validateCheckoutSignature(sig) {
   return true;
 }
 
+function inferPaymentCategory(method) {
+  const cat = method.get("category");
+  if (cat) return cat;
+  const code = method.get("code") || "";
+  const type = method.get("type") || "";
+  if (code === "balcao") return "balcao";
+  if (code === "entrega") return "on_delivery";
+  if (type === "p2p" || type === "transfer") return "gateway";
+  if (type === "offline") return "on_delivery";
+  return "gateway";
+}
+
+function findEnabledPaymentMethod(code) {
+  if (!code) return null;
+  try {
+    return $app.findFirstRecordByFilter(
+      "payment_methods",
+      "code = {:code} && enabled = true",
+      { code: code }
+    );
+  } catch (err) {
+    return null;
+  }
+}
+
+function resolvePaymentStatus(category, type) {
+  if (category === "gateway") return "awaiting_confirmation";
+  return "pending";
+}
+
 function sanitizeIntegrationConfig(code, config) {
   if (!config || typeof config !== "object") return {};
   if (code === "google_drive") {
@@ -129,6 +159,7 @@ routerAdd("GET", "/api/app/settings", (e) => {
       shipping_free_threshold: 20000,
       shipping_cost: 1500,
       maintenance_mode: false,
+      maintenance_message: "",
       google_oauth_enabled: false,
       header_welcome_logged: "Bem-vindo de volta, {nome}",
       header_welcome_guest: "Envio em todo o país · Crie a sua conta para acompanhar encomendas",
@@ -191,6 +222,7 @@ routerAdd("GET", "/api/app/settings", (e) => {
     shipping_cost: Number(rec.get("shipping_cost")) || 1500,
     shipping_express_cost: Number(rec.get("shipping_express_cost")) || 0,
     maintenance_mode: !!rec.get("maintenance_mode"),
+    maintenance_message: rec.get("maintenance_message") || "",
     google_oauth_enabled: !!rec.get("google_oauth_enabled"),
     header_welcome_logged: rec.get("header_welcome_logged") || "Bem-vindo de volta, {nome}",
     header_welcome_guest: rec.get("header_welcome_guest") || "Envio em todo o país · Crie a sua conta para acompanhar encomendas",
@@ -391,10 +423,14 @@ routerAdd("GET", "/api/app/payment-methods", (e) => {
     name: r.get("name"),
     code: r.get("code"),
     type: r.get("type") || "offline",
+    category: inferPaymentCategory(r),
+    gateway_provider: r.get("gateway_provider") || "",
+    requires_reference: !!r.get("requires_reference"),
     instructions: r.get("instructions") || "",
     account_info: r.get("account_info") || "",
     qr_url: r.get("qr_url") || fileUrl(r, "qr_code"),
     icon: r.get("icon") || "",
+    sort_order: Number(r.get("sort_order")) || 0,
   }));
   return e.json(200, { methods: methods });
 });
@@ -445,6 +481,10 @@ routerAdd("POST", "/api/app/track", (e) => {
     carrier: order.get("carrier") || "",
     estimated_delivery: order.get("estimated_delivery") || "",
     payment_status: order.get("payment_status") || "pending",
+    payment_method_code: order.get("payment_method_code") || "",
+    payment_method_name: order.get("payment_method_name") || "",
+    payment_category: order.get("payment_category") || "",
+    payment_reference: order.get("payment_reference") || "",
     timeline: order.get("delivery_timeline") || [],
     created: order.get("created"),
   });
@@ -701,6 +741,13 @@ routerAdd("POST", "/api/app/delivery-event", (e) => {
 
 // --- Checkout melhorado ---
 routerAdd("POST", "/api/app/checkout", (e) => {
+  function isValidCheckoutSignature(sig) {
+    if (!sig || typeof sig !== "string") return false;
+    if (sig.indexOf("data:image/png;base64,") !== 0) return false;
+    if (sig.length > 200000) return false;
+    return true;
+  }
+
   try {
   const data = e.requestInfo().body;
   const items = data.items || [];
@@ -728,7 +775,7 @@ routerAdd("POST", "/api/app/checkout", (e) => {
   if (shippingMethod === "pickup" && !pickupStore && !address) throw new BadRequestError("Seleccione a loja de levantamento.");
 
   const checkoutSignature = data.checkoutSignature || "";
-  if (!validateCheckoutSignature(checkoutSignature)) {
+  if (!isValidCheckoutSignature(checkoutSignature)) {
     throw new BadRequestError("Assinatura do comprador obrigatória. Assine no quadro.");
   }
 
@@ -806,8 +853,42 @@ routerAdd("POST", "/api/app/checkout", (e) => {
     : (data.deliveryMunicipality || data.deliveryProvince || "Angola");
 
   const orderNum = "ENC-" + Date.now().toString(36).toUpperCase().slice(-6);
-  const paymentCode = data.paymentMethodCode || data.paymentMethod || "entrega";
-  const isP2P = paymentCode !== "entrega" && paymentCode !== "transferencia";
+  const paymentCode = data.paymentMethodCode || data.paymentMethod || "multicaixa";
+  const paymentCategoryInput = data.paymentCategory || "";
+  const paymentRef = (data.paymentReference || "").trim();
+
+  const paymentRecord = findEnabledPaymentMethod(paymentCode);
+  let paymentName = paymentCode;
+  let paymentCategory = paymentCategoryInput;
+  let paymentType = "offline";
+  let requiresReference = false;
+
+  if (paymentRecord) {
+    paymentName = paymentRecord.get("name") || paymentCode;
+    paymentCategory = paymentCategory || inferPaymentCategory(paymentRecord);
+    paymentType = paymentRecord.get("type") || "offline";
+    requiresReference = !!paymentRecord.get("requires_reference");
+    if (paymentCategory === "gateway" && !paymentRecord.get("requires_reference") && paymentRecord.get("requires_reference") !== false) {
+      requiresReference = paymentType === "p2p" || paymentType === "transfer";
+    }
+  } else {
+    if (!paymentCategory) {
+      if (paymentCode === "balcao") paymentCategory = "balcao";
+      else if (paymentCode === "entrega") paymentCategory = "on_delivery";
+      else paymentCategory = "gateway";
+    }
+    if (paymentCode === "multicaixa") paymentName = "Multicaixa Express";
+    else if (paymentCode === "transferencia") paymentName = "Transferência Bancária";
+    else if (paymentCode === "balcao") paymentName = "Pagar no Balcão";
+    else if (paymentCode === "entrega") paymentName = "Pagamento na Entrega";
+    requiresReference = paymentCategory === "gateway" && paymentCode !== "entrega";
+  }
+
+  if (requiresReference && !paymentRef) {
+    throw new BadRequestError("Indique a referência ou comprovativo de pagamento.");
+  }
+
+  const paymentStatus = resolvePaymentStatus(paymentCategory, paymentType);
   const saleChannel = data.saleChannel || data.orderType || "web_purchase";
   const isWhatsApp = saleChannel === "whatsapp";
 
@@ -841,12 +922,11 @@ routerAdd("POST", "/api/app/checkout", (e) => {
   try { order.set("shipping_method", shippingMethod); } catch (err) {}
   try { order.set("pickup_store", pickupStore); } catch (err) {}
   order.set("payment_method_code", paymentCode);
-  order.set("payment_reference", data.paymentReference || "");
-  // payment_method é select limitado — só definir valores conhecidos
-  if (paymentCode === "entrega" || paymentCode === "transferencia") {
-    order.set("payment_method", paymentCode);
-  }
-  order.set("payment_status", isP2P ? "awaiting_confirmation" : "pending");
+  order.set("payment_method", paymentCode);
+  safeSetOrderField(order, "payment_method_name", paymentName);
+  safeSetOrderField(order, "payment_category", paymentCategory);
+  order.set("payment_reference", paymentRef);
+  order.set("payment_status", paymentStatus);
   order.set("shipping_cost", shippingCost);
   order.set("delivery_status", "received");
   order.set("delivery_timeline", timeline);
@@ -878,6 +958,8 @@ routerAdd("POST", "/api/app/checkout", (e) => {
     orderNumber: orderNum,
     total: total,
     payment_status: order.get("payment_status"),
+    payment_category: paymentCategory,
+    payment_method_name: paymentName,
     order_type: isWhatsApp ? "whatsapp_order" : "online_purchase",
     sale_channel: saleChannel,
   });

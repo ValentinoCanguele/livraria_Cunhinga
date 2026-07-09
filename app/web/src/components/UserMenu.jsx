@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-  User, ShoppingBag, LayoutDashboard, LogOut, ChevronDown, Settings, Shield,
+import { User, ShoppingBag, LayoutDashboard, LogOut, ChevronDown, Settings, Shield, RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +23,11 @@ export function UserMenu({ compact = false, className }) {
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handleSwitchAccount = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -98,6 +102,9 @@ export function UserMenu({ compact = false, className }) {
         )}
 
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSwitchAccount} className="cursor-pointer">
+          <RefreshCw className="mr-2" /> Trocar de Conta
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
           <LogOut className="mr-2" /> Terminar Sessão
         </DropdownMenuItem>

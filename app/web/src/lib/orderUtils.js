@@ -6,8 +6,11 @@ export const ORDER_STATUS = {
 };
 
 export const PAYMENT_METHODS = {
-  entrega: 'Pagamento na entrega',
-  transferencia: 'Transferência bancária',
+  multicaixa: 'Multicaixa Express',
+  transferencia: 'Transferência Bancária',
+  balcao: 'Pagar no Balcão',
+  entrega: 'Pagamento na Entrega',
+  unitel_money: 'Unitel Money',
 };
 
 export const PAYMENT_STATUS = {
@@ -15,6 +18,7 @@ export const PAYMENT_STATUS = {
   awaiting_confirmation: { label: 'Aguarda confirmação', color: 'bg-orange-500/10 text-orange-700' },
   paid: { label: 'Pago', color: 'bg-green-500/10 text-green-700' },
   failed: { label: 'Falhou', color: 'bg-destructive/10 text-destructive' },
+  refunded: { label: 'Reembolsado', color: 'bg-purple-500/10 text-purple-700' },
 };
 
 export const DELIVERY_STATUS = {

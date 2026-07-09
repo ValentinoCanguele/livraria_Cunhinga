@@ -7,28 +7,56 @@ const AuthContext = createContext(null);
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(pb.authStore.record);
+  const [authSnapshot, setAuthSnapshot] = useState(() => ({
+    user: pb.authStore.record,
+    isAuthed: pb.authStore.isValid,
+  }));
+
+  const { user, isAuthed } = authSnapshot;
 
   useEffect(() => {
-    const unsub = pb.authStore.onChange((_t, record) => setUser(record));
+    const unsub = pb.authStore.onChange((_t, record) => {
+      setAuthSnapshot({
+        user: record,
+        isAuthed: pb.authStore.isValid,
+      });
+    });
     return unsub;
   }, []);
 
+  const syncUser = (record) => {
+    setAuthSnapshot({
+      user: record,
+      isAuthed: pb.authStore.isValid,
+    });
+  };
+
   const value = {
     user,
-    isAuthed: pb.authStore.isValid,
+    isAuthed,
     isAdmin: user?.role === 'admin',
     canAccessAdmin: canAccessAdmin(user),
     hasPermission: (key) => hasPermission(user, key),
     permissions: getUserPermissions(user),
-    login: (email, password) => pb.collection('users').authWithPassword(email, password),
+    login: async (email, password) => {
+      const auth = await pb.collection('users').authWithPassword(email, password);
+      setAuthSnapshot({ user: auth.record, isAuthed: true });
+      return auth;
+    },
     signup: async (email, password, name) => {
       await pb.collection('users').create({ email, password, passwordConfirm: password, name, role: 'member' });
-      return pb.collection('users').authWithPassword(email, password);
+      const auth = await pb.collection('users').authWithPassword(email, password);
+      setAuthSnapshot({ user: auth.record, isAuthed: true });
+      return auth;
     },
-    logout: () => pb.authStore.clear(),
+    logout: () => {
+      pb.authStore.clear();
+      setAuthSnapshot({ user: null, isAuthed: false });
+    },
     loginWithGoogle: async () => {
-      return pb.collection('users').authWithOAuth2({ provider: 'google' });
+      const auth = await pb.collection('users').authWithOAuth2({ provider: 'google' });
+      setAuthSnapshot({ user: auth.record, isAuthed: true });
+      return auth;
     },
     requestPasswordReset: (email) =>
       pb.collection('users').requestPasswordReset(email, `${window.location.origin}/reset-password`),
@@ -42,7 +70,7 @@ export const AuthProvider = ({ children }) => {
       if (email !== undefined) data.email = email;
       if (phone !== undefined) data.phone = phone;
       const updated = await pb.collection('users').update(id, data);
-      setUser(updated);
+      syncUser(updated);
       return updated;
     },
     updateAvatar: async (file) => {
@@ -51,7 +79,7 @@ export const AuthProvider = ({ children }) => {
       const formData = new FormData();
       formData.append('avatar', file);
       const updated = await pb.collection('users').update(id, formData);
-      setUser(updated);
+      syncUser(updated);
       return updated;
     },
     changePassword: async (oldPassword, newPassword) => {

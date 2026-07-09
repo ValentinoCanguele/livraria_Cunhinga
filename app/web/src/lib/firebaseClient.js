@@ -17,7 +17,11 @@ export const loginWithGoogleFirebase = async () => {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error) {
-    console.error('Firebase Google Sign-In Error:', error);
+    if (error && error.code === 'auth/popup-closed-by-user') {
+      console.warn('Firebase Google Sign-In: Popup closed by user.');
+    } else {
+      console.error('Firebase Google Sign-In Error:', error);
+    }
     throw error;
   }
 };
@@ -64,7 +68,7 @@ async function testConnection() {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+      console.warn("Please check your Firebase configuration if you expect to be online. Currently operating in offline mode.");
     }
   }
 }

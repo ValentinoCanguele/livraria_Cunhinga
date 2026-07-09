@@ -57,7 +57,11 @@ export const signInWithGoogleWorkspace = async () => {
     cachedToken = credential.accessToken;
     return { user: result.user, token: cachedToken };
   } catch (error) {
-    console.error('Google Workspace Sign-In Error:', error);
+    if (error && error.code === 'auth/popup-closed-by-user') {
+      console.warn('Google Workspace Sign-In: Popup closed by user.');
+    } else {
+      console.error('Google Workspace Sign-In Error:', error);
+    }
     throw error;
   }
 };

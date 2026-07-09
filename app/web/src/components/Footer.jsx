@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Mail, MapPin, ExternalLink } from 'lucide-react';
+import { Facebook, Instagram, Mail, MapPin, ExternalLink, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -9,6 +9,7 @@ import { subscribeNewsletter } from '@/api/EcommerceApi';
 import { getPhysicalStores } from '@/api/PlatformApi';
 import BrandLogo from '@/components/BrandLogo';
 import { BRAND } from '@/lib/brand';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const DEFAULT_FOOTER_COLUMNS = [
   {
@@ -56,6 +57,7 @@ const Footer = () => {
   const [email, setEmail] = useState('');
   const [stores, setStores] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
   const { toast } = useToast();
   const { settings } = useSiteSettings();
 
@@ -78,6 +80,7 @@ const Footer = () => {
     setSubmitting(true);
     try {
       await subscribeNewsletter(email.trim());
+      setSubscribed(true);
       toast({
         title: 'Subscrição realizada!',
         description: 'Obrigado por se juntar à nossa comunidade de leitores.',
@@ -139,24 +142,87 @@ const Footer = () => {
           ))}
 
           <div className="lg:col-span-4">
-            <h4 className="font-semibold mb-4 text-background">Newsletter</h4>
-            <p className="text-sm text-background/70 mb-4">
-              Receba novidades sobre lançamentos e promoções
-            </p>
-            <form onSubmit={handleNewsletterSubmit} className="space-y-2">
-              <Input
-                type="email"
-                placeholder="O seu email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-background/10 border-background/20 text-background placeholder:text-background/40"
-              />
-              <Button type="submit" className="w-full bg-[#0ea5c9] hover:bg-[#0891b2] text-white" disabled={submitting}>
-                <Mail className="h-4 w-4 mr-2" />
-                {submitting ? 'A subscrever...' : 'Subscrever'}
-              </Button>
-            </form>
+            <div className="relative rounded-2xl bg-white/5 border border-white/10 p-6 shadow-xl backdrop-blur-md overflow-hidden">
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-[#0ea5c9]/20 rounded-full blur-xl pointer-events-none" />
+              
+              <AnimatePresence mode="wait">
+                {!subscribed ? (
+                  <motion.div
+                    key="form"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 px-2.5 items-center justify-center rounded-full text-[10px] font-bold bg-[#0ea5c9]/20 text-[#22d3ee] border border-[#0ea5c9]/30">
+                        <Sparkles className="h-3 w-3 mr-1" /> OFERTA
+                      </span>
+                      <span className="text-xs text-[#22d3ee] font-medium">-10% no 1º livro</span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-lg font-extrabold text-background flex items-center gap-2">
+                        Newsletter Premium
+                      </h4>
+                      <p className="text-xs text-background/70 mt-1">
+                        Junte-se à nossa lista exclusiva para receber lançamentos, devocionais semanais e ofertas especiais.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleNewsletterSubmit} className="space-y-3">
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-background/40" />
+                        <Input
+                          type="email"
+                          placeholder="Digite o seu melhor email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                          className="bg-background/5 border-background/10 text-background placeholder:text-background/40 pl-10 focus-visible:ring-[#0ea5c9] focus-visible:border-[#0ea5c9] h-11 rounded-xl"
+                        />
+                      </div>
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-[#0ea5c9] hover:bg-[#0891b2] text-white font-bold h-11 rounded-xl shadow-[0_4px_14px_rgba(14,165,201,0.3)] hover:shadow-[0_6px_20px_rgba(14,165,201,0.4)] transition-all flex items-center justify-center cursor-pointer" 
+                        disabled={submitting}
+                      >
+                        <Mail className="h-4 w-4 mr-2" />
+                        {submitting ? 'A processar...' : 'Subscrever Agora'}
+                      </Button>
+                    </form>
+
+                    <p className="text-[10px] text-background/40 text-center">
+                      🔒 Respeitamos a sua privacidade. Cancele com um clique.
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="success"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-center py-6 space-y-4"
+                  >
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 mb-2 border border-emerald-500/30">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-background">Inscrição Confirmada!</h4>
+                      <p className="text-xs text-background/70 mt-2 leading-relaxed">
+                        Seja bem-vindo(a) à nossa comunidade. Enviámos um cupão de **10% de desconto** para a sua caixa de entrada.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setSubscribed(false)} 
+                      className="text-xs h-8 border-white/20 text-background hover:bg-white/10 rounded-lg"
+                    >
+                      Inscrever outro email
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 

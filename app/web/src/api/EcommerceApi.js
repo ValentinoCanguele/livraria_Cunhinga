@@ -66,6 +66,10 @@ function bookToProduct(book, collectionsMap = {}) {
     sample_pages: book.sample_pages || [],
     versions: book.versions || [],
     preview_enabled: !!book.preview_enabled,
+    compras: Number(book.compras) || 0,
+    lido: Number(book.lido) || 0,
+    baixados: Number(book.baixados) || 0,
+    vendidos: Number(book.vendidos) || 0,
   };
 }
 

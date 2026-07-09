@@ -12,6 +12,7 @@ import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import HeroSlider from '@/components/HeroSlider.jsx';
+import DestaquesSemana from '@/components/DestaquesSemana.jsx';
 import { pageTitle, BRAND } from '@/lib/brand';
 
 const trustSignals = [
@@ -23,13 +24,16 @@ const trustSignals = [
 const HomePage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [email, setEmail] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
+    setIsLoading(true);
     getFeaturedProducts(8)
       .then((res) => setProducts(res.products))
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
   }, []);
 
   const handleNewsletterSubmit = async (e) => {
@@ -56,6 +60,7 @@ const HomePage = () => {
 
       <main>
         <HeroSlider />
+        <DestaquesSemana onCartOpen={() => setIsCartOpen(true)} />
 
         <section className="section-spacing bg-muted/30">
           <div className="container-custom">
@@ -70,17 +75,34 @@ const HomePage = () => {
             </motion.div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {products.slice(0, 4).map((product, index) => (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <ProductCard product={product} onCartOpen={() => setIsCartOpen(true)} index={index} />
-                </motion.div>
-              ))}
+              {isLoading ? (
+                [...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-card rounded-2xl border border-border p-4 space-y-4 animate-pulse flex flex-col h-full">
+                    <div className="aspect-[3/4] w-full rounded-xl bg-muted" />
+                    <div className="space-y-3 flex-1">
+                      <div className="h-3 bg-muted rounded w-1/4" />
+                      <div className="h-5 bg-muted rounded w-5/6" />
+                      <div className="h-3.5 bg-muted rounded w-1/2" />
+                    </div>
+                    <div className="flex items-center justify-between pt-4 mt-auto">
+                      <div className="h-5 bg-muted rounded w-1/3" />
+                      <div className="h-9 bg-muted rounded w-1/3" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                products.slice(0, 4).map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                  >
+                    <ProductCard product={product} onCartOpen={() => setIsCartOpen(true)} index={index} />
+                  </motion.div>
+                ))
+              )}
             </div>
 
             <div className="text-center mt-12">

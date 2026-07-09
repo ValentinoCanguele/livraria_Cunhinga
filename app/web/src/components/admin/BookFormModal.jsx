@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BOOK_GENRES, BOOK_LANGUAGES, emptyBookForm, previewBookCode, bookToForm } from '@/lib/bookConstants';
 import pb from '@/lib/pocketbaseClient';
-import { Megaphone, User, BookMarked, Layers } from 'lucide-react';
+import { Megaphone, User, BookMarked, Layers, TrendingUp } from 'lucide-react';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import ImageField from '@/components/admin/ImageField';
 import { useIntegrations } from '@/hooks/useIntegrations';
@@ -56,6 +56,10 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
       sample_pages: Array.isArray(form.sample_pages) ? form.sample_pages : [],
       versions: Array.isArray(form.versions) ? form.versions : [],
       preview_enabled: !!form.preview_enabled,
+      compras: Number(form.compras) || 0,
+      lido: Number(form.lido) || 0,
+      baixados: Number(form.baixados) || 0,
+      vendidos: Number(form.vendidos) || 0,
     });
   };
 
@@ -138,14 +142,15 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
             {/* Formulário */}
             <div className="lg:col-span-3 p-6">
               <Tabs defaultValue="info" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 mb-6 h-auto">
-                  <TabsTrigger value="info"><BookOpen className="h-4 w-4 mr-1 hidden sm:inline" />Info</TabsTrigger>
-                  <TabsTrigger value="codes"><Hash className="h-4 w-4 mr-1 hidden sm:inline" />Códigos</TabsTrigger>
-                  <TabsTrigger value="marketing"><Megaphone className="h-4 w-4 mr-1 hidden sm:inline" />Marketing</TabsTrigger>
-                  <TabsTrigger value="author"><User className="h-4 w-4 mr-1 hidden sm:inline" />Autor</TabsTrigger>
-                  <TabsTrigger value="preview"><BookMarked className="h-4 w-4 mr-1 hidden sm:inline" />Preview</TabsTrigger>
-                  <TabsTrigger value="versions"><Layers className="h-4 w-4 mr-1 hidden sm:inline" />Versões</TabsTrigger>
-                  <TabsTrigger value="media"><ImageIcon className="h-4 w-4 mr-1 hidden sm:inline" />Mídia</TabsTrigger>
+                <TabsList className="flex flex-wrap gap-1 mb-6 h-auto bg-muted p-1 rounded-lg w-full">
+                  <TabsTrigger value="info" className="flex-1 min-w-[70px]"><BookOpen className="h-4 w-4 mr-1 hidden sm:inline" />Info</TabsTrigger>
+                  <TabsTrigger value="codes" className="flex-1 min-w-[70px]"><Hash className="h-4 w-4 mr-1 hidden sm:inline" />Códigos</TabsTrigger>
+                  <TabsTrigger value="marketing" className="flex-1 min-w-[70px]"><Megaphone className="h-4 w-4 mr-1 hidden sm:inline" />Marketing</TabsTrigger>
+                  <TabsTrigger value="author" className="flex-1 min-w-[70px]"><User className="h-4 w-4 mr-1 hidden sm:inline" />Autor</TabsTrigger>
+                  <TabsTrigger value="stats" className="flex-1 min-w-[70px]"><TrendingUp className="h-4 w-4 mr-1 hidden sm:inline" />Métricas</TabsTrigger>
+                  <TabsTrigger value="preview" className="flex-1 min-w-[70px]"><BookMarked className="h-4 w-4 mr-1 hidden sm:inline" />Preview</TabsTrigger>
+                  <TabsTrigger value="versions" className="flex-1 min-w-[70px]"><Layers className="h-4 w-4 mr-1 hidden sm:inline" />Versões</TabsTrigger>
+                  <TabsTrigger value="media" className="flex-1 min-w-[70px]"><ImageIcon className="h-4 w-4 mr-1 hidden sm:inline" />Mídia</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="info" className="space-y-4 mt-0">
@@ -368,6 +373,59 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
                     previewClassName="h-32 w-24"
                     driveConfig={driveImageConfig}
                   />
+                </TabsContent>
+
+                <TabsContent value="stats" className="space-y-4 mt-0">
+                  <div className="rounded-xl bg-gradient-to-r from-[#0ea5c9]/10 to-[#0ea5c9]/5 border border-[#0ea5c9]/20 p-4 text-sm text-foreground">
+                    <h4 className="font-semibold text-[#0ea5c9] mb-1">Métricas de Popularidade</h4>
+                    <p className="text-muted-foreground">Estes valores são usados para classificar e promover livros na homepage (ex: carrossel de destaques ou fitas de conversão).</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Número de Compras</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={form.compras}
+                        onChange={(e) => set('compras', e.target.value)}
+                        placeholder="Ex: 142"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Número de Leitores (Lidos)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={form.lido}
+                        onChange={(e) => set('lido', e.target.value)}
+                        placeholder="Ex: 389"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Downloads Efetuados</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={form.baixados}
+                        onChange={(e) => set('baixados', e.target.value)}
+                        placeholder="Ex: 85"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Quantidade Vendida</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={form.vendidos}
+                        onChange={(e) => set('vendidos', e.target.value)}
+                        placeholder="Ex: 120"
+                      />
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>

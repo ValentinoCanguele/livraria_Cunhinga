@@ -33,6 +33,10 @@ export const emptyBookForm = {
   author_photo: '',
   sample_pages: [],
   versions: [],
+  compras: 0,
+  lido: 0,
+  baixados: 0,
+  vendidos: 0,
 };
 
 export function previewBookCode() {
@@ -69,5 +73,9 @@ export function bookToForm(record) {
     author_photo: record.author_photo || '',
     sample_pages: record.sample_pages || [],
     versions: record.versions || [],
+    compras: record.compras ?? 0,
+    lido: record.lido ?? 0,
+    baixados: record.baixados ?? 0,
+    vendidos: record.vendidos ?? 0,
   };
 }

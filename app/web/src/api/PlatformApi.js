@@ -1,0 +1,161 @@
+import pb from '@/lib/pocketbaseClient';
+import { resolveShopBgMode } from '@/lib/shopTheme';
+
+const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+
+const DEFAULT_SETTINGS = {
+  site_name: 'Livraria Adventista',
+  tagline: 'Literatura que edifica e transforma',
+  primary_color: '#0ea5c9',
+  logo_url: '',
+  favicon_url: '',
+  contact_email: 'contacto@livrariaadventista.ao',
+  contact_phone: '+244 923 000 000',
+  contact_address: 'Luanda, Angola',
+  pwa_enabled: true,
+  pwa_theme_color: '#0c4a6e',
+  shipping_free_threshold: 20000,
+  shipping_cost: 1500,
+  shipping_express_cost: 3000,
+  shop_hero_title: 'Todos os Livros',
+  shop_hero_subtitle: 'O catálogo completo da livraria — pesquisa avançada, pré-visualização e compra segura.',
+  shop_hero_badge: 'Catálogo Premium',
+  shop_default_sort: 'featured',
+  shop_per_page: 24,
+  shop_show_featured: true,
+  shop_show_collections: true,
+  shop_show_low_stock: true,
+  shop_grid_columns: 4,
+  maintenance_mode: false,
+  google_oauth_enabled: false,
+  header_welcome_logged: 'Bem-vindo de volta, {nome}',
+  header_welcome_guest: 'Envio em todo o país · Crie a sua conta para acompanhar encomendas',
+  header_cta_text: 'Explorar novidades',
+  header_cta_link: '/shop',
+  footer_tagline: '',
+  footer_copyright: '',
+  footer_columns: null,
+  show_stores_in_footer: true,
+  ui_glass_enabled: true,
+  ui_glass_opacity: 0.72,
+  shop_bg_mode: 'gradient',
+  shop_bg_image_url: '',
+  shop_bg_video_url: '',
+  shop_bg_overlay: 0.55,
+  google_maps_embed_key: '',
+  assets_version: '',
+};
+
+export async function getSiteSettings() {
+  try {
+    const res = await fetch(`${PB_URL}/api/app/settings`);
+    if (!res.ok) return DEFAULT_SETTINGS;
+    const merged = { ...DEFAULT_SETTINGS, ...await res.json() };
+    merged.shop_bg_mode = resolveShopBgMode(merged);
+    return merged;
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+export async function getPhysicalStores() {
+  try {
+    const res = await fetch(`${PB_URL}/api/app/stores`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.stores || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getCollections() {
+  try {
+    const res = await fetch(`${PB_URL}/api/app/book-collections`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.collections || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getPaymentMethods() {
+  try {
+    const res = await fetch(`${PB_URL}/api/app/payment-methods`);
+    if (!res.ok) return { methods: [] };
+    return await res.json();
+  } catch {
+    return { methods: [] };
+  }
+}
+
+export async function trackOrder(orderNumber, email) {
+  const res = await fetch(`${PB_URL}/api/app/track`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderNumber, email }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Encomenda não encontrada');
+  return data;
+}
+
+export async function getGeoProvinces() {
+  const res = await fetch(`${PB_URL}/api/app/geo/provinces`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.provinces || [];
+}
+
+export async function getGeoMunicipalities(provinceId) {
+  if (!provinceId) return [];
+  const res = await fetch(`${PB_URL}/api/app/geo/municipalities?province=${encodeURIComponent(provinceId)}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.municipalities || [];
+}
+
+export async function getGeoLocalities(municipalityId) {
+  if (!municipalityId) return [];
+  const res = await fetch(`${PB_URL}/api/app/geo/localities?municipality=${encodeURIComponent(municipalityId)}`);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.localities || [];
+}
+
+export async function confirmDelivery({ orderNumber, email, recipientName, recipientId, signature }) {
+  const res = await fetch(`${PB_URL}/api/app/confirm-delivery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      orderNumber,
+      email,
+      recipientName,
+      recipientId,
+      signature,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Não foi possível confirmar a entrega');
+  return data;
+}
+
+export async function addDeliveryEvent(orderId, event, token) {
+  const res = await fetch(`${PB_URL}/api/app/delivery-event`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: token,
+    },
+    body: JSON.stringify({ orderId, ...event }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Erro');
+  return data;
+}
+
+export function getSettingsFileUrl(record, field) {
+  if (!record?.[field]) return null;
+  return pb.files.getURL(record, record[field]);
+}

@@ -4,7 +4,7 @@ import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase safely
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const app = getApps().find(a => a.name === '[DEFAULT]') || initializeApp(firebaseConfig);
 
 // CRITICAL: Must use the config's database ID parameter to support all deployment editions
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); 

@@ -10,8 +10,8 @@ const firebaseConfig = {
   messagingSenderId: "230460246055"
 };
 
-// Initialize Firebase safely
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase safely under a custom named app to avoid collision with the main firestore database client app
+const app = getApps().find(a => a.name === 'googleAuthApp') || initializeApp(firebaseConfig, 'googleAuthApp');
 export const googleAuth = getAuth(app);
 
 export const googleProvider = new GoogleAuthProvider();

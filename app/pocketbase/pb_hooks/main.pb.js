@@ -475,7 +475,8 @@ function getDriveIntegration() {
 
 function getSettingsRecord() {
   try {
-    return $app.findFirstRecordByFilter("site_settings", "id != ''");
+    const list = $app.findRecordsByFilter("site_settings", "id != ''", 1, 0, "-updated");
+    if (list && list.length) return list[0];
   } catch (err) {}
   return null;
 }
@@ -621,6 +622,7 @@ routerAdd("GET", "/api/app/settings", (e) => {
     order_email_enabled: !!rec.get("order_email_enabled"),
     push_enabled: !!rec.get("push_enabled"),
     vapid_public_key: rec.get("vapid_public_key") || "",
+    chat_enabled: rec.get("chat_enabled") == null ? true : !!rec.get("chat_enabled"),
   });
   } catch (err) {
     return e.json(400, { message: err.message || String(err) });

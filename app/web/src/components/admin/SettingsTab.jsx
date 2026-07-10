@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell } from 'lucide-react';
+import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell, Sparkles } from 'lucide-react';
 import pb from '@/lib/pocketbaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { useIntegrations } from '@/hooks/useIntegrations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,6 +76,12 @@ const empty = {
   push_enabled: false,
   vapid_public_key: '',
   vapid_private_key: '',
+  chat_enabled: true,
+  chat_provider: 'gemini',
+  gemini_api_key: '',
+  deepseek_api_key: '',
+  chat_model: '',
+  chat_welcome: '',
 };
 
 export default function SettingsTab() {
@@ -165,6 +172,12 @@ export default function SettingsTab() {
           push_enabled: !!r.push_enabled,
           vapid_public_key: r.vapid_public_key || '',
           vapid_private_key: r.vapid_private_key || '',
+          chat_enabled: r.chat_enabled !== false,
+          chat_provider: r.chat_provider || 'gemini',
+          gemini_api_key: r.gemini_api_key || '',
+          deepseek_api_key: r.deepseek_api_key || '',
+          chat_model: r.chat_model || '',
+          chat_welcome: r.chat_welcome || '',
         });
       }
     } catch {
@@ -438,6 +451,48 @@ export default function SettingsTab() {
           <div className="space-y-2">
             <Label>Chave privada VAPID (servidor)</Label>
             <Input type="password" value={form.vapid_private_key} onChange={(e) => set('vapid_private_key', e.target.value)} className="font-mono text-xs" />
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#0ea5c9]" /> Assistente IA (chat)</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Widget de ajuda fixo no site com sugestões, catálogo e links. Recomendado: <strong>Gemini Flash Lite</strong> (mais barato). Fallback automático para FAQ sem chave.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Switch checked={form.chat_enabled} onCheckedChange={(v) => set('chat_enabled', v)} />
+            <Label>Mostrar assistente no site</Label>
+          </div>
+          <div className="space-y-2">
+            <Label>Provedor de IA</Label>
+            <Select value={form.chat_provider || 'gemini'} onValueChange={(v) => set('chat_provider', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gemini">Google Gemini (recomendado — mais barato)</SelectItem>
+                <SelectItem value="deepseek">DeepSeek</SelectItem>
+                <SelectItem value="faq">Apenas FAQ local (sem IA)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {form.chat_provider !== 'faq' && (
+            <>
+              <div className="space-y-2">
+                <Label>Chave API Gemini</Label>
+                <Input type="password" value={form.gemini_api_key} onChange={(e) => set('gemini_api_key', e.target.value)} placeholder="AIza… ou variável GEMINI_API_KEY" className="font-mono text-xs" />
+              </div>
+              <div className="space-y-2">
+                <Label>Chave API DeepSeek (opcional)</Label>
+                <Input type="password" value={form.deepseek_api_key} onChange={(e) => set('deepseek_api_key', e.target.value)} placeholder="sk-… ou variável DEEPSEEK_API_KEY" className="font-mono text-xs" />
+              </div>
+              <div className="space-y-2">
+                <Label>Modelo (opcional)</Label>
+                <Input value={form.chat_model} onChange={(e) => set('chat_model', e.target.value)} placeholder="gemini-2.0-flash-lite ou deepseek-chat" className="font-mono text-xs" />
+              </div>
+            </>
+          )}
+          <div className="space-y-2">
+            <Label>Mensagem de boas-vindas</Label>
+            <Textarea rows={2} value={form.chat_welcome} onChange={(e) => set('chat_welcome', e.target.value)} placeholder="Olá! Sou o assistente da livraria…" />
           </div>
         </TabsContent>
 

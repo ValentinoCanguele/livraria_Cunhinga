@@ -14,6 +14,7 @@ import { initializeCheckout } from '@/api/EcommerceApi';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { useIntegrations } from '@/hooks/useIntegrations';
 import { getPaymentMethods, getPhysicalStores } from '@/api/PlatformApi';
 import { formatCurrency } from '@/api/EcommerceApi';
 import { openWhatsAppOrder } from '@/lib/whatsapp';
@@ -23,16 +24,20 @@ import AngolaAddressSelector, { validateAngolaAddress, angolaAddressToPayload } 
 import SignaturePad from '@/components/SignaturePad';
 import PhoneInput from '@/components/PhoneInput';
 import { normalizeAngolaPhone, isValidAngolaPhone } from '@/lib/angolaPhone';
+import { FloatingScrollTop } from '@/components/ui/FloatingScrollTop';
 
 const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
   const { toast } = useToast();
   const { user, updateProfile } = useAuth();
   const { settings } = useSiteSettings();
+  const { integrations } = useIntegrations();
+  const waApiActive = !!(integrations?.whatsapp_business?.enabled && integrations?.whatsapp_business?.config?.configured);
   const { cartItems, removeFromCart, updateQuantity, getCartTotal, getCartTotalCents, clearCart } = useCart();
 
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [physicalStores, setPhysicalStores] = useState([]);
   const [shippingOpen, setShippingOpen] = useState(false);
+  const cartScrollRef = useRef(null);
 
   const [step, setStep] = useState('cart');
   const [checkingOut, setCheckingOut] = useState(false);
@@ -165,7 +170,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
         ? { address: `Levantamento: ${form.pickupStore || 'Loja física'}`, city: form.pickupStore || 'Loja física' }
         : angolaAddressToPayload(deliveryAddress);
 
-      const { orderId, total, orderNumber, order_type } = await initializeCheckout({
+      const { orderId, total, orderNumber, order_type, whatsapp_sent } = await initializeCheckout({
         items,
         successUrl: `${window.location.origin}/success`,
         customerEmail: form.email.trim(),
@@ -211,7 +216,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
         signatureSignedAt: new Date().toISOString(),
         checkoutSignature,
       });
-      if (isWhatsApp && waPhone) {
+      if (isWhatsApp && waPhone && !waApiActive && !whatsapp_sent) {
         openWhatsAppOrder(waPhone, {
           cartItems,
           form: { ...form, paymentMethod: paymentLabel },
@@ -243,7 +248,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
     } finally {
       setCheckingOut(false);
     }
-  }, [cartItems, clearCart, deliveryAddress, form, maintenanceMode, orderItemsForReceipt, paymentMethods, physicalStores.length, settings, shippingCents, subtotalCents, setIsCartOpen, toast, updateProfile, user?.id]);
+  }, [cartItems, clearCart, deliveryAddress, form, maintenanceMode, orderItemsForReceipt, paymentMethods, physicalStores.length, settings, shippingCents, subtotalCents, setIsCartOpen, toast, updateProfile, user?.id, waApiActive]);
 
   const maxQty = (item) => (item.variant.manage_inventory ? item.variant.inventory_quantity : 99);
 
@@ -295,7 +300,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
               </div>
             )}
 
-            <div className="flex-grow overflow-y-auto">
+            <div className="flex-grow overflow-y-auto relative" ref={cartScrollRef}>
               {step === 'cart' && (
                 <div className="p-5 space-y-4">
                   {cartItems.length === 0 ? (
@@ -477,6 +482,12 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                   </div>
                 </div>
               )}
+              <FloatingScrollTop
+                mode="container"
+                containerRef={cartScrollRef}
+                threshold={180}
+                positionClass="absolute bottom-4 right-4 z-10"
+              />
             </div>
 
             {cartItems.length > 0 && (
@@ -593,12 +604,16 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                         disabled={checkingOut || maintenanceMode}
                       >
                         <MessageCircle className="mr-2 h-4 w-4" />
-                        Finalizar via WhatsApp
+                        {waApiActive ? 'Confirmar e receber no WhatsApp' : 'Finalizar via WhatsApp'}
                       </Button>
                     )}
                     <p className="text-[10px] text-center text-muted-foreground">
                       <strong>Compra online</strong> — pagamento e entrega pela loja.{' '}
-                      <strong>WhatsApp</strong> — pedido registado e conversa directa com a equipa.
+                      {waApiActive ? (
+                        <><strong>WhatsApp</strong> — confirmação automática enviada para o seu número.</>
+                      ) : (
+                        <><strong>WhatsApp</strong> — pedido registado e conversa directa com a equipa.</>
+                      )}
                     </p>
                   </>
                 )}

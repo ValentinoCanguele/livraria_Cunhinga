@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { testWhatsAppApi } from '@/lib/messaging';
+import PhoneInput from '@/components/PhoneInput';
 
 const DEFAULT_APPS = [
   { name: 'Google OAuth', code: 'google_oauth', description: 'Login com conta Google — configurar em PocketBase Auth providers', icon: '🔐' },
@@ -23,7 +25,116 @@ const DEFAULT_APPS = [
   { name: 'Newsletter', code: 'newsletter', description: 'Subscrições de email no rodapé', icon: '📧' },
   { name: 'PWA', code: 'pwa', description: 'App instalável no telemóvel', icon: '📱' },
   { name: 'Rastreio de Entregas', code: 'delivery_tracking', description: 'Página pública de rastreio de encomendas', icon: '📦' },
+  {
+    name: 'WhatsApp Business API',
+    code: 'whatsapp_business',
+    description: 'Envio automático de confirmações e notificações via Meta Cloud API',
+    icon: '💬',
+    config: { phone_number_id: '', access_token: '', template_name: 'order_confirmation', template_language: 'pt_PT', use_template: false, auto_send: true },
+  },
 ];
+
+function WhatsAppBusinessConfigForm({ app, onSave }) {
+  const cfg = app.config || {};
+  const { toast } = useToast();
+  const [phoneId, setPhoneId] = useState(cfg.phone_number_id || '');
+  const [token, setToken] = useState(cfg.access_token || '');
+  const [template, setTemplate] = useState(cfg.template_name || 'order_confirmation');
+  const [templateLang, setTemplateLang] = useState(cfg.template_language || 'pt_PT');
+  const [useTemplate, setUseTemplate] = useState(!!cfg.use_template);
+  const [autoSend, setAutoSend] = useState(cfg.auto_send !== false);
+  const [testPhone, setTestPhone] = useState('');
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    setPhoneId(cfg.phone_number_id || '');
+    setToken(cfg.access_token || '');
+    setTemplate(cfg.template_name || 'order_confirmation');
+    setTemplateLang(cfg.template_language || 'pt_PT');
+    setUseTemplate(!!cfg.use_template);
+    setAutoSend(cfg.auto_send !== false);
+  }, [app.id, cfg.phone_number_id, cfg.access_token, cfg.template_name, cfg.template_language, cfg.use_template, cfg.auto_send]);
+
+  const buildConfig = () => ({
+    phone_number_id: phoneId.trim(),
+    access_token: token.trim(),
+    template_name: template.trim() || 'order_confirmation',
+    template_language: templateLang.trim() || 'pt_PT',
+    use_template: useTemplate,
+    auto_send: autoSend,
+  });
+
+  const handleTest = async () => {
+    if (!testPhone.trim()) {
+      toast({ variant: 'destructive', title: 'Indique um número de teste' });
+      return;
+    }
+    if (!pb.authStore.token) {
+      toast({ variant: 'destructive', title: 'Sessão expirada', description: 'Inicie sessão novamente.' });
+      return;
+    }
+    setTesting(true);
+    try {
+      await onSave(app, buildConfig());
+      await testWhatsAppApi(testPhone.trim(), pb.authStore.token);
+      toast({ title: 'Teste enviado', description: `Mensagem enviada para ${testPhone}` });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Teste falhou', description: err.message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 p-3 rounded-lg bg-muted/30 border text-sm">
+      <p className="text-xs text-muted-foreground">
+        Configure em <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="text-[#0ea5c9] underline">Meta for Developers</a>.
+        Com a API activa, checkout, CRM e recibos enviam mensagens <strong>sem abrir o browser</strong>.
+      </p>
+      <div className="flex items-center gap-3 p-2 rounded border bg-background">
+        <Switch checked={autoSend} onCheckedChange={setAutoSend} />
+        <Label className="text-xs">Envio automático (checkout + CRM)</Label>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-xs">Phone Number ID</Label>
+        <Input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="1234567890" className="font-mono text-xs" />
+      </div>
+      <div className="space-y-2">
+        <Label className="text-xs">Access Token (permanente)</Label>
+        <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="EAAxxxx..." className="font-mono text-xs" />
+      </div>
+      <div className="flex items-center gap-3 p-2 rounded border bg-background">
+        <Switch checked={useTemplate} onCheckedChange={setUseTemplate} />
+        <Label className="text-xs">Usar template Meta (recomendado para produção)</Label>
+      </div>
+      {useTemplate && (
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label className="text-xs">Nome do template</Label>
+            <Input value={template} onChange={(e) => setTemplate(e.target.value)} placeholder="order_confirmation" className="font-mono text-xs" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Idioma do template</Label>
+            <Input value={templateLang} onChange={(e) => setTemplateLang(e.target.value)} placeholder="pt_PT" className="font-mono text-xs" />
+          </div>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" variant="secondary" onClick={() => onSave(app, buildConfig())}>
+          Guardar WhatsApp Business
+        </Button>
+      </div>
+      <div className="border-t pt-3 space-y-2">
+        <Label className="text-xs font-semibold">Testar envio</Label>
+        <PhoneInput value={testPhone} onChange={setTestPhone} />
+        <Button type="button" size="sm" variant="outline" onClick={handleTest} disabled={testing}>
+          {testing && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+          Enviar mensagem de teste
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function DriveConfigForm({ app, onSave }) {
   const cfg = app.config || {};
@@ -84,9 +195,16 @@ export default function AppsTab() {
         list = await pb.collection('app_integrations').getFullList();
       } else {
         const hasDrive = list.some((a) => a.code === 'google_drive');
+        const hasWa = list.some((a) => a.code === 'whatsapp_business');
         if (!hasDrive) {
           const driveDef = DEFAULT_APPS.find((a) => a.code === 'google_drive');
           await pb.collection('app_integrations').create({ ...driveDef, enabled: false, config: driveDef.config || {} });
+        }
+        if (!hasWa) {
+          const waDef = DEFAULT_APPS.find((a) => a.code === 'whatsapp_business');
+          await pb.collection('app_integrations').create({ ...waDef, enabled: false, config: waDef.config || {} });
+        }
+        if (!hasDrive || !hasWa) {
           list = await pb.collection('app_integrations').getFullList();
         }
       }
@@ -150,7 +268,10 @@ export default function AppsTab() {
           {app.code === 'google_drive' && app.enabled && (
             <DriveConfigForm app={app} onSave={saveConfig} />
           )}
-          {app.code !== 'google_drive' && (
+          {app.code === 'whatsapp_business' && app.enabled && (
+            <WhatsAppBusinessConfigForm app={app} onSave={saveConfig} />
+          )}
+          {app.code !== 'google_drive' && app.code !== 'whatsapp_business' && (
             <div className="space-y-2">
               <Label className="text-xs">Configuração JSON (opcional)</Label>
               <Textarea

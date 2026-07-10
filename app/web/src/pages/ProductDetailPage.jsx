@@ -23,6 +23,7 @@ import { pageTitle } from '@/lib/brand';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
+import SampleReaderModal from '@/components/SampleReaderModal';
 
 // Star rating helper component
 const StarRating = ({ rating, size = 16, interactive = false, onChange }) => {
@@ -55,6 +56,7 @@ const placeholderImage = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWln
 function ProductDetailPage() {
   const { id } = useParams();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [sampleReaderOpen, setSampleReaderOpen] = useState(false);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -606,7 +608,12 @@ function ProductDetailPage() {
 
             {product.preview_enabled && product.sample_pages?.length > 0 && (
               <TabsContent value="preview">
-                <p className="text-sm text-muted-foreground mb-6">Explore as primeiras páginas antes de comprar.</p>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  <p className="text-sm text-muted-foreground">Explore as primeiras páginas antes de comprar.</p>
+                  <Button size="sm" className="bg-[#0ea5c9] hover:bg-[#0ea5c9]/90 text-white" onClick={() => setSampleReaderOpen(true)}>
+                    <BookOpen className="h-4 w-4 mr-1.5" /> Modo Leitura
+                  </Button>
+                </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {product.sample_pages.map((page, i) => {
                     const url = typeof page === 'string' ? page : page.url;
@@ -843,6 +850,13 @@ function ProductDetailPage() {
 
         <RelatedProducts products={relatedProducts} author={product.subtitle} onCartOpen={() => setIsCartOpen(true)} />
       </main>
+
+      <SampleReaderModal
+        open={sampleReaderOpen}
+        onClose={() => setSampleReaderOpen(false)}
+        pages={product.sample_pages || []}
+        title={product.title}
+      />
 
       <Footer />
     </>

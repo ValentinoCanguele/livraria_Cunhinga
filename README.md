@@ -217,6 +217,12 @@ npm run seed
 | `/api/app/track` | GET | Rastreio de encomenda |
 | `/api/app/newsletter` | POST | Subscrição de newsletter |
 | `/api/app/integrations` | GET | Integrações activas |
+| `/api/app/messaging/status` | GET | Estado WhatsApp/email/push (sem segredos) |
+| `/api/app/whatsapp/receipt` | POST | Enviar recibo via WhatsApp API |
+| `/api/app/admin/whatsapp/test` | POST | Teste de envio (staff) |
+
+> Guia completo de lançamento: [docs/LANCAMENTO.md](docs/LANCAMENTO.md)  
+> Arquitectura PocketBase + Firebase: [docs/ARQUITETURA.md](docs/ARQUITETURA.md)
 
 ---
 

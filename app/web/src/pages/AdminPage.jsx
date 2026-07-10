@@ -12,6 +12,7 @@ import SettingsTab from '@/components/admin/SettingsTab';
 import UsersTab from '@/components/admin/UsersTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
 import AppsTab from '@/components/admin/AppsTab';
+import ContactsManager from '@/components/ContactsManager';
 import { pageTitle } from '@/lib/brand';
 import pb from '@/lib/pocketbaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -47,7 +48,7 @@ const AdminPage = () => {
   const [lowStockBooks, setLowStockBooks] = useState([]);
 
   useEffect(() => {
-    if (!isAuthed) navigate('/login');
+    if (!isAuthed) navigate('/login', { state: { from: '/admin' } });
     else if (!canAccessAdmin) navigate('/profile');
   }, [isAuthed, canAccessAdmin, navigate]);
 
@@ -56,6 +57,7 @@ const AdminPage = () => {
   const canManageSettings = isAdmin || hasPermission('manage_settings');
   const canManageUsers = isAdmin || hasPermission('manage_users');
   const canManagePayments = isAdmin || hasPermission('manage_payments');
+  const canManageMarketing = isAdmin || hasPermission('manage_marketing');
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -267,12 +269,14 @@ const AdminPage = () => {
               {canManageSettings && <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1.5" />Configurações</TabsTrigger>}
               {canManageUsers && <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilizadores</TabsTrigger>}
               {canManagePayments && <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Pagamentos</TabsTrigger>}
+              {canManageMarketing && <TabsTrigger value="contacts"><Users className="h-4 w-4 mr-1.5" />CRM Contactos</TabsTrigger>}
               {isAdmin && <TabsTrigger value="apps"><Plug className="h-4 w-4 mr-1.5" />Apps</TabsTrigger>}
             </TabsList>
 
             {canManageSettings && <TabsContent value="settings"><SettingsTab /></TabsContent>}
             {canManageUsers && <TabsContent value="users"><UsersTab /></TabsContent>}
             {canManagePayments && <TabsContent value="payments"><PaymentsTab /></TabsContent>}
+            {canManageMarketing && <TabsContent value="contacts"><ContactsManager /></TabsContent>}
             {isAdmin && <TabsContent value="apps"><AppsTab /></TabsContent>}
             {canManageCatalog && (
               <TabsContent value="collections">

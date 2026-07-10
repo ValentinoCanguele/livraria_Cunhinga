@@ -70,6 +70,8 @@ function bookToProduct(book, collectionsMap = {}) {
     lido: Number(book.lido) || 0,
     baixados: Number(book.baixados) || 0,
     vendidos: Number(book.vendidos) || 0,
+    stock_low: !!book.stock_low || (stock > 0 && stock < 5),
+    stock_alert: !!book.stock_alert,
   };
 }
 
@@ -290,7 +292,7 @@ export async function initializeCheckout({
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || data.error || 'Erro no checkout');
-  return { url: data.url, orderId: data.orderId, total: data.total, orderNumber: data.orderNumber, order_type: data.order_type };
+  return { url: data.url, orderId: data.orderId, total: data.total, orderNumber: data.orderNumber, order_type: data.order_type, email_sent: data.email_sent, whatsapp_sent: data.whatsapp_sent };
 }
 
 export async function subscribeNewsletter(email) {

@@ -11,7 +11,6 @@ import {
   deleteCalendarEvent,
   listGmailMessages,
   sendGmailMessage,
-  listGoogleContacts
 } from '@/lib/googleAuth';
 import {
   FolderOpen, Calendar, Mail, Users, File, Trash2, Plus, LogOut,
@@ -22,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import ContactsManager from '@/components/ContactsManager';
 
 const GoogleWorkspaceHub = () => {
   const { toast } = useToast();
@@ -40,7 +40,6 @@ const GoogleWorkspaceHub = () => {
   const [driveFiles, setDriveFiles] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [gmailMessages, setGmailMessages] = useState([]);
-  const [contacts, setContacts] = useState([]);
 
   // Form states
   const [newEvent, setNewEvent] = useState({ title: '', description: '', start: '', end: '' });
@@ -84,9 +83,6 @@ const GoogleWorkspaceHub = () => {
       } else if (currentSubTab === 'gmail') {
         const emails = await listGmailMessages(token);
         setGmailMessages(emails);
-      } else if (currentSubTab === 'contacts') {
-        const conList = await listGoogleContacts(token);
-        setContacts(conList);
       }
     } catch (err) {
       console.error(err);
@@ -101,7 +97,7 @@ const GoogleWorkspaceHub = () => {
   };
 
   useEffect(() => {
-    if (token) {
+    if (token && subTab !== 'contacts') {
       fetchData(subTab);
     }
   }, [token, subTab]);
@@ -138,7 +134,6 @@ const GoogleWorkspaceHub = () => {
       setDriveFiles([]);
       setCalendarEvents([]);
       setGmailMessages([]);
-      setContacts([]);
       toast({ title: 'Desconectado', description: 'A sua sessão Google foi encerrada.' });
     } catch (err) {
       console.error(err);
@@ -262,14 +257,8 @@ const GoogleWorkspaceHub = () => {
     }
   };
 
-  const startEmailToContact = (emailAddress) => {
-    setNewMail({ to: emailAddress, subject: 'Contacto - Livraria Aurora', body: '' });
-    setSubTab('gmail');
-  };
-
   // Filter lists
   const filteredDriveFiles = driveFiles.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filteredContacts = contacts.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.email.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredEvents = calendarEvents.filter(ev => ev.summary?.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredGmail = gmailMessages.filter(msg => msg.subject.toLowerCase().includes(searchQuery.toLowerCase()) || msg.from.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -405,7 +394,7 @@ const GoogleWorkspaceHub = () => {
 
       {/* Main Panel Content */}
       <div className="p-5 md:p-6 min-h-[350px]">
-        {loadingData ? (
+        {loadingData && subTab !== 'contacts' ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9] mb-3" />
             <p className="text-xs text-muted-foreground">A sincronizar dados da API do Google...</p>
@@ -673,49 +662,15 @@ const GoogleWorkspaceHub = () => {
               </div>
             )}
 
-            {/* Google Contacts Sub-tab */}
+            {/* Contactos — CRM local com sincronização Google */}
             {subTab === 'contacts' && (
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-muted-foreground" /> Google Contactos ({filteredContacts.length})
-                </h3>
-
-                {filteredContacts.length === 0 ? (
-                  <div className="text-center py-12 border rounded-xl bg-muted/10">
-                    <p className="text-sm text-muted-foreground">Nenhum contacto sincronizado.</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                    {filteredContacts.map((c, i) => (
-                      <div key={i} className="border rounded-xl p-4 bg-card hover:border-[#0ea5c9]/30 transition-all shadow-sm flex items-center gap-3">
-                        {c.photo ? (
-                          <img src={c.photo} alt={c.name} className="h-10 w-10 rounded-full object-cover border" />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-[#0ea5c9]/10 flex items-center justify-center text-[#0ea5c9] border shrink-0">
-                            <User className="h-5 w-5" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-foreground truncate">{c.name}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">{c.email}</p>
-                          {c.phone && <p className="text-[10px] text-muted-foreground mt-0.5">{c.phone}</p>}
-                        </div>
-                        {c.email && c.email !== 'Sem Email' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => startEmailToContact(c.email)}
-                            title="Enviar Email via Gmail"
-                            className="text-[#0ea5c9] hover:bg-[#0ea5c9]/10 h-8 w-8 shrink-0 rounded-full"
-                          >
-                            <Mail className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ContactsManager
+                googleToken={token}
+                onOpenGmail={(email) => {
+                  setNewMail({ to: email, subject: 'Novidades — Livraria Adventista', body: '' });
+                  setSubTab('gmail');
+                }}
+              />
             )}
           </>
         )}

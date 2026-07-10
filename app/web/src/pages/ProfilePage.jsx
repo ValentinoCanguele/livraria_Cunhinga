@@ -4,7 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   User, Mail, Shield, ShoppingBag, Settings, LogOut, Loader2,
-  Package, ChevronRight, Lock, BookOpen, LayoutDashboard, Truck, Phone, Heart, Trash2
+  Package, ChevronRight, Lock, BookOpen, LayoutDashboard, Truck, Phone, Heart, Trash2, Users, Bell
 } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -23,14 +23,20 @@ import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_ME
 import { displayAngolaPhone, formatAngolaPhone } from '@/lib/angolaPhone';
 import PhoneInput from '@/components/PhoneInput';
 import GoogleWorkspaceHub from '@/components/GoogleWorkspaceHub';
+import ContactsManager from '@/components/ContactsManager';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { Switch } from '@/components/ui/switch';
+import { isPushSupported, subscribeToPush, requestPushPermission } from '@/lib/pushNotifications';
 
 
 const ProfilePage = () => {
-  const { user, isAuthed, isAdmin, logout, updateProfile, changePassword, fetchUserOrders, updateAvatar } = useAuth();
+  const { user, isAuthed, isAdmin, hasPermission, logout, updateProfile, changePassword, fetchUserOrders, updateAvatar } = useAuth();
+  const canManageContacts = isAdmin || hasPermission('manage_marketing') || (user?.role === 'manager');
   const { wishlist, loading: loadingWishlist, removeFromWishlist } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { settings } = useSiteSettings();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(location.state?.tab || 'orders');
 
@@ -45,6 +51,46 @@ const ProfilePage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(
+    () => typeof Notification !== 'undefined' && Notification.permission === 'granted'
+  );
+
+  const handlePushToggle = async (enabled) => {
+    if (!isPushSupported()) {
+      toast({ variant: 'destructive', title: 'Não suportado', description: 'O seu browser não suporta notificações push.' });
+      return;
+    }
+    if (!settings?.push_enabled || !settings?.vapid_public_key) {
+      toast({ variant: 'destructive', title: 'Indisponível', description: 'Notificações push não estão activas na loja.' });
+      return;
+    }
+    setPushLoading(true);
+    try {
+      if (enabled) {
+        const perm = await requestPushPermission();
+        if (perm !== 'granted') {
+          toast({ variant: 'destructive', title: 'Permissão negada', description: 'Active notificações nas definições do browser.' });
+          setPushEnabled(false);
+          return;
+        }
+        await subscribeToPush(settings.vapid_public_key);
+        setPushEnabled(true);
+        toast({ title: 'Notificações activadas', description: 'Receberá alertas de encomendas e novidades.' });
+      } else {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) await sub.unsubscribe();
+        setPushEnabled(false);
+        toast({ title: 'Notificações desactivadas' });
+      }
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+      setPushEnabled(false);
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthed) navigate('/login');
@@ -225,6 +271,7 @@ const ProfilePage = () => {
                 <TabsTrigger value="security"><Lock className="h-4 w-4 mr-2" />Segurança</TabsTrigger>
                 <TabsTrigger value="wishlist"><Heart className="h-4 w-4 mr-2" />Lista de Desejos</TabsTrigger>
                 <TabsTrigger value="workspace"><LayoutDashboard className="h-4 w-4 mr-2" />Google Workspace</TabsTrigger>
+                {canManageContacts && <TabsTrigger value="crm"><Users className="h-4 w-4 mr-2" />CRM Contactos</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="orders">
@@ -351,6 +398,31 @@ const ProfilePage = () => {
                     </Button>
                   </form>
                   </div>
+
+                  {isPushSupported() && (
+                    <div className="border-t pt-6">
+                      <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
+                        <Bell className="h-5 w-5 text-[#0ea5c9]" />
+                        Notificações Push
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Receba alertas de encomendas e promoções directamente no seu dispositivo.
+                      </p>
+                      <div className="flex items-center justify-between gap-4 p-3 rounded-lg border">
+                        <div>
+                          <p className="font-medium text-sm">Activar notificações</p>
+                          {!settings?.push_enabled && (
+                            <p className="text-xs text-muted-foreground">Ainda não configurado pelo administrador.</p>
+                          )}
+                        </div>
+                        <Switch
+                          checked={pushEnabled}
+                          disabled={pushLoading || !settings?.push_enabled}
+                          onCheckedChange={handlePushToggle}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 
@@ -442,6 +514,12 @@ const ProfilePage = () => {
               <TabsContent value="workspace">
                 <GoogleWorkspaceHub />
               </TabsContent>
+
+              {canManageContacts && (
+                <TabsContent value="crm">
+                  <ContactsManager />
+                </TabsContent>
+              )}
             </Tabs>
           </motion.div>
         </div>

@@ -1,4 +1,5 @@
 import { buildWhatsAppUrl } from '@/lib/whatsapp';
+import { fetchMessagingStatus, sendReceiptViaWhatsAppApi, isWhatsAppApiActive } from '@/lib/messaging';
 
 const SITE_NAME = 'Livraria Adventista';
 
@@ -162,12 +163,28 @@ export function downloadReceipt(order) {
   URL.revokeObjectURL(url);
 }
 
-export function sendReceiptViaWhatsApp(order, phone) {
+export async function sendReceiptViaWhatsApp(order, phone) {
   const text = buildReceiptText(order);
-  const url = phone
-    ? buildWhatsAppUrl(phone, text)
+  const targetPhone = order.phone || phone;
+  try {
+    const status = await fetchMessagingStatus();
+    if (isWhatsAppApiActive(status) && targetPhone) {
+      const result = await sendReceiptViaWhatsAppApi({
+        phone: targetPhone,
+        text,
+        orderNumber: order.orderNumber || order.orderId,
+        email: order.email,
+      });
+      if (result.sent) return { mode: 'api' };
+    }
+  } catch {
+    /* fallback manual */
+  }
+  const url = targetPhone
+    ? buildWhatsAppUrl(targetPhone, text)
     : `https://wa.me/?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank', 'noopener,noreferrer');
+  return { mode: 'manual' };
 }
 
 export const LAST_ORDER_KEY = 'livraria_last_order';

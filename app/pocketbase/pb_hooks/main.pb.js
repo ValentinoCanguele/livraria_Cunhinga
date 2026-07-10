@@ -25,6 +25,397 @@ function isStaff(auth) {
   return role === "admin" || role === "manager";
 }
 
+function requireStaffAuth(e) {
+  const auth = e.auth;
+  if (!isStaff(auth)) throw new ForbiddenError("Acesso restrito a administradores.");
+  return auth;
+}
+
+function normalizeContactEmail(email) {
+  return (email || "").trim().toLowerCase();
+}
+
+function normalizeContactPhone(phone) {
+  return (phone || "").replace(/\D/g, "");
+}
+
+function mergeContactTags(existing, incoming) {
+  const merged = [];
+  const seen = {};
+  const a = Array.isArray(existing) ? existing : [];
+  const b = Array.isArray(incoming) ? incoming : [];
+  for (let i = 0; i < a.length; i++) {
+    const t = a[i];
+    if (t && !seen[t]) { seen[t] = true; merged.push(t); }
+  }
+  for (let j = 0; j < b.length; j++) {
+    const t = b[j];
+    if (t && !seen[t]) { seen[t] = true; merged.push(t); }
+  }
+  return merged;
+}
+
+function countCollectionRecords(collection, filter) {
+  try {
+    if (filter) {
+      const recs = $app.findRecordsByFilter(collection, filter, 500, 0, "");
+      return recs ? recs.length : 0;
+    }
+    return $app.countRecords(collection);
+  } catch (err) {
+    return 0;
+  }
+}
+
+function findContactByExternalOrEmail(externalId, email, phone) {
+  if (externalId) {
+    try {
+      return $app.findFirstRecordByFilter("contacts", "external_id = {:eid}", { eid: externalId });
+    } catch (err) {}
+  }
+  const em = normalizeContactEmail(email);
+  if (em) {
+    try {
+      return $app.findFirstRecordByFilter("contacts", "email = {:email}", { email: em });
+    } catch (err) {}
+  }
+  const ph = normalizeContactPhone(phone);
+  if (ph && ph.length >= 9) {
+    try {
+      const all = $app.findRecordsByFilter("contacts", "phone != ''", 500, 0, "");
+      for (let i = 0; i < all.length; i++) {
+        if (normalizeContactPhone(all[i].get("phone")) === ph) return all[i];
+      }
+    } catch (err) {}
+  }
+  return null;
+}
+
+function upsertContact(item, ownerId) {
+  const col = $app.findCollectionByNameOrId("contacts");
+  const existing = findContactByExternalOrEmail(item.external_id, item.email, item.phone);
+  const record = existing || new Record(col);
+  if (!existing) {
+    record.set("name", item.name || "Sem Nome");
+    record.set("source", item.source || "manual");
+    if (ownerId) record.set("owner", ownerId);
+  }
+  if (item.name) record.set("name", item.name);
+  if (item.email) record.set("email", normalizeContactEmail(item.email));
+  if (item.phone) record.set("phone", item.phone);
+  if (item.photo_url) record.set("photo_url", item.photo_url);
+  if (item.external_id) record.set("external_id", item.external_id);
+  if (item.tags && item.tags.length) {
+    record.set("tags", mergeContactTags(existing ? existing.get("tags") : [], item.tags));
+  }
+  if (item.notes) record.set("notes", item.notes);
+  if (item.is_buyer != null) record.set("is_buyer", !!item.is_buyer || (existing ? !!existing.get("is_buyer") : false));
+  if (item.metadata) record.set("metadata", item.metadata);
+  record.set("last_synced_at", nowISO());
+  record.set("sync_status", "synced");
+  $app.save(record);
+  return { id: record.id, created: !existing };
+}
+
+function buildWhatsAppNotifyUrl(phone, message) {
+  const digits = normalizeContactPhone(phone);
+  const num = digits.startsWith("244") ? digits : "244" + digits.replace(/^0/, "");
+  return "https://wa.me/" + num + "?text=" + encodeURIComponent(message || "");
+}
+
+function getNewBooksDigest() {
+  let books = [];
+  try {
+    books = $app.findRecordsByFilter("stock_books", "stock > 0", 5, 0, "-created");
+  } catch (err) {}
+  if (!books.length) return "";
+  const lines = ["📚 *Novidades na Livraria Adventista*", ""];
+  for (let i = 0; i < books.length; i++) {
+    const b = books[i];
+    const price = b.get("price") ? Number(b.get("price")).toLocaleString("pt-AO") + " Kz" : "";
+    lines.push("• " + (b.get("title") || "Livro") + (price ? " — " + price : ""));
+  }
+  lines.push("", "Visite: https://livrariaadventista.ao/shop");
+  return lines.join("\n");
+}
+
+function calcNextSendAt(frequency) {
+  const d = new Date();
+  if (frequency === "daily") d.setDate(d.getDate() + 1);
+  else if (frequency === "weekly") d.setDate(d.getDate() + 7);
+  else if (frequency === "biweekly") d.setDate(d.getDate() + 14);
+  else d.setMonth(d.getMonth() + 1);
+  return d.toISOString();
+}
+
+function getDefaultContactOwnerId() {
+  try {
+    const admins = $app.findRecordsByFilter("users", "role = 'admin'", 1, 0, "");
+    if (admins && admins.length) return admins[0].id;
+  } catch (err) {}
+  return "";
+}
+
+function fmtMoneyKz(amount) {
+  return Number(amount || 0).toLocaleString("pt-AO", { minimumFractionDigits: 2 }) + " Kz";
+}
+
+function buildOrderEmailHtml(order, siteName) {
+  const items = order.get("items") || [];
+  let rows = "";
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const line = (Number(it.quantity) || 1) * (Number(it.price) || 0);
+    rows += "<tr><td style=\"padding:8px;border-bottom:1px solid #eee\">" + (it.quantity || 1) + "× " + (it.title || "Livro") + "</td><td style=\"padding:8px;border-bottom:1px solid #eee;text-align:right\">" + fmtMoneyKz(line) + "</td></tr>";
+  }
+  const shipping = Number(order.get("shipping_cost")) || 0;
+  return [
+    "<div style=\"font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a\">",
+    "<h2 style=\"color:#0ea5c9\">Encomenda Confirmada</h2>",
+    "<p>Olá <strong>" + (order.get("customer_name") || "") + "</strong>,</p>",
+    "<p>Obrigado pela sua compra na <strong>" + (siteName || "Livraria Adventista") + "</strong>.</p>",
+    "<p><strong>Nº:</strong> " + (order.get("order_number") || order.id) + "</p>",
+    "<table style=\"width:100%;border-collapse:collapse;margin:16px 0\">",
+    "<thead><tr><th style=\"text-align:left;padding:8px;border-bottom:2px solid #0ea5c9\">Livro</th><th style=\"text-align:right;padding:8px;border-bottom:2px solid #0ea5c9\">Total</th></tr></thead>",
+    "<tbody>", rows, "</tbody>",
+    "</table>",
+    "<p>Envio: " + fmtMoneyKz(shipping) + "</p>",
+    "<p style=\"font-size:18px\"><strong>Total: " + fmtMoneyKz(order.get("total")) + "</strong></p>",
+    "<p style=\"color:#666;font-size:13px\">Acompanhe em /track com o número e email utilizados na compra.</p>",
+  ].join("");
+}
+
+function sendEmailViaSendGrid(apiKey, fromEmail, fromName, toEmail, subject, html) {
+  const res = $http.send({
+    url: "https://api.sendgrid.com/v3/mail/send",
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: toEmail }] }],
+      from: { email: fromEmail, name: fromName || "Livraria" },
+      subject: subject,
+      content: [{ type: "text/html", value: html }],
+    }),
+    timeout: 30,
+  });
+  return res.statusCode >= 200 && res.statusCode < 300;
+}
+
+function sendTransactionalEmail(settingsRec, toEmail, subject, html) {
+  if (!settingsRec || !toEmail) return false;
+  const siteName = settingsRec.get("site_name") || "Livraria Adventista";
+  const provider = settingsRec.get("email_provider") || "pocketbase";
+  const fromEmail = settingsRec.get("smtp_from_email") || settingsRec.get("contact_email") || "noreply@livraria.ao";
+  const fromName = settingsRec.get("smtp_from_name") || siteName;
+
+  try {
+    if (provider === "sendgrid") {
+      const key = settingsRec.get("sendgrid_api_key") || "";
+      if (!key) return false;
+      return sendEmailViaSendGrid(key, fromEmail, fromName, toEmail, subject, html);
+    }
+    const message = new MailerMessage({
+      from: { address: fromEmail, name: fromName },
+      to: [{ address: toEmail }],
+      subject: subject,
+      html: html,
+    });
+    $app.newMailClient().send(message);
+    return true;
+  } catch (err) {
+    console.log("Transactional email error: " + err);
+    return false;
+  }
+}
+
+function sendOrderConfirmationEmail(order, settingsRec) {
+  if (!settingsRec || !settingsRec.get("order_email_enabled")) return false;
+  const toEmail = order.get("customer_email");
+  if (!toEmail) return false;
+
+  const siteName = settingsRec.get("site_name") || "Livraria Adventista";
+  const subject = "Confirmação de encomenda " + (order.get("order_number") || "");
+  const html = buildOrderEmailHtml(order, siteName);
+  return sendTransactionalEmail(settingsRec, toEmail, subject, html);
+}
+
+function sendContactWhatsAppMessage(phone, body) {
+  const config = getWhatsAppBusinessConfig();
+  if (config) {
+    const result = sendWhatsAppBusinessMessage(phone, body, config);
+    return { apiSent: !!result.ok, waUrl: "", error: result.error || "" };
+  }
+  return { apiSent: false, waUrl: buildWhatsAppNotifyUrl(phone, body), error: "" };
+}
+
+function getWhatsAppBusinessConfig() {
+  try {
+    const rec = $app.findFirstRecordByFilter("app_integrations", "code = 'whatsapp_business'");
+    if (!rec || !rec.get("enabled")) return null;
+    const cfg = rec.get("config") || {};
+    if (!cfg.access_token || !cfg.phone_number_id) return null;
+    return cfg;
+  } catch (err) {
+    return null;
+  }
+}
+
+function sendWhatsAppBusinessText(phone, text, config) {
+  const digits = normalizeContactPhone(phone);
+  const to = digits.startsWith("244") ? digits : "244" + digits.replace(/^0/, "");
+  const url = "https://graph.facebook.com/v21.0/" + config.phone_number_id + "/messages";
+  const res = $http.send({
+    url: url,
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + config.access_token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: to,
+      type: "text",
+      text: { preview_url: true, body: text },
+    }),
+    timeout: 30,
+  });
+  if (res.statusCode >= 200 && res.statusCode < 300) return { ok: true };
+  console.log("WhatsApp API text error " + res.statusCode + ": " + (res.raw || ""));
+  return { ok: false, status: res.statusCode, error: res.raw || "WhatsApp API error" };
+}
+
+function sendWhatsAppBusinessTemplate(phone, config, params) {
+  const digits = normalizeContactPhone(phone);
+  const to = digits.startsWith("244") ? digits : "244" + digits.replace(/^0/, "");
+  const templateName = config.template_name || "order_confirmation";
+  const lang = config.template_language || "pt_PT";
+  const url = "https://graph.facebook.com/v21.0/" + config.phone_number_id + "/messages";
+  const components = [];
+  if (params && params.bodyParams && params.bodyParams.length) {
+    components.push({
+      type: "body",
+      parameters: params.bodyParams.map(function (p) {
+        return { type: "text", text: String(p) };
+      }),
+    });
+  }
+  const payload = {
+    messaging_product: "whatsapp",
+    to: to,
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: lang },
+    },
+  };
+  if (components.length) payload.template.components = components;
+  const res = $http.send({
+    url: url,
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + config.access_token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    timeout: 30,
+  });
+  if (res.statusCode >= 200 && res.statusCode < 300) return { ok: true };
+  console.log("WhatsApp API template error " + res.statusCode + ": " + (res.raw || ""));
+  return { ok: false, status: res.statusCode, error: res.raw || "Template error" };
+}
+
+function sendWhatsAppBusinessMessage(phone, text, config, templateParams) {
+  if (!phone || !config) return { ok: false, error: "missing_config" };
+  if (config.use_template && config.template_name) {
+    const params = templateParams && templateParams.bodyParams
+      ? templateParams
+      : {
+        bodyParams: [
+          (templateParams && templateParams.customerName) || "Cliente",
+          (templateParams && templateParams.orderNumber) || "",
+          (templateParams && templateParams.total) || "",
+        ],
+      };
+    const tpl = sendWhatsAppBusinessTemplate(phone, config, params);
+    if (tpl.ok) return tpl;
+  }
+  return sendWhatsAppBusinessText(phone, text, config);
+}
+
+function isWhatsAppBusinessReady() {
+  const cfg = getWhatsAppBusinessConfig();
+  return !!(cfg && cfg.access_token && cfg.phone_number_id);
+}
+
+function buildOrderWhatsAppMessage(order, siteName) {
+  const items = order.get("items") || [];
+  const lines = [
+    "✅ *Encomenda Confirmada — " + (siteName || "Livraria Adventista") + "*",
+    "Nº: " + (order.get("order_number") || ""),
+    "",
+    "Olá " + (order.get("customer_name") || "") + "!",
+    "",
+    "*Livros:*",
+  ];
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    lines.push("• " + (it.quantity || 1) + "× " + (it.title || "Livro"));
+  }
+  lines.push("", "*Total: " + fmtMoneyKz(order.get("total")) + "*", "", "Obrigado pela sua compra! 📚");
+  return lines.join("\n");
+}
+
+function sendOrderWhatsAppConfirmation(order, settingsRec) {
+  const config = getWhatsAppBusinessConfig();
+  if (!config) return false;
+  const phone = order.get("phone");
+  if (!phone) return false;
+  const siteName = settingsRec ? settingsRec.get("site_name") : "Livraria Adventista";
+  const msg = buildOrderWhatsAppMessage(order, siteName);
+  const result = sendWhatsAppBusinessMessage(phone, msg, config, {
+    customerName: order.get("customer_name") || "Cliente",
+    orderNumber: order.get("order_number") || "",
+    total: fmtMoneyKz(order.get("total")),
+    bodyParams: [
+      order.get("customer_name") || "Cliente",
+      order.get("order_number") || "",
+      fmtMoneyKz(order.get("total")),
+    ],
+  });
+  if (result.ok) {
+    const storePhone = settingsRec ? (settingsRec.get("whatsapp") || settingsRec.get("contact_phone") || "") : "";
+    if (storePhone) {
+      try {
+        const saleChannel = order.get("sale_channel") || "";
+        if (saleChannel === "whatsapp") {
+          const storeMsg = "🛒 *Nova encomenda WhatsApp*\nNº: " + (order.get("order_number") || "") + "\nCliente: " + (order.get("customer_name") || "") + "\nTel: " + phone + "\nTotal: " + fmtMoneyKz(order.get("total"));
+          sendWhatsAppBusinessText(storePhone, storeMsg, config);
+        }
+      } catch (err) {}
+    }
+    return true;
+  }
+  return false;
+}
+
+function sendWhatsAppReceipt(phone, text, orderNumber, customerEmail) {
+  const config = getWhatsAppBusinessConfig();
+  if (!config || !phone) return { ok: false, error: "not_configured" };
+  if (orderNumber && customerEmail) {
+    try {
+      const order = $app.findFirstRecordByFilter("orders", "order_number = {:n}", { n: orderNumber });
+      if (order && (order.get("customer_email") || "").toLowerCase() !== String(customerEmail).toLowerCase()) {
+        return { ok: false, error: "email_mismatch" };
+      }
+    } catch (err) {}
+  }
+  return sendWhatsAppBusinessMessage(phone, text, config);
+}
+
 function buildDeliveryAddressFull(parts) {
   const bits = [];
   if (parts.street) bits.push(parts.street);
@@ -56,6 +447,17 @@ function sanitizeIntegrationConfig(code, config) {
       folder_id: config.folder_id || "",
       has_api_key: !!(config.api_key),
       has_client_id: !!(config.client_id),
+    };
+  }
+  if (code === "whatsapp_business") {
+    return {
+      configured: !!(config.access_token && config.phone_number_id),
+      has_token: !!config.access_token,
+      has_phone_id: !!config.phone_number_id,
+      use_template: !!config.use_template,
+      template_name: config.template_name || "order_confirmation",
+      template_language: config.template_language || "pt_PT",
+      auto_send: config.auto_send !== false,
     };
   }
   return {};
@@ -216,6 +618,9 @@ routerAdd("GET", "/api/app/settings", (e) => {
     shop_bg_video_url: rec.get("shop_bg_video_url") || "",
     shop_bg_overlay: Number(rec.get("shop_bg_overlay")) || 0.55,
     google_maps_embed_key: rec.get("google_maps_embed_key") || "",
+    order_email_enabled: !!rec.get("order_email_enabled"),
+    push_enabled: !!rec.get("push_enabled"),
+    vapid_public_key: rec.get("vapid_public_key") || "",
   });
   } catch (err) {
     return e.json(400, { message: err.message || String(err) });
@@ -858,6 +1263,15 @@ routerAdd("POST", "/api/app/checkout", (e) => {
   try { order.set("order_type", isWhatsApp ? "whatsapp_order" : "online_purchase"); } catch (err) {}
   $app.save(order);
 
+  let emailSent = false;
+  let whatsappSent = false;
+  try {
+    emailSent = sendOrderConfirmationEmail(order, settings);
+    whatsappSent = sendOrderWhatsAppConfirmation(order, settings);
+  } catch (err) {
+    console.log("Post-checkout messaging: " + err);
+  }
+
   for (const u of stockUpdates) {
     const newStock = u.newStock;
     u.book.set("stock", newStock);
@@ -880,6 +1294,8 @@ routerAdd("POST", "/api/app/checkout", (e) => {
     payment_status: order.get("payment_status"),
     order_type: isWhatsApp ? "whatsapp_order" : "online_purchase",
     sale_channel: saleChannel,
+    email_sent: emailSent,
+    whatsapp_sent: whatsappSent,
   });
   } catch (err) {
     if (err instanceof BadRequestError || err instanceof NotFoundError || err instanceof ForbiddenError) {
@@ -888,6 +1304,467 @@ routerAdd("POST", "/api/app/checkout", (e) => {
     return e.json(400, { message: err.message || String(err) });
   }
 });
+
+// --- Messaging status (público, sem segredos) ---
+routerAdd("GET", "/api/app/messaging/status", (e) => {
+  try {
+    const settings = getSettingsRecord();
+    const waCfg = getWhatsAppBusinessConfig();
+    let waEnabled = false;
+    try {
+      const r = $app.findFirstRecordByFilter("app_integrations", "code = 'whatsapp_business'");
+      waEnabled = !!(r && r.get("enabled"));
+    } catch (err) {}
+    return e.json(200, {
+      whatsapp: {
+        enabled: waEnabled,
+        configured: !!waCfg,
+        auto_send: waCfg ? (waCfg.auto_send !== false) : false,
+        use_template: !!(waCfg && waCfg.use_template),
+      },
+      email: {
+        enabled: !!(settings && settings.get("order_email_enabled")),
+        provider: settings ? (settings.get("email_provider") || "pocketbase") : "pocketbase",
+      },
+      push: {
+        enabled: !!(settings && settings.get("push_enabled")),
+        has_vapid: !!(settings && settings.get("vapid_public_key")),
+      },
+    });
+  } catch (err) {
+    return e.json(200, { whatsapp: { enabled: false, configured: false }, email: { enabled: false }, push: { enabled: false } });
+  }
+});
+
+routerAdd("POST", "/api/app/whatsapp/receipt", (e) => {
+  try {
+    const data = e.requestInfo().body;
+    const phone = (data.phone || "").trim();
+    const text = (data.text || "").trim();
+    const orderNumber = (data.order_number || "").trim();
+    const email = (data.email || "").trim();
+    if (!phone || !text) throw new BadRequestError("Telefone e texto do recibo são obrigatórios.");
+    if (!isWhatsAppBusinessReady()) {
+      return e.json(200, { sent: false, fallback: true, message: "API WhatsApp não configurada — use link manual." });
+    }
+    const result = sendWhatsAppReceipt(phone, text, orderNumber, email);
+    return e.json(200, {
+      sent: !!result.ok,
+      fallback: !result.ok,
+      message: result.ok ? "Recibo enviado por WhatsApp." : (result.error || "Falha no envio."),
+    });
+  } catch (err) {
+    if (err instanceof BadRequestError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+routerAdd("POST", "/api/app/admin/whatsapp/test", (e) => {
+  try {
+    requireStaffAuth(e);
+    const data = e.requestInfo().body;
+    const phone = (data.phone || "").trim();
+    if (!phone) throw new BadRequestError("Indique um número de teste.");
+    const config = getWhatsAppBusinessConfig();
+    if (!config) throw new BadRequestError("WhatsApp Business API não está activa ou configurada.");
+    const text = "✅ Teste — Livraria Adventista\n\nA integração WhatsApp Business API está funcional. Mensagens automáticas activas.";
+    const result = sendWhatsAppBusinessMessage(phone, text, config, {
+      bodyParams: ["Teste", "OK", "0 Kz"],
+    });
+    if (!result.ok) throw new BadRequestError("Falha Meta API (" + (result.status || "") + "): " + (result.error || "erro desconhecido"));
+    return e.json(200, { message: "Mensagem de teste enviada para " + phone + "." });
+  } catch (err) {
+    if (err instanceof BadRequestError || err instanceof ForbiddenError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+// --- CRM Contactos: sincronização, importação e notificações ---
+routerAdd("GET", "/api/app/push/config", (e) => {
+  try {
+    const rec = $app.findFirstRecordByFilter("site_settings", "id != ''");
+    if (!rec || !rec.get("push_enabled")) return e.json(200, { enabled: false, publicKey: "" });
+    return e.json(200, {
+      enabled: true,
+      publicKey: rec.get("vapid_public_key") || "",
+    });
+  } catch (err) {
+    return e.json(200, { enabled: false, publicKey: "" });
+  }
+});
+
+routerAdd("POST", "/api/app/push/subscribe", (e) => {
+  try {
+    const data = e.requestInfo().body;
+    const endpoint = (data.endpoint || "").trim();
+    if (!endpoint) throw new BadRequestError("Endpoint obrigatório.");
+
+    let existing = null;
+    try {
+      existing = $app.findFirstRecordByFilter("push_subscriptions", "endpoint = {:ep}", { ep: endpoint });
+    } catch (err) {}
+
+    const col = $app.findCollectionByNameOrId("push_subscriptions");
+    const rec = existing || new Record(col);
+    rec.set("endpoint", endpoint);
+    rec.set("keys", data.keys || {});
+    rec.set("user_agent", data.user_agent || "");
+    let auth = null;
+    try { auth = e.auth; } catch (err) {}
+    if (auth && auth.id) rec.set("user", auth.id);
+    else if (data.user) rec.set("user", data.user);
+    $app.save(rec);
+    return e.json(200, { message: "Subscrição push registada." });
+  } catch (err) {
+    if (err instanceof BadRequestError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+routerAdd("POST", "/api/app/contact-message", (e) => {
+  try {
+    const data = e.requestInfo().body;
+    const name = (data.name || "").trim();
+    const email = normalizeContactEmail(data.email || "");
+    const message = (data.message || "").trim();
+    const phone = (data.phone || "").trim();
+    if (!name || !email || !message) throw new BadRequestError("Nome, email e mensagem são obrigatórios.");
+
+    const ownerId = getDefaultContactOwnerId();
+    upsertContact({
+      name: name,
+      email: email,
+      phone: phone,
+      source: "manual",
+      notes: message,
+      tags: ["formulario-contacto"],
+    }, ownerId);
+
+    return e.json(200, { message: "Mensagem recebida! Entraremos em contacto em breve." });
+  } catch (err) {
+    if (err instanceof BadRequestError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+routerAdd("POST", "/api/app/contacts/sync-batch", (e) => {
+  try {
+  const auth = requireStaffAuth(e);
+  const data = e.requestInfo().body;
+  const items = data.contacts || [];
+  if (!items.length) throw new BadRequestError("Lista de contactos vazia.");
+
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!item.name && !item.email && !item.phone) { skipped++; continue; }
+    const result = upsertContact(item, auth.id);
+    if (result.created) created++;
+    else updated++;
+  }
+  return e.json(200, { message: "Sincronização concluída.", created: created, updated: updated, skipped: skipped, total: items.length });
+  } catch (err) {
+    if (err instanceof BadRequestError || err instanceof ForbiddenError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+routerAdd("POST", "/api/app/contacts/import-sources", (e) => {
+  try {
+  const auth = requireStaffAuth(e);
+  let created = 0;
+  let updated = 0;
+
+  let orders = [];
+  try { orders = $app.findAllRecords("orders"); } catch (err) {}
+  for (let i = 0; i < orders.length; i++) {
+    const o = orders[i];
+    const email = o.get("customer_email") || "";
+    const phone = o.get("phone") || "";
+    const name = o.get("customer_name") || o.get("name") || "Cliente";
+    if (!email && !phone) continue;
+    const result = upsertContact({
+      name: name,
+      email: email,
+      phone: phone,
+      source: "order",
+      is_buyer: true,
+      tags: ["comprador"],
+    }, auth.id);
+    if (result.created) created++;
+    else updated++;
+  }
+
+  let subs = [];
+  try { subs = $app.findAllRecords("newsletter"); } catch (err) {}
+  for (let j = 0; j < subs.length; j++) {
+    const s = subs[j];
+    const email = s.get("email") || "";
+    if (!email) continue;
+    const result = upsertContact({
+      name: email.split("@")[0],
+      email: email,
+      source: "newsletter",
+      tags: ["newsletter"],
+    }, auth.id);
+    if (result.created) created++;
+    else updated++;
+  }
+
+  return e.json(200, { message: "Importação concluída.", created: created, updated: updated });
+  } catch (err) {
+    if (err instanceof BadRequestError || err instanceof ForbiddenError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+routerAdd("GET", "/api/app/contacts/stats", (e) => {
+  try {
+  requireStaffAuth(e);
+  return e.json(200, {
+    total: countCollectionRecords("contacts"),
+    google: countCollectionRecords("contacts", "source = 'google'"),
+    buyers: countCollectionRecords("contacts", "is_buyer = true"),
+    groups: countCollectionRecords("contact_groups"),
+    active_campaigns: countCollectionRecords("contact_campaigns", "is_active = true"),
+  });
+  } catch (err) {
+    if (err instanceof ForbiddenError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+routerAdd("POST", "/api/app/contacts/notify", (e) => {
+  try {
+  const auth = requireStaffAuth(e);
+  const data = e.requestInfo().body;
+  const contactIds = data.contact_ids || [];
+  const channel = data.channel || "whatsapp";
+  const subject = data.subject || "Novidades — Livraria Adventista";
+  let body = data.body || "";
+  const groupId = data.group_id || "";
+
+  if (!contactIds.length) throw new BadRequestError("Seleccione pelo menos um contacto.");
+
+  const notifCol = $app.findCollectionByNameOrId("contact_notifications");
+  const results = [];
+  let settingsRec = null;
+  try { settingsRec = $app.findFirstRecordByFilter("site_settings", "id != ''"); } catch (err) {}
+
+  for (let i = 0; i < contactIds.length; i++) {
+    let contact = null;
+    try { contact = $app.findRecordById("contacts", contactIds[i]); } catch (err) {}
+    if (!contact) continue;
+
+    const notif = new Record(notifCol);
+    notif.set("owner", auth.id);
+    notif.set("contact", contact.id);
+    if (groupId) notif.set("group", groupId);
+    notif.set("channel", channel);
+    notif.set("subject", subject);
+    notif.set("body", body);
+    notif.set("status", "pending");
+    notif.set("sent_at", nowISO());
+
+    let waUrl = "";
+    let status = "failed";
+    let whatsappApiSent = false;
+    let emailSent = false;
+    const hasPhone = !!(contact.get("phone") || "").trim();
+    const hasEmail = !!(contact.get("email") || "").trim();
+
+    if (channel === "whatsapp") {
+      if (hasPhone) {
+        const wa = sendContactWhatsAppMessage(contact.get("phone"), body);
+        waUrl = wa.waUrl;
+        whatsappApiSent = wa.apiSent;
+        if (wa.waUrl) notif.set("whatsapp_url", waUrl);
+        status = (wa.apiSent || wa.waUrl) ? "sent" : "failed";
+      }
+    } else if (channel === "email") {
+      if (hasEmail && settingsRec) {
+        const html = "<div style=\"font-family:sans-serif;line-height:1.6\">" + String(body).replace(/\n/g, "<br>") + "</div>";
+        emailSent = sendTransactionalEmail(settingsRec, contact.get("email"), subject, html);
+        status = emailSent ? "sent" : "failed";
+      } else {
+        status = "failed";
+      }
+    } else if (channel === "both") {
+      let waOk = false;
+      if (hasPhone) {
+        const wa = sendContactWhatsAppMessage(contact.get("phone"), body);
+        waUrl = wa.waUrl;
+        whatsappApiSent = wa.apiSent;
+        if (wa.waUrl) notif.set("whatsapp_url", waUrl);
+        waOk = wa.apiSent || !!wa.waUrl;
+      }
+      if (hasEmail && settingsRec) {
+        const html = "<div style=\"font-family:sans-serif;line-height:1.6\">" + String(body).replace(/\n/g, "<br>") + "</div>";
+        emailSent = sendTransactionalEmail(settingsRec, contact.get("email"), subject, html);
+      }
+      status = (waOk || emailSent) ? "sent" : "failed";
+    }
+    notif.set("status", status);
+
+    $app.save(notif);
+    contact.set("last_contacted_at", nowISO());
+    $app.save(contact);
+
+    results.push({
+      contact_id: contact.id,
+      name: contact.get("name"),
+      email: contact.get("email") || "",
+      phone: contact.get("phone") || "",
+      whatsapp_url: waUrl,
+      whatsapp_api_sent: whatsappApiSent,
+      email_sent: emailSent,
+      channel: channel,
+      status: notif.get("status"),
+    });
+  }
+
+  return e.json(200, { message: "Notificações processadas.", results: results, whatsapp_api: isWhatsAppBusinessReady() });
+  } catch (err) {
+    if (err instanceof BadRequestError || err instanceof ForbiddenError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+routerAdd("POST", "/api/app/contacts/campaigns/run-due", (e) => {
+  try {
+  const auth = requireStaffAuth(e);
+  const now = new Date().toISOString();
+  let campaigns = [];
+  try {
+    campaigns = $app.findRecordsByFilter("contact_campaigns", "is_active = true", 50, 0, "");
+  } catch (err) {}
+
+  const digest = getNewBooksDigest();
+  let processed = 0;
+  const allResults = [];
+
+  for (let i = 0; i < campaigns.length; i++) {
+    const camp = campaigns[i];
+    const nextSend = camp.get("next_send_at");
+    if (nextSend && nextSend > now) continue;
+
+    const groupId = camp.get("group");
+    if (!groupId) continue;
+
+    let group = null;
+    try { group = $app.findRecordById("contact_groups", groupId); } catch (err) {}
+    if (!group) continue;
+
+    const memberIds = group.get("member_ids") || [];
+    if (!memberIds.length) continue;
+
+    let body = camp.get("message_template") || "";
+    if (camp.get("include_new_books") && digest) {
+      body = body ? body + "\n\n" + digest : digest;
+    }
+
+    const channel = camp.get("channel") || "whatsapp";
+    const subject = camp.get("subject") || "Novidades — Livraria Adventista";
+    let settingsRec = null;
+    try { settingsRec = $app.findFirstRecordByFilter("site_settings", "id != ''"); } catch (err) {}
+
+    for (let j = 0; j < memberIds.length; j++) {
+      let contact = null;
+      try { contact = $app.findRecordById("contacts", memberIds[j]); } catch (err) {}
+      if (!contact) continue;
+
+      const notifCol = $app.findCollectionByNameOrId("contact_notifications");
+      const notif = new Record(notifCol);
+      notif.set("owner", auth.id);
+      notif.set("contact", contact.id);
+      notif.set("group", groupId);
+      notif.set("campaign", camp.id);
+      notif.set("channel", channel);
+      notif.set("subject", subject);
+      notif.set("body", body);
+      notif.set("sent_at", nowISO());
+
+      let waUrl = "";
+      let status = "failed";
+      if (channel === "whatsapp" || channel === "both") {
+        const phone = contact.get("phone");
+        if (phone) {
+          const wa = sendContactWhatsAppMessage(phone, body);
+          waUrl = wa.waUrl;
+          if (waUrl) notif.set("whatsapp_url", waUrl);
+          status = (wa.apiSent || waUrl) ? "sent" : "failed";
+        }
+      }
+      if (channel === "email" || channel === "both") {
+        const email = contact.get("email");
+        if (email && settingsRec) {
+          const html = "<div style=\"font-family:sans-serif;line-height:1.6\">" + String(body).replace(/\n/g, "<br>") + "</div>";
+          const emailOk = sendTransactionalEmail(settingsRec, email, subject, html);
+          if (channel === "email") status = emailOk ? "sent" : "failed";
+          else if (emailOk) status = "sent";
+        } else if (channel === "email") {
+          status = "failed";
+        }
+      }
+      notif.set("status", status);
+      $app.save(notif);
+      contact.set("last_contacted_at", now);
+      $app.save(contact);
+
+      allResults.push({
+        campaign: camp.get("name"),
+        contact: contact.get("name"),
+        whatsapp_url: waUrl,
+        status: notif.get("status"),
+      });
+    }
+
+    camp.set("last_sent_at", now);
+    camp.set("next_send_at", calcNextSendAt(camp.get("frequency") || "weekly"));
+    $app.save(camp);
+    processed++;
+  }
+
+  return e.json(200, { message: "Campanhas processadas.", processed: processed, notifications: allResults });
+  } catch (err) {
+    if (err instanceof ForbiddenError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+onRecordCreate((e) => {
+  try {
+    const record = e.record;
+    if (record.get("owner")) return;
+    const auth = e.auth;
+    if (auth && auth.id) record.set("owner", auth.id);
+  } catch (err) {}
+}, "contacts");
+
+onRecordCreate((e) => {
+  try {
+    const record = e.record;
+    if (record.get("owner")) return;
+    const auth = e.auth;
+    if (auth && auth.id) record.set("owner", auth.id);
+  } catch (err) {}
+}, "contact_groups");
+
+onRecordCreate((e) => {
+  try {
+    const record = e.record;
+    if (record.get("owner")) return;
+    const auth = e.auth;
+    if (auth && auth.id) record.set("owner", auth.id);
+    if (!record.get("next_send_at")) {
+      const d = new Date();
+      d.setHours(d.getHours() + 1);
+      record.set("next_send_at", d.toISOString());
+    }
+  } catch (err) {}
+}, "contact_campaigns");
 
 routerAdd("POST", "/api/app/newsletter", (e) => {
   const data = e.requestInfo().body;

@@ -104,7 +104,40 @@ export function computeSalesReport(orders) {
     averageOrder: active.length ? sum(active) / active.length : 0,
     byMonth,
     byStatus,
+    byDay: computeDailySales(active),
+    topBooks: computeTopBooks(active),
   };
+}
+
+export function computeDailySales(orders, days = 14) {
+  const map = {};
+  const now = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    map[key] = { date: key, label: d.toLocaleDateString('pt-AO', { day: '2-digit', month: 'short' }), orders: 0, revenue: 0 };
+  }
+  orders.forEach((o) => {
+    const key = new Date(o.created).toISOString().slice(0, 10);
+    if (!map[key]) return;
+    map[key].orders += 1;
+    map[key].revenue += Number(o.total || 0);
+  });
+  return Object.values(map);
+}
+
+export function computeTopBooks(orders, limit = 8) {
+  const counts = {};
+  orders.forEach((o) => {
+    (o.items || []).forEach((it) => {
+      const title = it.title || it.book_code || 'Desconhecido';
+      if (!counts[title]) counts[title] = { title, quantity: 0, revenue: 0 };
+      counts[title].quantity += Number(it.quantity) || 1;
+      counts[title].revenue += (Number(it.price) || 0) * (Number(it.quantity) || 1);
+    });
+  });
+  return Object.values(counts).sort((a, b) => b.quantity - a.quantity).slice(0, limit);
 }
 
 export function exportSalesReportSummary(orders, filename = 'relatorio-vendas') {

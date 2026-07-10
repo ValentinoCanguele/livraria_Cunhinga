@@ -21,6 +21,8 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
 
   const variant = product.variants?.[0];
   const inStock = product.purchasable && (variant?.inventory_quantity ?? 0) > 0;
+  const qty = variant?.inventory_quantity ?? 0;
+  const isLowStock = inStock && (product.stock_low || (qty > 0 && qty < 5));
   const price = variant?.sale_price_formatted || variant?.price_formatted;
   const originalPrice = variant?.sale_price_formatted ? variant?.price_formatted : null;
   const waPhone = settings.whatsapp || settings.contact_phone;
@@ -74,6 +76,11 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
             {product.featured && (
               <div className="absolute top-2 left-2 bg-amber-400 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full z-10">★ Destaque</div>
             )}
+            {isLowStock && (
+              <div className="absolute top-2 right-12 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 shadow-sm">
+                Baixo Estoque
+              </div>
+            )}
             {/* Wishlist Heart Button */}
             <button
               type="button"
@@ -119,7 +126,10 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
                 <p className="text-[#0ea5c9] font-bold">{price}</p>
                 {originalPrice && <p className="text-xs text-muted-foreground line-through">{originalPrice}</p>}
               </div>
-              {inStock && variant?.inventory_quantity <= 5 && (
+              {inStock && isLowStock && (
+                <span className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Baixo Estoque · {qty} un.</span>
+              )}
+              {inStock && !isLowStock && variant?.inventory_quantity <= 5 && (
                 <span className="text-[10px] text-orange-600 font-medium">Últimas {variant.inventory_quantity}</span>
               )}
             </div>

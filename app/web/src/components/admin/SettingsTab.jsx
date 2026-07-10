@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store } from 'lucide-react';
+import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell } from 'lucide-react';
 import pb from '@/lib/pocketbaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -63,6 +63,18 @@ const empty = {
   shop_bg_video_url: '',
   shop_bg_overlay: 0.55,
   google_maps_embed_key: '',
+  order_email_enabled: false,
+  email_provider: 'pocketbase',
+  sendgrid_api_key: '',
+  smtp_from_email: '',
+  smtp_from_name: '',
+  smtp_host: '',
+  smtp_port: 587,
+  smtp_user: '',
+  smtp_password: '',
+  push_enabled: false,
+  vapid_public_key: '',
+  vapid_private_key: '',
 };
 
 export default function SettingsTab() {
@@ -141,6 +153,18 @@ export default function SettingsTab() {
           shop_bg_video_url: r.shop_bg_video_url || '',
           shop_bg_overlay: r.shop_bg_overlay ?? empty.shop_bg_overlay,
           google_maps_embed_key: r.google_maps_embed_key || '',
+          order_email_enabled: !!r.order_email_enabled,
+          email_provider: r.email_provider || 'pocketbase',
+          sendgrid_api_key: r.sendgrid_api_key || '',
+          smtp_from_email: r.smtp_from_email || '',
+          smtp_from_name: r.smtp_from_name || '',
+          smtp_host: r.smtp_host || '',
+          smtp_port: r.smtp_port ?? 587,
+          smtp_user: r.smtp_user || '',
+          smtp_password: r.smtp_password || '',
+          push_enabled: !!r.push_enabled,
+          vapid_public_key: r.vapid_public_key || '',
+          vapid_private_key: r.vapid_private_key || '',
         });
       }
     } catch {
@@ -171,6 +195,7 @@ export default function SettingsTab() {
         shop_grid_columns: Number(form.shop_grid_columns) || 4,
         ui_glass_opacity: Number(form.ui_glass_opacity) || 0.72,
         shop_bg_overlay: Number(form.shop_bg_overlay) || 0.55,
+        smtp_port: Number(form.smtp_port) || 587,
         shop_bg_mode: form.shop_bg_mode || 'gradient',
         primary_color: form.primary_color || '#0ea5c9',
         pwa_theme_color: form.pwa_theme_color || '#0c4a6e',
@@ -238,6 +263,7 @@ export default function SettingsTab() {
           <TabsTrigger value="images">Imagens</TabsTrigger>
           <TabsTrigger value="contact">Contacto</TabsTrigger>
           <TabsTrigger value="pwa"><Smartphone className="h-4 w-4 mr-1.5" />PWA / Mobile</TabsTrigger>
+          <TabsTrigger value="messaging"><Mail className="h-4 w-4 mr-1.5" />Email & Push</TabsTrigger>
           <TabsTrigger value="shipping"><Truck className="h-4 w-4 mr-1.5" />Envio</TabsTrigger>
           <TabsTrigger value="shop"><Store className="h-4 w-4 mr-1.5" />Loja / Shop</TabsTrigger>
           <TabsTrigger value="theme"><Palette className="h-4 w-4 mr-1.5" />Tema UI</TabsTrigger>
@@ -332,6 +358,86 @@ export default function SettingsTab() {
               <Input type="color" value={form.pwa_theme_color} onChange={(e) => set('pwa_theme_color', e.target.value)} className="w-14 h-10 p-1" />
               <Input value={form.pwa_theme_color} onChange={(e) => set('pwa_theme_color', e.target.value)} className="font-mono" />
             </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="messaging" className="space-y-6 max-w-xl">
+          <div>
+            <h3 className="font-semibold flex items-center gap-2"><Mail className="h-4 w-4 text-[#0ea5c9]" /> Email de confirmação de encomenda</h3>
+            <p className="text-xs text-muted-foreground mt-1">Enviado automaticamente após checkout (SendGrid ou SMTP do PocketBase).</p>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Switch checked={form.order_email_enabled} onCheckedChange={(v) => set('order_email_enabled', v)} />
+            <Label>Activar email automático de confirmação</Label>
+          </div>
+          <div className="space-y-2">
+            <Label>Provedor de email</Label>
+            <Select value={form.email_provider || 'pocketbase'} onValueChange={(v) => set('email_provider', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pocketbase">SMTP do PocketBase (Admin)</SelectItem>
+                <SelectItem value="sendgrid">SendGrid API</SelectItem>
+                <SelectItem value="smtp">SMTP personalizado (Hostinger, Brevo, etc.)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {form.email_provider === 'smtp' && (
+            <div className="space-y-3 p-3 rounded-lg border bg-muted/20">
+              <p className="text-xs text-muted-foreground">Credenciais SMTP do seu provedor (ex.: smtp.hostinger.com, smtp-relay.brevo.com). Também configure em PocketBase Admin → Settings → Mailer com os mesmos dados.</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Servidor SMTP</Label>
+                  <Input value={form.smtp_host} onChange={(e) => set('smtp_host', e.target.value)} placeholder="smtp.hostinger.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Porta</Label>
+                  <Input type="number" value={form.smtp_port} onChange={(e) => set('smtp_port', e.target.value)} placeholder="587" />
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Utilizador SMTP</Label>
+                  <Input value={form.smtp_user} onChange={(e) => set('smtp_user', e.target.value)} placeholder="noreply@dominio.ao" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password SMTP</Label>
+                  <Input type="password" value={form.smtp_password} onChange={(e) => set('smtp_password', e.target.value)} />
+                </div>
+              </div>
+            </div>
+          )}
+          {form.email_provider === 'sendgrid' && (
+            <div className="space-y-2">
+              <Label>SendGrid API Key</Label>
+              <Input type="password" value={form.sendgrid_api_key} onChange={(e) => set('sendgrid_api_key', e.target.value)} placeholder="SG...." className="font-mono text-sm" />
+            </div>
+          )}
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>Email remetente</Label>
+              <Input type="email" value={form.smtp_from_email} onChange={(e) => set('smtp_from_email', e.target.value)} placeholder="noreply@livraria.ao" />
+            </div>
+            <div className="space-y-2">
+              <Label>Nome remetente</Label>
+              <Input value={form.smtp_from_name} onChange={(e) => set('smtp_from_name', e.target.value)} placeholder="Livraria Adventista" />
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="font-semibold flex items-center gap-2"><Bell className="h-4 w-4 text-[#0ea5c9]" /> Notificações Push (PWA)</h3>
+            <p className="text-xs text-muted-foreground mt-1">Gere chaves VAPID em <a href="https://vapidkeys.com" target="_blank" rel="noreferrer" className="text-[#0ea5c9] underline">vapidkeys.com</a></p>
+          </div>
+          <div className="flex items-center gap-3 p-3 rounded-lg border">
+            <Switch checked={form.push_enabled} onCheckedChange={(v) => set('push_enabled', v)} />
+            <Label>Activar notificações push na PWA</Label>
+          </div>
+          <div className="space-y-2">
+            <Label>Chave pública VAPID</Label>
+            <Input value={form.vapid_public_key} onChange={(e) => set('vapid_public_key', e.target.value)} className="font-mono text-xs" />
+          </div>
+          <div className="space-y-2">
+            <Label>Chave privada VAPID (servidor)</Label>
+            <Input type="password" value={form.vapid_private_key} onChange={(e) => set('vapid_private_key', e.target.value)} className="font-mono text-xs" />
           </div>
         </TabsContent>
 

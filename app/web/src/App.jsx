@@ -24,6 +24,7 @@ import AdminPage from '@/pages/AdminPage.jsx';
 import ProfilePage from '@/pages/ProfilePage.jsx';
 import CollectionsPage from '@/pages/CollectionsPage.jsx';
 import PwaInstallBanner from '@/components/PwaInstallBanner.jsx';
+import LivrariaAssistant from '@/components/LivrariaAssistant.jsx';
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
         </Routes>
         <Toaster />
         <PwaInstallBanner />
+        <LivrariaAssistant />
       </Router>
     </CartProvider>
     </AuthProvider>

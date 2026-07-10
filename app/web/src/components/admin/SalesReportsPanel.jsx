@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Download, FileSpreadsheet, BarChart3, ShoppingBag, MessageCircle, TrendingUp, Search, Calendar } from 'lucide-react';
+import { Download, FileSpreadsheet, BarChart3, ShoppingBag, MessageCircle, TrendingUp, Search, Calendar, BookOpen } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -152,6 +153,48 @@ export default function SalesReportsPanel({ orders }) {
           <p className="text-xs text-muted-foreground">{report.cancelledOrders} cancelados</p>
         </div>
       </div>
+
+      {report.byDay?.length > 0 && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-card border rounded-xl p-4">
+            <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-[#0ea5c9]" /> Vendas diárias (14 dias)
+            </h4>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={report.byDay} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v) => [`Kz ${Number(v).toLocaleString('pt-AO')}`, 'Receita']} labelFormatter={(l) => l} />
+                  <Bar dataKey="revenue" fill="#0ea5c9" radius={[4, 4, 0, 0]} name="Receita" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-card border rounded-xl p-4">
+            <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-[#0ea5c9]" /> Livros mais vendidos
+            </h4>
+            {report.topBooks?.length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={report.topBooks} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <YAxis type="category" dataKey="title" width={100} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(v) => [v, 'Unidades']} />
+                    <Bar dataKey="quantity" fill="#f59e0b" radius={[0, 4, 4, 0]} name="Unidades" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-16">Sem dados de livros no período filtrado.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {Object.keys(report.byMonth).length > 0 && (
         <div className="bg-card border rounded-xl overflow-hidden">

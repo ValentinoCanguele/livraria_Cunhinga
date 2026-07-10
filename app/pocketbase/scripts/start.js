@@ -55,7 +55,16 @@ async function main() {
   console.log('Starting PocketBase at http://127.0.0.1:8090');
   console.log('Admin UI: http://127.0.0.1:8090/_/');
 
-  const child = spawn(binary, ['serve', '--dir', pbDataDir, '--http=127.0.0.1:8090'], {
+  const onExternalVolume = rootDir.startsWith('/Volumes/');
+  const hooksWatch = process.env.POCKETBASE_HOOKS_WATCH !== 'false' && !onExternalVolume;
+  if (onExternalVolume) {
+    console.log('Volume externo detectado — hooksWatch desactivado para evitar restarts em loop.');
+  }
+
+  const args = ['serve', '--dir', pbDataDir, '--http=127.0.0.1:8090'];
+  if (!hooksWatch) args.push('--hooksWatch=false');
+
+  const child = spawn(binary, args, {
     cwd: rootDir,
     stdio: 'inherit',
   });

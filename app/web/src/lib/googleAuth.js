@@ -243,25 +243,52 @@ export const sendGmailMessage = async (token, { to, subject, body }) => {
 // ==========================================
 // GOOGLE CONTACTS (PEOPLE API) FUNCTIONS
 // ==========================================
+function mapGoogleConnection(c) {
+  const name = c.names?.[0]?.displayName || 'Sem Nome';
+  const email = c.emailAddresses?.[0]?.value || '';
+  const phone = c.phoneNumbers?.[0]?.value || '';
+  const photo = c.photos?.[0]?.url || null;
+  return {
+    resourceName: c.resourceName,
+    name,
+    email,
+    phone,
+    photo
+  };
+}
+
 export const listGoogleContacts = async (token) => {
   const response = await fetch('https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses,phoneNumbers,photos&pageSize=30', {
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!response.ok) throw new Error('Failed to list Google Contacts');
   const data = await response.json();
-  const connections = data.connections || [];
+  return (data.connections || []).map(mapGoogleConnection);
+};
 
-  return connections.map((c) => {
-    const name = c.names?.[0]?.displayName || 'Sem Nome';
-    const email = c.emailAddresses?.[0]?.value || 'Sem Email';
-    const phone = c.phoneNumbers?.[0]?.value || 'Sem Telefone';
-    const photo = c.photos?.[0]?.url || null;
-    return {
-      resourceName: c.resourceName,
-      name,
-      email,
-      phone,
-      photo
-    };
-  });
+export const listAllGoogleContacts = async (token, onProgress) => {
+  const all = [];
+  let pageToken = '';
+  let page = 0;
+
+  do {
+    const url = new URL('https://people.googleapis.com/v1/people/me/connections');
+    url.searchParams.set('personFields', 'names,emailAddresses,phoneNumbers,photos');
+    url.searchParams.set('pageSize', '100');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to list Google Contacts');
+    const data = await response.json();
+    const batch = (data.connections || []).map(mapGoogleConnection);
+    const valid = batch.filter((c) => c.name && (c.email || c.phone));
+    all.push(...valid);
+    pageToken = data.nextPageToken || '';
+    page += 1;
+    if (onProgress) onProgress({ loaded: all.length, page });
+  } while (pageToken);
+
+  return all;
 };

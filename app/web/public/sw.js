@@ -1,4 +1,4 @@
-const CACHE_NAME = 'livraria-v1';
+const CACHE_NAME = 'livraria-v2';
 const PRECACHE = ['/', '/shop', '/manifest.webmanifest', '/icons/icon-192.svg'];
 
 self.addEventListener('install', (event) => {
@@ -19,6 +19,8 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api')) return;
+  // Nunca cachear assets de desenvolvimento Vite
+  if (url.pathname.startsWith('/src/') || url.pathname.startsWith('/@') || url.pathname.includes('/node_modules/')) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

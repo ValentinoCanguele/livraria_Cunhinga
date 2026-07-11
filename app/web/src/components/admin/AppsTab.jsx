@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { 
+  Loader2, Mail, MessageSquare, Terminal, CheckCircle2, 
+  Trash2, RefreshCw, Search, Play, Check, Shield, Activity, Save, Key, Smartphone, BookOpen, ExternalLink
+} from 'lucide-react';
 import pb from '@/lib/pocketbaseClient';
+import { db } from '@/lib/firebaseClient';
+import { collection, getDocs, query, orderBy, limit, deleteDoc, doc, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { Button } from '@/components/ui/button';
@@ -8,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { triggerOrderNotifications } from '@/lib/notifications';
 
 const DEFAULT_APPS = [
   { name: 'Google OAuth', code: 'google_oauth', description: 'Login com conta Google — configurar em PocketBase Auth providers', icon: '🔐' },
@@ -23,6 +29,20 @@ const DEFAULT_APPS = [
   { name: 'Newsletter', code: 'newsletter', description: 'Subscrições de email no rodapé', icon: '📧' },
   { name: 'PWA', code: 'pwa', description: 'App instalável no telemóvel', icon: '📱' },
   { name: 'Rastreio de Entregas', code: 'delivery_tracking', description: 'Página pública de rastreio de encomendas', icon: '📦' },
+  {
+    name: 'Envio de E-mail SMTP (Sem Gmail)',
+    code: 'smtp_email',
+    description: 'Notificações de confirmação de pedido via SMTP direto do servidor (sem depender das limitações do Gmail)',
+    icon: '📧',
+    config: { host: 'smtp.livrariaadventista.ao', port: 587, user: 'no-reply@livrariaadventista.ao', secure: false, fromName: 'Livraria Adventista Aurora' }
+  },
+  {
+    name: 'WhatsApp Business API',
+    code: 'whatsapp_business',
+    description: 'Envio automático de alertas e atualizações de entregas usando a API de Cloud Oficial da Meta',
+    icon: '💬',
+    config: { phoneId: '108264935391054', templateNamespace: 'livraria_aurora_templates', templateName: 'confirmacao_pedido_ao' }
+  }
 ];
 
 function DriveConfigForm({ app, onSave }) {
@@ -67,31 +87,148 @@ function DriveConfigForm({ app, onSave }) {
   );
 }
 
+function SmtpConfigForm({ app, onSave }) {
+  const cfg = app.config || {};
+  const [host, setHost] = useState(cfg.host || 'smtp.livrariaadventista.ao');
+  const [port, setPort] = useState(cfg.port || 587);
+  const [user, setUser] = useState(cfg.user || 'no-reply@livrariaadventista.ao');
+  const [fromName, setFromName] = useState(cfg.fromName || 'Livraria Adventista Aurora');
+  const [secure, setSecure] = useState(!!cfg.secure);
+
+  useEffect(() => {
+    setHost(cfg.host || 'smtp.livrariaadventista.ao');
+    setPort(cfg.port || 587);
+    setUser(cfg.user || 'no-reply@livrariaadventista.ao');
+    setFromName(cfg.fromName || 'Livraria Adventista Aurora');
+    setSecure(!!cfg.secure);
+  }, [app.id, cfg.host, cfg.port, cfg.user, cfg.fromName, cfg.secure]);
+
+  return (
+    <div className="space-y-3 p-4 rounded-lg bg-muted/30 border text-sm grid md:grid-cols-2 gap-3">
+      <div className="space-y-1.5 col-span-2">
+        <p className="text-xs text-muted-foreground">
+          Configure um servidor SMTP seguro para enviar e-mails transacionais aos clientes de forma autónoma e profissional.
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Host SMTP</Label>
+        <Input value={host} onChange={(e) => setHost(e.target.value)} placeholder="smtp.exemplo.com" className="text-xs font-mono" />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Porta SMTP</Label>
+        <Input type="number" value={port} onChange={(e) => setPort(Number(e.target.value))} placeholder="587" className="text-xs font-mono" />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Utilizador / E-mail de Envio</Label>
+        <Input value={user} onChange={(e) => setUser(e.target.value)} placeholder="encomendas@livraria.ao" className="text-xs font-mono" />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Nome do Remetente</Label>
+        <Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Livraria Aurora" className="text-xs" />
+      </div>
+      <div className="flex items-center gap-2 pt-2 col-span-2">
+        <Switch id="smtp-ssl" checked={secure} onCheckedChange={setSecure} />
+        <Label htmlFor="smtp-ssl" className="text-xs cursor-pointer">Usar conexão SSL/TLS protegida (Porta 465)</Label>
+      </div>
+      <div className="col-span-2 pt-1">
+        <Button
+          type="button"
+          size="sm"
+          className="bg-sky-600 hover:bg-sky-700 text-white"
+          onClick={() => onSave(app, { host: host.trim(), port, user: user.trim(), fromName: fromName.trim(), secure })}
+        >
+          Guardar Configuração SMTP
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function WhatsAppConfigForm({ app, onSave }) {
+  const cfg = app.config || {};
+  const [phoneId, setPhoneId] = useState(cfg.phoneId || '108264935391054');
+  const [templateNamespace, setTemplateNamespace] = useState(cfg.templateNamespace || 'livraria_aurora_templates');
+  const [templateName, setTemplateName] = useState(cfg.templateName || 'confirmacao_pedido_ao');
+
+  useEffect(() => {
+    setPhoneId(cfg.phoneId || '108264935391054');
+    setTemplateNamespace(cfg.templateNamespace || 'livraria_aurora_templates');
+    setTemplateName(cfg.templateName || 'confirmacao_pedido_ao');
+  }, [app.id, cfg.phoneId, cfg.templateNamespace, cfg.templateName]);
+
+  return (
+    <div className="space-y-3 p-4 rounded-lg bg-muted/30 border text-sm grid md:grid-cols-2 gap-3">
+      <div className="space-y-1.5 col-span-2">
+        <p className="text-xs text-muted-foreground">
+          Integração com o WhatsApp Business Cloud API Oficial da Meta para envio de alertas por templates autenticados.
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Phone Number ID (Meta Developer)</Label>
+        <Input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="10826..." className="text-xs font-mono" />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold">Namespace dos Modelos (Templates)</Label>
+        <Input value={templateNamespace} onChange={(e) => setTemplateNamespace(e.target.value)} placeholder="livraria_aurora_templates" className="text-xs font-mono" />
+      </div>
+      <div className="space-y-1.5 col-span-2">
+        <Label className="text-xs font-semibold">Nome do Modelo Oficial (Template Name)</Label>
+        <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="confirmacao_pedido_ao" className="text-xs font-mono" />
+      </div>
+      <div className="col-span-2 pt-1">
+        <Button
+          type="button"
+          size="sm"
+          className="bg-teal-600 hover:bg-teal-700 text-white"
+          onClick={() => onSave(app, { phoneId: phoneId.trim(), templateNamespace: templateNamespace.trim(), templateName: templateName.trim() })}
+        >
+          Guardar Configuração WhatsApp
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function AppsTab() {
   const { toast } = useToast();
   const { refresh: refreshIntegrations } = useIntegrations();
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeSubTab, setActiveSubTab] = useState('apps'); // 'apps', 'logs'
+  
+  // Notification logs state
+  const [logs, setLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logSearch, setLogSearch] = useState('');
+  const [expandedLogId, setExpandedLogId] = useState(null);
+  const [testingType, setTestingType] = useState(null); // 'email', 'whatsapp'
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       let list = await pb.collection('app_integrations').getFullList();
-      if (list.length === 0) {
-        for (const app of DEFAULT_APPS) {
-          await pb.collection('app_integrations').create({ ...app, enabled: app.code === 'google_drive' ? false : true, config: app.config || {} });
-        }
-        list = await pb.collection('app_integrations').getFullList();
-      } else {
-        const hasDrive = list.some((a) => a.code === 'google_drive');
-        if (!hasDrive) {
-          const driveDef = DEFAULT_APPS.find((a) => a.code === 'google_drive');
-          await pb.collection('app_integrations').create({ ...driveDef, enabled: false, config: driveDef.config || {} });
-          list = await pb.collection('app_integrations').getFullList();
+      
+      // Auto provision any missing DEFAULT_APPS to support retrofitting
+      let hasModified = false;
+      for (const appDef of DEFAULT_APPS) {
+        const found = list.some(a => a.code === appDef.code);
+        if (!found) {
+          await pb.collection('app_integrations').create({
+            ...appDef,
+            enabled: ['google_drive', 'whatsapp_business', 'smtp_email'].includes(appDef.code) ? false : true,
+            config: appDef.config || {}
+          });
+          hasModified = true;
         }
       }
+
+      if (hasModified) {
+        list = await pb.collection('app_integrations').getFullList();
+      }
+
       setApps(list);
-    } catch {
+    } catch (err) {
+      console.warn('Failing to load from PocketBase, fallback to static defaults:', err);
       setApps(DEFAULT_APPS.map((a) => ({ ...a, enabled: true, id: a.code })));
     } finally {
       setLoading(false);
@@ -100,6 +237,31 @@ export default function AppsTab() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Load Firestore Logs
+  const loadLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const q = query(collection(db, 'notification_logs'), orderBy('created', 'desc'), limit(50));
+      const querySnapshot = await getDocs(q);
+      const fetched = [];
+      querySnapshot.forEach((docSnap) => {
+        fetched.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setLogs(fetched);
+    } catch (e) {
+      console.error('Error loading notification logs:', e);
+      toast({ variant: 'destructive', title: 'Erro de Leitura', description: 'Não foi possível carregar os logs do Firestore.' });
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'logs') {
+      loadLogs();
+    }
+  }, [activeSubTab]);
+
   const toggle = async (app, enabled) => {
     try {
       if (app.id && app.id.length > 10) {
@@ -107,7 +269,7 @@ export default function AppsTab() {
       }
       setApps((prev) => prev.map((a) => (a.id === app.id ? { ...a, enabled } : a)));
       await refreshIntegrations();
-      toast({ title: enabled ? 'Activado' : 'Desactivado' });
+      toast({ title: enabled ? 'Funcionalidade Activada' : 'Funcionalidade Desactivada' });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
     }
@@ -119,50 +281,321 @@ export default function AppsTab() {
       await pb.collection('app_integrations').update(app.id, { config: payload });
       setApps((prev) => prev.map((a) => (a.id === app.id ? { ...a, config: payload } : a)));
       await refreshIntegrations();
-      toast({ title: 'Configuração guardada' });
+      toast({ title: 'Configuração guardada com sucesso!' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'JSON inválido ou erro', description: err.message });
+      toast({ variant: 'destructive', title: 'Erro de validação', description: err.message });
     }
   };
+
+  const clearAllLogs = async () => {
+    if (!window.confirm('Tem a certeza de que deseja apagar todo o histórico de logs de notificações?')) return;
+    try {
+      const q = query(collection(db, 'notification_logs'), limit(100));
+      const querySnapshot = await getDocs(q);
+      const deletePromises = [];
+      querySnapshot.forEach((docSnap) => {
+        deletePromises.push(deleteDoc(doc(db, 'notification_logs', docSnap.id)));
+      });
+      await Promise.all(deletePromises);
+      setLogs([]);
+      toast({ title: 'Limpeza Concluída', description: 'Todos os logs do Firestore foram apagados.' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao apagar', description: err.message });
+    }
+  };
+
+  // Run a quick simulation of order confirmation notifications
+  const runTestSimulation = async (type) => {
+    setTestingType(type);
+    try {
+      const mockOrder = {
+        order_number: `TST-${Math.floor(100000 + Math.random() * 900000)}`,
+        customer_name: 'Valentino Canguele',
+        customer_email: 'ValentinoCanguele@gmail.com',
+        phone: '+244 923 000 000',
+        shipping_cost: 1500,
+        total: 12500,
+        items: [
+          { title: 'O Grande Conflito', quantity: 1, price: 6000 },
+          { title: 'Caminho Para Cristo', quantity: 1, price: 5000 }
+        ]
+      };
+
+      // Enable the specific integration temporarily in our trigger if needed or run the trigger directly
+      await triggerOrderNotifications(mockOrder);
+      toast({ title: 'Teste Concluído', description: `Notificação de ${type === 'email' ? 'E-mail SMTP' : 'WhatsApp'} simulada com sucesso.` });
+      await loadLogs();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro no Teste', description: err.message });
+    } finally {
+      setTestingType(null);
+    }
+  };
+
+  const filteredLogs = logs.filter(log => {
+    const searchLower = logSearch.toLowerCase();
+    return (
+      (log.customer_name || '').toLowerCase().includes(searchLower) ||
+      (log.recipient || '').toLowerCase().includes(searchLower) ||
+      (log.order_number || '').toLowerCase().includes(searchLower) ||
+      (log.type || '').toLowerCase().includes(searchLower)
+    );
+  });
 
   if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Active ou desactive funcionalidades auxiliares do sistema.</p>
-      {apps.map((app) => (
-        <div key={app.id} className="bg-card border rounded-xl p-5 space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{app.icon || '⚙️'}</span>
-              <div>
-                <p className="font-semibold">{app.name}</p>
-                <p className="text-xs text-muted-foreground">{app.description}</p>
+    <div className="space-y-6">
+      {/* Sub Tabs Toggle */}
+      <div className="flex border-b border-border pb-1 gap-2">
+        <button
+          onClick={() => setActiveSubTab('apps')}
+          className={`px-4 py-2 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            activeSubTab === 'apps' 
+              ? 'border-primary text-primary' 
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Smartphone className="h-4 w-4" />
+          Configurações de APIs
+        </button>
+        <button
+          onClick={() => setActiveSubTab('logs')}
+          className={`px-4 py-2 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 relative ${
+            activeSubTab === 'logs' 
+              ? 'border-primary text-primary' 
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Activity className="h-4 w-4" />
+          Monitor de Envio & Logs
+          <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
+            Novo
+          </span>
+        </button>
+      </div>
+
+      {activeSubTab === 'apps' ? (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">Active, desactive e configure as chaves de integração do sistema.</p>
+          
+          {apps.map((app) => (
+            <div key={app.id} className="bg-card border rounded-xl p-5 space-y-4 shadow-xs hover:shadow-md transition-shadow duration-300">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl p-2 bg-muted rounded-xl">{app.icon || '⚙️'}</span>
+                  <div>
+                    <p className="font-bold text-sm md:text-base text-foreground">{app.name}</p>
+                    <p className="text-xs text-muted-foreground max-w-xl">{app.description}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={!!app.enabled} onCheckedChange={(v) => toggle(app, v)} id={`switch-${app.code}`} />
+                </div>
               </div>
+
+              {app.enabled && (
+                <div className="pt-2 border-t border-border mt-2 animate-fadeIn">
+                  {app.code === 'google_oauth' && (
+                    <p className="text-xs p-3 rounded-lg bg-amber-500/10 text-amber-800 border border-amber-500/20 max-w-2xl leading-relaxed">
+                      Configure no console administrativo do PocketBase → Settings → Auth providers → Google.<br />
+                      Insira o Redirect URL padrão: <code className="font-mono bg-amber-500/10 px-1 py-0.5 rounded">http://127.0.0.1:8090/api/oauth2-redirect</code>
+                    </p>
+                  )}
+
+                  {app.code === 'google_drive' && (
+                    <DriveConfigForm app={app} onSave={saveConfig} />
+                  )}
+
+                  {app.code === 'smtp_email' && (
+                    <SmtpConfigForm app={app} onSave={saveConfig} />
+                  )}
+
+                  {app.code === 'whatsapp_business' && (
+                    <WhatsAppConfigForm app={app} onSave={saveConfig} />
+                  )}
+
+                  {/* Fallback for JSON configs for other modules */}
+                  {!['google_drive', 'smtp_email', 'whatsapp_business', 'google_oauth'].includes(app.code) && (
+                    <div className="space-y-2 max-w-2xl">
+                      <Label className="text-xs font-semibold">Configuração Adicional (JSON)</Label>
+                      <Textarea
+                        rows={2}
+                        defaultValue={JSON.stringify(app.config || {}, null, 2)}
+                        className="font-mono text-xs bg-muted/20"
+                        onBlur={(e) => saveConfig(app, e.target.value)}
+                        placeholder="{}"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <Switch checked={!!app.enabled} onCheckedChange={(v) => toggle(app, v)} />
+          ))}
+        </div>
+      ) : (
+        /* Logs tab */
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/20 p-4 rounded-xl border border-border">
+            <div className="space-y-1">
+              <h3 className="font-bold text-sm md:text-base text-foreground">Relatório de Comunicações em Tempo Real</h3>
+              <p className="text-xs text-muted-foreground">Histórico de e-mails SMTP e mensagens WhatsApp oficiais enviadas via Firestore.</p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runTestSimulation('email')}
+                disabled={!!testingType}
+                className="text-xs font-semibold border-sky-200 text-sky-700 bg-sky-50 hover:bg-sky-100 flex items-center gap-1.5"
+              >
+                {testingType === 'email' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                Testar Envio SMTP
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => runTestSimulation('whatsapp')}
+                disabled={!!testingType}
+                className="text-xs font-semibold border-teal-200 text-teal-700 bg-teal-50 hover:bg-teal-100 flex items-center gap-1.5"
+              >
+                {testingType === 'whatsapp' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                Testar WhatsApp API
+              </Button>
+              <Button variant="outline" size="icon" onClick={loadLogs} className="h-8 w-8" title="Recarregar logs">
+                <RefreshCw className={`h-4 w-4 ${loadingLogs ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button variant="destructive" size="sm" onClick={clearAllLogs} className="text-xs h-8">
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Limpar Logs
+              </Button>
+            </div>
           </div>
-          {app.code === 'google_oauth' && app.enabled && (
-            <p className="text-xs p-2 rounded bg-amber-500/10 text-amber-800">
-              Configure em PocketBase Admin → Settings → Auth providers → Google. Adicione o redirect URL: <code className="font-mono">http://127.0.0.1:8090/api/oauth2-redirect</code>
-            </p>
-          )}
-          {app.code === 'google_drive' && app.enabled && (
-            <DriveConfigForm app={app} onSave={saveConfig} />
-          )}
-          {app.code !== 'google_drive' && (
-            <div className="space-y-2">
-              <Label className="text-xs">Configuração JSON (opcional)</Label>
-              <Textarea
-                rows={2}
-                defaultValue={JSON.stringify(app.config || {}, null, 2)}
-                className="font-mono text-xs"
-                onBlur={(e) => saveConfig(app, e.target.value)}
+
+          <div className="flex items-center gap-2 max-w-md">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Pesquisar por cliente, email ou número de pedido..."
+                value={logSearch}
+                onChange={(e) => setLogSearch(e.target.value)}
+                className="pl-9 h-9 text-xs"
               />
+            </div>
+          </div>
+
+          {loadingLogs ? (
+            <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="text-center py-12 border rounded-xl bg-card">
+              <Mail className="h-8 w-8 mx-auto text-muted-foreground mb-2 stroke-[1.5]" />
+              <p className="font-bold text-sm">Nenhum log encontrado</p>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto mt-1">Realize uma compra de teste ou clique em "Testar Envio SMTP" para disparar comunicações automáticas.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredLogs.map((log) => {
+                const isEmail = log.type === 'email';
+                const isExpanded = expandedLogId === log.id;
+
+                return (
+                  <div key={log.id} className="border rounded-xl bg-card overflow-hidden hover:border-primary/40 transition-colors">
+                    {/* Log Main Bar */}
+                    <div 
+                      onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                      className="p-4 flex flex-wrap items-center justify-between gap-4 cursor-pointer select-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`p-2 rounded-lg text-white ${isEmail ? 'bg-sky-500' : 'bg-teal-500'}`}>
+                          {isEmail ? <Mail className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-xs md:text-sm text-foreground">{log.customer_name || 'Cliente'}</p>
+                            <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full font-semibold text-muted-foreground">
+                              {log.order_number || 'Sem Pedido'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground font-mono">{log.recipient}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-right hidden md:block">
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(log.created).toLocaleDateString('pt-AO')} às {new Date(log.created).toLocaleTimeString('pt-AO')}
+                          </p>
+                          <p className="text-[9px] text-[#0ea5c9] font-mono font-bold uppercase tracking-wider">
+                            {isEmail ? 'ESMTP Relay' : 'Meta API Hub'}
+                          </p>
+                        </div>
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-600 font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Enviado
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Expanded Handshake Logs & Preview */}
+                    {isExpanded && (
+                      <div className="p-4 bg-muted/10 border-t border-border space-y-4 animate-fadeIn">
+                        {/* Header details */}
+                        <div className="grid sm:grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">Assunto / Endpoint</p>
+                            <p className="font-bold text-foreground">{log.subject}</p>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">ID do Registo Firestore</p>
+                            <p className="font-mono text-muted-foreground break-all">{log.id}</p>
+                          </div>
+                        </div>
+
+                        {/* Handshake Technical terminal */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground bg-slate-900 text-slate-200 px-3 py-1.5 rounded-t-lg font-mono">
+                            <span className="flex items-center gap-1.5">
+                              <Terminal className="h-3.5 w-3.5 text-sky-400" />
+                              {isEmail ? 'SMTP PROTOCOL INTERACTION' : 'WHATSAPP CLOUD API LOGS'}
+                            </span>
+                            <span className="text-[10px] text-emerald-400 font-extrabold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                              STATUS: OK (250)
+                            </span>
+                          </div>
+                          <pre className="p-4 bg-slate-950 text-slate-200 rounded-b-lg text-[10.5px] font-mono leading-relaxed overflow-x-auto border border-slate-800 whitespace-pre-wrap max-h-60 shadow-inner">
+                            {log.logs || 'Sem logs adicionais disponíveis.'}
+                          </pre>
+                        </div>
+
+                        {/* Visual Message Body content */}
+                        <div className="space-y-1.5 border rounded-lg p-3.5 bg-background">
+                          <p className="text-xs font-bold text-foreground border-b pb-1.5 mb-2 flex items-center gap-1">
+                            <BookOpen className="h-3.5 w-3.5 text-[#0ea5c9]" />
+                            Visualização do Conteúdo
+                          </p>
+                          {isEmail ? (
+                            <div 
+                              className="border rounded p-3 bg-white text-black text-xs overflow-auto max-h-80 shadow-xs"
+                              dangerouslySetInnerHTML={{ __html: log.content }}
+                            />
+                          ) : (
+                            <div className="p-3 rounded-lg bg-teal-50/50 border border-teal-100 text-xs text-slate-700 leading-relaxed max-w-md font-medium">
+                              💬 <strong className="text-teal-900">WhatsApp Business:</strong> {log.content}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
-      ))}
+      )}
     </div>
   );
 }

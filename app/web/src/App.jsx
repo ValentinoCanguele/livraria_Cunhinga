@@ -1,11 +1,12 @@
 import React from 'react';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider } from '@/hooks/useTheme';
 import { Route, Routes, BrowserRouter as Router } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
 import { AuthProvider } from '@/hooks/useAuth';
 import { SiteSettingsProvider } from '@/hooks/useSiteSettings';
 import { IntegrationsProvider } from '@/hooks/useIntegrations';
 import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import ScrollToTop from '@/components/ScrollToTop.jsx';
 import HomePage from '@/pages/HomePage.jsx';
 import ShopPage from '@/pages/ShopPage.jsx';
@@ -24,10 +25,12 @@ import AdminPage from '@/pages/AdminPage.jsx';
 import ProfilePage from '@/pages/ProfilePage.jsx';
 import CollectionsPage from '@/pages/CollectionsPage.jsx';
 import PwaInstallBanner from '@/components/PwaInstallBanner.jsx';
+import ChatBot from '@/components/ChatBot.jsx';
 
 function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="livraria-theme">
+    <TooltipProvider>
     <SiteSettingsProvider>
     <IntegrationsProvider>
     <AuthProvider>
@@ -63,12 +66,14 @@ function App() {
           } />
         </Routes>
         <Toaster />
+        <ChatBot />
         <PwaInstallBanner />
       </Router>
     </CartProvider>
     </AuthProvider>
     </IntegrationsProvider>
     </SiteSettingsProvider>
+    </TooltipProvider>
     </ThemeProvider>
   );
 }

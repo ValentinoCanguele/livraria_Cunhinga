@@ -1,16 +1,50 @@
 export function hexToRgb(hex) {
-  const h = (hex || '#0ea5c9').replace('#', '');
+  const h = (hex || '#1b365d').replace('#', '');
   const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+export function hexToHsl(hex) {
+  let hStr = (hex || '#1b365d').replace('#', '');
+  if (hStr.length === 3) {
+    hStr = hStr.split('').map((c) => c + c).join('');
+  }
+  let r = parseInt(hStr.substring(0, 2), 16) / 255;
+  let g = parseInt(hStr.substring(2, 4), 16) / 255;
+  let b = parseInt(hStr.substring(4, 6), 16) / 255;
+
+  let max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+
+  if (max === min) {
+    h = s = 0;
+  } else {
+    let d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  h = Math.round(h * 360);
+  s = Math.round(s * 100);
+  l = Math.round(l * 100);
+
+  return `${h} ${s}% ${l}%`;
+}
+
 export function applyShopTheme(settings = {}) {
-  const primary = settings.primary_color || '#0ea5c9';
+  const primary = settings.primary_color || '#1b365d';
   const dark = settings.pwa_theme_color || '#0c4a6e';
   const { r, g, b } = hexToRgb(primary);
   const root = document.documentElement;
   root.style.setProperty('--brand-primary', primary);
   root.style.setProperty('--brand-primary-rgb', `${r}, ${g}, ${b}`);
+  root.style.setProperty('--brand-primary-hsl', hexToHsl(primary));
+  root.style.setProperty('--brand-accent-hsl', hexToHsl(settings.accent_color || primary));
   root.style.setProperty('--brand-dark', dark);
 
   const glassOn = settings.ui_glass_enabled !== false;

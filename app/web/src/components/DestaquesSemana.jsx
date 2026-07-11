@@ -67,7 +67,7 @@ export default function DestaquesSemana({ onCartOpen }) {
     e.preventDefault();
     e.stopPropagation();
     if (currentBook.variants && currentBook.variants[0]) {
-      addToCart(currentBook, currentBook.variants[0], 1);
+      addToCart(currentBook, currentBook.variants[0], 1, { silent: true });
       toast({
         title: 'Adicionado ao carrinho!',
         description: `${currentBook.title} foi adicionado com sucesso.`,

@@ -11,10 +11,20 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
+// Add Workspace scopes for a unified single sign-on experience
+googleProvider.addScope('https://www.googleapis.com/auth/drive');
+googleProvider.addScope('https://www.googleapis.com/auth/calendar');
+googleProvider.addScope('https://mail.google.com/');
+googleProvider.addScope('https://www.googleapis.com/auth/contacts');
+
 // Standard login helpers
 export const loginWithGoogleFirebase = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential && credential.accessToken) {
+      sessionStorage.setItem('google_access_token', credential.accessToken);
+    }
     return result.user;
   } catch (error) {
     if (error && error.code === 'auth/popup-closed-by-user') {

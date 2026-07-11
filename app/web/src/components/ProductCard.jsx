@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Loader2, Eye, MessageCircle, Grid3X3, List, Heart } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
@@ -31,9 +33,13 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
     if (!variant || !inStock) return;
     setAdding(true);
     try {
-      await addToCart(product, variant, 1, variant.inventory_quantity);
-      toast({ title: 'Adicionado ao carrinho', description: product.title });
-      onCartOpen?.();
+      await addToCart(product, variant, 1, variant.inventory_quantity, { silent: true });
+      toast({
+        variant: 'cart-success',
+        product,
+        onCartOpen
+      });
+      if (onCartOpen) onCartOpen();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Stock insuficiente', description: err.message });
     } finally {
@@ -48,16 +54,18 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
   };
 
   const handleQuickView = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onQuickView?.(product);
+    if (onQuickView) {
+      e.preventDefault();
+      e.stopPropagation();
+      onQuickView(product);
+    }
   };
 
   const isList = viewMode === 'list';
 
   return (
     <div className={`group h-full flex ${isList ? 'flex-row gap-4' : 'flex-col'}`}>
-      <Link to={`/product/${product.id}`} className={`block flex-1 ${isList ? 'flex flex-row gap-4' : ''}`}>
+      <Link to={`/product/${product.id}`} onClick={handleQuickView} className={`block flex-1 ${isList ? 'flex flex-row gap-4' : ''}`}>
         <div className={`bg-card rounded-xl overflow-hidden card-hover border border-border h-full flex ${isList ? 'flex-row flex-1' : 'flex-col'}`}>
           <div className={`relative overflow-hidden bg-muted shrink-0 ${isList ? 'w-28 h-36' : 'aspect-[3/4]'}`}>
             <img
@@ -66,46 +74,73 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
             />
-            {product.ribbon_text && inStock && (
-              <div className="absolute top-10 left-2 bg-[#0ea5c9] text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
-                {product.ribbon_text}
-              </div>
-            )}
-            {product.featured && (
-              <div className="absolute top-2 left-2 bg-amber-400 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full z-10">★ Destaque</div>
-            )}
+            <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10 pointer-events-none">
+              {product.featured && (
+                <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
+                  ★ Destaque
+                </span>
+              )}
+              {product.ribbon_text && inStock && (
+                <span className="bg-[#0ea5c9] text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
+                  {product.ribbon_text}
+                </span>
+              )}
+              {inStock && variant?.inventory_quantity > 0 && variant?.inventory_quantity < 5 && (
+                <span className="bg-rose-500 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider animate-pulse">
+                  <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+                  Baixo Estoque ({variant.inventory_quantity})
+                </span>
+              )}
+            </div>
             {/* Wishlist Heart Button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleWishlist(product);
-              }}
-              className="absolute top-2 right-2 p-1.5 rounded-full bg-background/95 shadow-md hover:bg-background z-20 transition-colors cursor-pointer"
-              title={isWish ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
-            >
-              <Heart className={`h-4 w-4 transition-colors ${isWish ? 'text-red-500 fill-red-500' : 'text-muted-foreground hover:text-red-500'}`} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleWishlist(product);
+                  }}
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-background/95 shadow-md hover:bg-background z-20 transition-colors cursor-pointer"
+                  aria-label={isWish ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
+                >
+                  <Heart className={`h-4 w-4 transition-colors ${isWish ? 'text-red-500 fill-red-500' : 'text-muted-foreground hover:text-red-500'}`} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {isWish ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
+              </TooltipContent>
+            </Tooltip>
             {!inStock && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
                 <span className="bg-destructive text-white text-xs font-bold px-3 py-1 rounded-full">Esgotado</span>
               </div>
             )}
             <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button type="button" onClick={handleQuickView} className="p-1.5 rounded-full bg-background/90 shadow hover:bg-background" title="Visualizar">
-                <Eye className="h-3.5 w-3.5" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" onClick={handleQuickView} className="p-1.5 rounded-full bg-background/90 shadow hover:bg-background" aria-label="Visualizar">
+                    <Eye className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Visualização Rápida</TooltipContent>
+              </Tooltip>
               {waPhone && (
-                <button type="button" onClick={handleShare} className="p-1.5 rounded-full bg-green-500 text-white shadow hover:bg-green-600" title="WhatsApp">
-                  <MessageCircle className="h-3.5 w-3.5" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" onClick={handleShare} className="p-1.5 rounded-full bg-green-500 text-white shadow hover:bg-green-600" aria-label="Partilhar no WhatsApp">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Partilhar no WhatsApp</TooltipContent>
+                </Tooltip>
               )}
             </div>
           </div>
           <div className={`p-4 flex flex-col flex-grow ${isList ? 'justify-center' : ''}`}>
-            {product.book_code && <code className="text-[10px] text-[#0ea5c9] font-mono mb-1">{product.book_code}</code>}
-            <h3 className="font-semibold text-foreground mb-0.5 line-clamp-2 group-hover:text-[#0ea5c9] transition-colors">
+            {product.book_code && <code className="text-[10px] text-primary font-mono mb-1">{product.book_code}</code>}
+            <h3 className="font-semibold text-foreground mb-0.5 line-clamp-2 group-hover:text-primary transition-colors">
               {product.title}
             </h3>
             {product.subtitle && (
@@ -116,7 +151,7 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
             )}
             <div className="mt-auto pt-2 flex items-center justify-between gap-2">
               <div>
-                <p className="text-[#0ea5c9] font-bold">{price}</p>
+                <p className="text-primary font-bold">{price}</p>
                 {originalPrice && <p className="text-xs text-muted-foreground line-through">{originalPrice}</p>}
               </div>
               {inStock && variant?.inventory_quantity <= 5 && (
@@ -128,15 +163,52 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
       </Link>
       {inStock && !isList && (
         <div className="flex gap-2 mt-2">
-          <Button size="sm" variant="outline" className="flex-1 rounded-lg border-[#0ea5c9]/30 hover:bg-[#0ea5c9]/10" onClick={handleAddToCart} disabled={adding}>
+          <Button size="sm" variant="outline" className="flex-1 rounded-lg border-primary/30 hover:bg-primary/10 text-xs" onClick={handleAddToCart} disabled={adding}>
             {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-1" />}
             Comprar
           </Button>
+          <Link to={`/product/${product.id}`} className="flex-1">
+            <Button size="sm" variant="secondary" className="w-full rounded-lg text-xs hover:bg-primary/10 hover:text-primary">
+              Ver Detalhes
+            </Button>
+          </Link>
+        </div>
+      )}
+      {!inStock && !isList && (
+        <div className="flex gap-2 mt-2 w-full">
+          <Link to={`/product/${product.id}`} className="w-full">
+            <Button size="sm" variant="outline" className="w-full rounded-lg text-xs border-primary/30 hover:bg-primary/10 hover:text-primary">
+              Ver Detalhes
+            </Button>
+          </Link>
         </div>
       )}
     </div>
   );
 }
+
+const gridContainerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.04,
+    }
+  }
+};
+
+const gridItemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 150,
+      damping: 20
+    }
+  }
+};
 
 export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid' }) {
   const [quickView, setQuickView] = useState(null);
@@ -153,11 +225,18 @@ export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid'
 
   return (
     <>
-      <div className={`product-grid grid gap-6 ${viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
+      <motion.div
+        variants={gridContainerVariants}
+        initial="hidden"
+        animate="show"
+        className={`product-grid grid gap-6 ${viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}
+      >
         {products.map((product, index) => (
-          <ProductCard key={product.id} product={product} onCartOpen={onCartOpen} index={index} viewMode={viewMode} onQuickView={setQuickView} />
+          <motion.div key={product.id} variants={gridItemVariants}>
+            <ProductCard product={product} onCartOpen={onCartOpen} index={index} viewMode={viewMode} onQuickView={setQuickView} />
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
       <QuickViewModal product={quickView} open={!!quickView} onClose={() => setQuickView(null)} onCartOpen={onCartOpen} />
     </>
   );

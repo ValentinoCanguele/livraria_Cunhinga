@@ -99,15 +99,15 @@ const CategoryPage = () => {
               </Button>
 
               <div className="flex items-center gap-4 ml-auto">
-                <span className="text-sm text-muted-foreground hidden sm:inline">Sort by:</span>
+                <span className="text-sm text-muted-foreground hidden sm:inline">Ordenar por:</span>
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-[180px] bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="newest">Newest</SelectItem>
-                    <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    <SelectItem value="newest">Novidades</SelectItem>
+                    <SelectItem value="price-low">Preço: Menor ao Maior</SelectItem>
+                    <SelectItem value="price-high">Preço: Maior ao Menor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

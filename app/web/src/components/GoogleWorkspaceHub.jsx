@@ -22,15 +22,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { db } from '@/lib/firebaseClient';
+import { doc, getDoc } from 'firebase/firestore';
 
 const GoogleWorkspaceHub = () => {
   const { toast } = useToast();
+  const { user: mainUser } = useAuth();
   const [googleUser, setGoogleUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   
   // Tab states: 'drive', 'calendar', 'gmail', 'contacts'
   const [subTab, setSubTab] = useState('drive');
+
+  // Archive & Database copy states
+  const [isArchivedMode, setIsArchivedMode] = useState(false);
+  const [archiveTimestamp, setArchiveTimestamp] = useState(null);
 
   // Loading states
   const [loadingData, setLoadingData] = useState(false);
@@ -60,7 +68,17 @@ const GoogleWorkspaceHub = () => {
         setLoadingAuth(false);
       },
       () => {
-        setGoogleUser(null);
+        // If the workspace token listener says no token, but we have a logged-in main user,
+        // we can still set googleUser as mainUser so we can view archived database copies!
+        if (mainUser?.isFirebase) {
+          setGoogleUser({
+            displayName: mainUser.name,
+            email: mainUser.email,
+            photoURL: mainUser.avatar
+          });
+        } else {
+          setGoogleUser(null);
+        }
         setToken(null);
         setLoadingAuth(false);
       }
@@ -68,43 +86,81 @@ const GoogleWorkspaceHub = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [mainUser]);
 
-  // Fetch data depending on active sub-tab
+  // Fetch data depending on active sub-tab (with local firestore copy fallback)
   const fetchData = async (currentSubTab = subTab) => {
-    if (!token) return;
     setLoadingData(true);
-    try {
-      if (currentSubTab === 'drive') {
-        const files = await listDriveFiles(token);
-        setDriveFiles(files);
-      } else if (currentSubTab === 'calendar') {
-        const events = await listCalendarEvents(token);
-        setCalendarEvents(events);
-      } else if (currentSubTab === 'gmail') {
-        const emails = await listGmailMessages(token);
-        setGmailMessages(emails);
-      } else if (currentSubTab === 'contacts') {
-        const conList = await listGoogleContacts(token);
-        setContacts(conList);
+    let success = false;
+
+    if (token) {
+      try {
+        if (currentSubTab === 'drive') {
+          const files = await listDriveFiles(token);
+          setDriveFiles(files);
+        } else if (currentSubTab === 'calendar') {
+          const events = await listCalendarEvents(token);
+          setCalendarEvents(events);
+        } else if (currentSubTab === 'gmail') {
+          const emails = await listGmailMessages(token);
+          setGmailMessages(emails);
+        } else if (currentSubTab === 'contacts') {
+          const conList = await listGoogleContacts(token);
+          setContacts(conList);
+        }
+        setIsArchivedMode(false);
+        success = true;
+        
+        // Asynchronously update/sync backup copy to Firestore
+        if (mainUser?.uid) {
+          const { syncGoogleWorkspaceToFirestore } = await import('@/lib/googleAuth');
+          syncGoogleWorkspaceToFirestore(mainUser.uid, token).catch(console.error);
+        }
+      } catch (err) {
+        console.warn(`Direct fetch for ${currentSubTab} failed, checking archived backup:`, err);
       }
-    } catch (err) {
-      console.error(err);
-      toast({
-        variant: 'destructive',
-        title: 'Erro de Sincronização',
-        description: `Não foi possível carregar os dados de: ${currentSubTab}. Certifique-se de que deu permissões adequadas.`
-      });
-    } finally {
-      setLoadingData(false);
     }
+
+    // Fallback: Retrieve archived data copy from Firestore if direct fetch failed or token is missing
+    if (!success && mainUser?.uid) {
+      try {
+        const docRef = doc(db, 'users', mainUser.uid, 'googleData', currentSubTab);
+        const snapshot = await getDoc(docRef);
+        if (snapshot.exists()) {
+          const archive = snapshot.data();
+          if (currentSubTab === 'drive') setDriveFiles(archive.data || []);
+          else if (currentSubTab === 'calendar') setCalendarEvents(archive.data || []);
+          else if (currentSubTab === 'gmail') setGmailMessages(archive.data || []);
+          else if (currentSubTab === 'contacts') setContacts(archive.data || []);
+          
+          setIsArchivedMode(true);
+          setArchiveTimestamp(archive.lastSynced || null);
+        } else {
+          // Clear current lists if no token and no database archive copy exists
+          if (currentSubTab === 'drive') setDriveFiles([]);
+          else if (currentSubTab === 'calendar') setCalendarEvents([]);
+          else if (currentSubTab === 'gmail') setGmailMessages([]);
+          else if (currentSubTab === 'contacts') setContacts([]);
+          setIsArchivedMode(false);
+        }
+      } catch (dbErr) {
+        console.error('Failed to load Google Workspace Firestore archive:', dbErr);
+      }
+    } else if (!success) {
+      // Clear all
+      if (currentSubTab === 'drive') setDriveFiles([]);
+      else if (currentSubTab === 'calendar') setCalendarEvents([]);
+      else if (currentSubTab === 'gmail') setGmailMessages([]);
+      else if (currentSubTab === 'contacts') setContacts([]);
+      setIsArchivedMode(false);
+    }
+
+    setLoadingData(false);
   };
 
   useEffect(() => {
-    if (token) {
-      fetchData(subTab);
-    }
-  }, [token, subTab]);
+    fetchData(subTab);
+  }, [token, subTab, mainUser]);
 
   const handleConnect = async () => {
     setActionLoading(true);
@@ -139,10 +195,17 @@ const GoogleWorkspaceHub = () => {
       setCalendarEvents([]);
       setGmailMessages([]);
       setContacts([]);
+      setIsArchivedMode(false);
       toast({ title: 'Desconectado', description: 'A sua sessão Google foi encerrada.' });
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleWhatsAppContact = (phone) => {
+    if (!phone) return;
+    const cleanPhone = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanPhone}`, '_blank');
   };
 
   // Google Drive Handlers
@@ -283,7 +346,7 @@ const GoogleWorkspaceHub = () => {
   }
 
   // Google Connection Prompt
-  if (!token) {
+  if (!googleUser) {
     return (
       <div className="bg-background border border-muted/60 rounded-2xl p-6 md:p-8 shadow-sm">
         <div className="max-w-2xl mx-auto text-center space-y-6 py-4">
@@ -344,10 +407,23 @@ const GoogleWorkspaceHub = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button variant="outline" size="sm" onClick={() => fetchData(subTab)} disabled={loadingData} className="h-9">
-            {loadingData ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-            Sincronizar
-          </Button>
+          {!token && (
+            <Button variant="default" size="sm" onClick={handleConnect} className="bg-[#0ea5c9] hover:bg-[#0ea5c9]/90 text-white h-9">
+              <svg className="h-4 w-4 mr-1.5 fill-current" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+              Sincronizar Google Workspace
+            </Button>
+          )}
+          {token && (
+            <Button variant="outline" size="sm" onClick={() => fetchData(subTab)} disabled={loadingData} className="h-9">
+              {loadingData ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+              Sincronizar
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={handleDisconnect} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9">
             <LogOut className="h-4 w-4 mr-1" /> Terminar
           </Button>
@@ -412,6 +488,20 @@ const GoogleWorkspaceHub = () => {
           </div>
         ) : (
           <>
+            {isArchivedMode && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-amber-600 text-xs font-semibold mb-5 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4.5 w-4.5 shrink-0" />
+                  <span>Modo de Cópia de Segurança (Dados Arquivados no Sistema)</span>
+                </div>
+                {archiveTimestamp && (
+                  <span className="text-[10px] text-amber-600/80 font-normal">
+                    Último Backup: {new Date(archiveTimestamp).toLocaleString('pt-AO')}
+                  </span>
+                )}
+              </div>
+            )}
+
             {/* Google Drive Sub-tab */}
             {subTab === 'drive' && (
               <div className="space-y-6">
@@ -700,17 +790,32 @@ const GoogleWorkspaceHub = () => {
                           <p className="text-[11px] text-muted-foreground truncate">{c.email}</p>
                           {c.phone && <p className="text-[10px] text-muted-foreground mt-0.5">{c.phone}</p>}
                         </div>
-                        {c.email && c.email !== 'Sem Email' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => startEmailToContact(c.email)}
-                            title="Enviar Email via Gmail"
-                            className="text-[#0ea5c9] hover:bg-[#0ea5c9]/10 h-8 w-8 shrink-0 rounded-full"
-                          >
-                            <Mail className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {c.phone && c.phone !== 'Sem Telefone' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleWhatsAppContact(c.phone)}
+                              title="Conversar no WhatsApp"
+                              className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 h-8 w-8 rounded-full"
+                            >
+                              <svg className="h-4 w-4 fill-current text-emerald-600" viewBox="0 0 24 24">
+                                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.859-4.42 9.863-9.864.002-2.634-1.02-5.11-2.881-6.973C16.69 1.904 14.212.861 11.58.861 6.143.861 1.72 5.281 1.716 10.72c-.001 1.67.438 3.3 1.27 4.733l-.988 3.61 3.702-.97.647.386zM17.16 14.93c-.29-.145-1.716-.847-1.982-.944-.265-.097-.459-.145-.652.145-.193.29-.747.944-.915 1.137-.168.193-.336.218-.626.073-1.638-.818-2.735-1.424-3.82-3.284-.287-.492.287-.457.822-1.52.09-.18.045-.337-.023-.482-.068-.145-.652-1.572-.893-2.152-.234-.564-.472-.488-.652-.497-.169-.008-.362-.01-.555-.01s-.506.072-.77.362c-.265.29-1.012.99-1.012 2.415 0 1.424 1.036 2.801 1.18 2.995.145.193 2.038 3.112 4.937 4.364 2.188.944 3.1 1.054 4.225.888.755-.112 2.327-.95 2.658-1.87.33-.92.33-1.71.233-1.87-.097-.16-.36-.255-.65-.4z" />
+                              </svg>
+                            </Button>
+                          )}
+                          {c.email && c.email !== 'Sem Email' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => startEmailToContact(c.email)}
+                              title="Enviar Email via Gmail"
+                              className="text-[#0ea5c9] hover:bg-[#0ea5c9]/10 h-8 w-8 shrink-0 rounded-full"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

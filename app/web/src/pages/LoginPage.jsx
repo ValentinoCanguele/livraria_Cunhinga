@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import BrandLogo from '@/components/BrandLogo';
 import { pageTitle } from '@/lib/brand';
@@ -22,7 +22,6 @@ const LoginPage = () => {
   const { login, signup, loginWithGoogle } = useAuth();
   const { settings } = useSiteSettings();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const bgImage = withCacheBust(
     settings.login_bg_url || 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1200&q=80',
@@ -33,12 +32,22 @@ const LoginPage = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === 'login') await login(email, password);
-      else await signup(email, password, name);
-      toast({ title: 'Bem-vindo!' });
+      if (mode === 'login') {
+        await login(email, password);
+        toast.success('Sessão iniciada com sucesso!', {
+          description: 'Bem-vindo de volta à Livraria Adventista Aurora!',
+        });
+      } else {
+        await signup(email, password, name);
+        toast.success('Conta criada com sucesso!', {
+          description: `Seja muito bem-vindo, ${name}!`,
+        });
+      }
       navigate('/profile');
     } catch {
-      toast({ variant: 'destructive', title: 'Erro de autenticação', description: 'Verifique as suas credenciais.' });
+      toast.error('Erro de autenticação', {
+        description: 'Verifique se as suas credenciais de e-mail e palavra-passe estão corretas.',
+      });
     } finally {
       setLoading(false);
     }
@@ -48,13 +57,13 @@ const LoginPage = () => {
     setLoading(true);
     try {
       await loginWithGoogle();
-      toast({ title: 'Bem-vindo!' });
+      toast.success('Autenticado via Google!', {
+        description: 'Sessão iniciada de forma rápida e segura.',
+      });
       navigate('/profile');
     } catch {
-      toast({
-        variant: 'destructive',
-        title: 'Google não disponível',
-        description: 'Configure OAuth no PocketBase Admin ou use email/password.',
+      toast.error('Google não disponível', {
+        description: 'Por favor, tente autenticar usando o seu e-mail e palavra-passe.',
       });
     } finally {
       setLoading(false);

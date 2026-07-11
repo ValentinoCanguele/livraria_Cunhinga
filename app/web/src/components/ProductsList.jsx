@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, BookOpen, X, SlidersHorizontal } from 'lucide-react';
@@ -9,7 +9,16 @@ import { Button } from '@/components/ui/button';
 
 const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid' }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  // Debounce the list search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // Dynamically extract unique categories/genres from the products list
   const categories = useMemo(() => {
@@ -38,15 +47,15 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid' 
       const author = p.author?.toLowerCase() || '';
       
       const searchMatch =
-        !searchQuery.trim() ||
-        title.includes(searchQuery.toLowerCase()) ||
-        subtitle.includes(searchQuery.toLowerCase()) ||
-        bookCode.includes(searchQuery.toLowerCase()) ||
-        author.includes(searchQuery.toLowerCase());
+        !debouncedSearchQuery.trim() ||
+        title.includes(debouncedSearchQuery.toLowerCase()) ||
+        subtitle.includes(debouncedSearchQuery.toLowerCase()) ||
+        bookCode.includes(debouncedSearchQuery.toLowerCase()) ||
+        author.includes(debouncedSearchQuery.toLowerCase());
 
       return categoryMatch && searchMatch;
     });
-  }, [products, searchQuery, selectedCategory]);
+  }, [products, debouncedSearchQuery, selectedCategory]);
 
   if (isLoading) {
     return (

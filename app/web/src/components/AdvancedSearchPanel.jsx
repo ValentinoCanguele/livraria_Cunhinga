@@ -47,6 +47,16 @@ export default function AdvancedSearchPanel({
     });
   }, [activeFilters]);
 
+  // Real-time debounce for the search filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (local.search !== activeFilters.search) {
+        updateFilter('search', local.search);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [local.search, updateFilter, activeFilters.search]);
+
   const apply = () => {
     Object.entries(local).forEach(([k, v]) => updateFilter(k, v));
     onSearch?.();

@@ -1,9 +1,72 @@
 /// <reference path="../pb_data/types.d.ts" />
 
+var rateLimitStore = rateLimitStore || {};
+
+function checkRateLimit(bucket, ip, maxPerMinute) {
+  const key = bucket + ":" + (ip || "anon");
+  const now = Date.now();
+  const max = maxPerMinute || 30;
+  if (!rateLimitStore[key]) rateLimitStore[key] = [];
+  rateLimitStore[key] = rateLimitStore[key].filter(function (t) { return now - t < 60000; });
+  if (rateLimitStore[key].length >= max) return false;
+  rateLimitStore[key].push(now);
+  return true;
+}
+
+function requestClientIp(e) {
+  try {
+    const info = e.requestInfo();
+    const headers = info.headers || {};
+    const forwarded = headers["X-Forwarded-For"] || headers["x-forwarded-for"] || "";
+    if (forwarded) return String(forwarded).split(",")[0].trim();
+    return info.clientIP || info.remoteIP || "anon";
+  } catch (err) { return "anon"; }
+}
+
+function pbFileUrl(app, record, field) {
+  const f = record.get(field);
+  if (!f) return "";
+  const name = Array.isArray(f) ? f[0] : f;
+  if (!name) return "";
+  try {
+    let url = app.files().getUrl(record, name);
+    if (!url) return "";
+    if (String(url).indexOf("http") === 0) return String(url);
+    let base = "";
+    try { base = String(app.settings().meta.appURL || "").replace(/\/$/, ""); } catch (err) {}
+    if (!base) base = "http://127.0.0.1:8090";
+    if (String(url).indexOf("/") === 0) return base + url;
+    return base + "/" + url;
+  } catch (err) {
+    try {
+      const col = record.collection();
+      const colId = col ? (col.id || col.name) : "stock_books";
+      let base = "";
+      try { base = String(app.settings().meta.appURL || "").replace(/\/$/, ""); } catch (e2) {}
+      if (!base) base = "http://127.0.0.1:8090";
+      return base + "/api/files/" + colId + "/" + record.id + "/" + name;
+    } catch (e3) { return ""; }
+  }
+}
+
+function stockBookToChatItem(app, book) {
+  const coverFile = pbFileUrl(app, book, "cover_image");
+  return {
+    id: book.id,
+    title: book.get("title") || "",
+    author: book.get("author") || "",
+    book_code: book.get("book_code") || "",
+    price: book.get("price") ? String(Number(book.get("price"))) + " Kz" : "",
+    cover: coverFile || book.get("cover") || "",
+    genre: book.get("genre") || "",
+    stock: Number(book.get("stock")) || 0,
+  };
+}
+
 routerAdd("GET", "/api/app/chat/config", (e) => {
   function loadSettings() {
     try {
-      const list = $app.findRecordsByFilter("site_settings", "id != ''", 1, 0, "-updated");
+      const list = $app.findRecordsByFilter("site_settings", "id != ''", "-updated", 1, 0);
       if (list && list.length) return list[0];
     } catch (err) {}
     return null;
@@ -43,7 +106,7 @@ routerAdd("GET", "/api/app/chat/config", (e) => {
 routerAdd("POST", "/api/app/chat", (e) => {
   function loadSettings() {
     try {
-      const list = $app.findRecordsByFilter("site_settings", "id != ''", 1, 0, "-updated");
+      const list = $app.findRecordsByFilter("site_settings", "id != ''", "-updated", 1, 0);
       if (list && list.length) return list[0];
     } catch (err) {}
     return null;
@@ -60,35 +123,47 @@ routerAdd("POST", "/api/app/chat", (e) => {
     return { gemini: gemini, deepseek: deepseek };
   }
   function searchBooks(query, limit) {
-    const lim = limit || 6;
+    const lim = limit || 8;
     const q = (query || "").trim().toLowerCase();
     let books = [];
+    const seen = {};
+    function addResults(list) {
+      if (!list) return;
+      for (let i = 0; i < list.length; i++) {
+        if (!seen[list[i].id]) {
+          seen[list[i].id] = true;
+          books.push(list[i]);
+        }
+      }
+    }
     try {
       if (q.length >= 2) {
         const safe = q.replace(/"/g, "");
-        books = $app.findRecordsByFilter(
+        addResults($app.findRecordsByFilter(
           "stock_books",
-          "stock > 0 && (title ~ {:q} || author ~ {:q} || genre ~ {:q})",
-          lim, 0, "-featured,-created",
+          "stock > 0 && (title ~ {:q} || author ~ {:q} || genre ~ {:q} || book_code ~ {:q})",
+          "-featured,-created", lim, 0,
           { q: safe }
-        );
+        ));
+        if (books.length < lim) {
+          addResults($app.findRecordsByFilter(
+            "stock_books",
+            "stock > 0 && description ~ {:q}",
+            "-featured,-created", lim - books.length, 0,
+            { q: safe }
+          ));
+        }
       }
       if (!books.length) {
-        books = $app.findRecordsByFilter("stock_books", "stock > 0 && featured = true", lim, 0, "-created");
+        addResults($app.findRecordsByFilter("stock_books", "stock > 0 && featured = true", "-created", lim, 0));
+      }
+      if (!books.length) {
+        addResults($app.findRecordsByFilter("stock_books", "stock > 0", "-featured,-created", lim, 0));
       }
     } catch (err) {}
     const out = [];
-    for (let i = 0; i < books.length; i++) {
-      const b = books[i];
-      out.push({
-        id: b.id,
-        title: b.get("title") || "",
-        author: b.get("author") || "",
-        price: b.get("price") ? String(Number(b.get("price"))) + " Kz" : "",
-        cover: b.get("cover") || "",
-        genre: b.get("genre") || "",
-        stock: Number(b.get("stock")) || 0,
-      });
+    for (let i = 0; i < books.length && out.length < lim; i++) {
+      out.push(stockBookToChatItem($app, books[i]));
     }
     return out;
   }
@@ -98,13 +173,16 @@ routerAdd("POST", "/api/app/chat", (e) => {
     let catalog = "";
     for (let i = 0; i < books.length; i++) {
       const b = books[i];
-      catalog += "- [" + b.id + "] " + b.title + " | " + b.author + " | " + b.price + "\n";
+      catalog += "- [" + b.id + "] " + b.title;
+      if (b.book_code) catalog += " (" + b.book_code + ")";
+      catalog += " | " + b.author + " | " + b.price + " | stock:" + b.stock + "\n";
     }
     return [
       "Assistente da " + site + ". Responde em português de Portugal.",
+      "Só recomende livros do catálogo listado. Não invente títulos.",
       "Página: " + (page || "/") + ". Serviços: /shop, /track, /contact, /faq.",
       "Envio grátis acima de " + String(Math.round(shipping)) + " Kz.",
-      "Catálogo:\n" + catalog,
+      "Catálogo (IDs reais):\n" + catalog,
       'JSON: {"reply":"","suggestions":[],"links":[{"label":"","path":""}],"product_ids":[]}',
     ].join("\n");
   }
@@ -130,9 +208,9 @@ routerAdd("POST", "/api/app/chat", (e) => {
     for (let i = 0; i < history.length; i++) {
       const h = history[i];
       if (!h.content) continue;
-      contents.push({ role: h.role === "assistant" ? "model" : "user", parts: [{ text: String(h.content).slice(0, 1500) }] });
+      contents.push({ role: h.role === "assistant" ? "model" : "user", parts: [{ text: String(h.content).slice(0, 1200) }] });
     }
-    contents.push({ role: "user", parts: [{ text: String(userMessage).slice(0, 1500) }] });
+    contents.push({ role: "user", parts: [{ text: String(userMessage).slice(0, 1200) }] });
     const mdl = model || "gemini-2.0-flash-lite";
     const res = $http.send({
       url: "https://generativelanguage.googleapis.com/v1beta/models/" + mdl + ":generateContent?key=" + apiKey,
@@ -157,9 +235,9 @@ routerAdd("POST", "/api/app/chat", (e) => {
     for (let i = 0; i < history.length; i++) {
       const h = history[i];
       if (!h.content) continue;
-      messages.push({ role: h.role === "assistant" ? "assistant" : "user", content: String(h.content).slice(0, 1500) });
+      messages.push({ role: h.role === "assistant" ? "assistant" : "user", content: String(h.content).slice(0, 1200) });
     }
-    messages.push({ role: "user", content: String(userMessage).slice(0, 1500) });
+    messages.push({ role: "user", content: String(userMessage).slice(0, 1200) });
     const res = $http.send({
       url: "https://api.deepseek.com/chat/completions",
       method: "POST",
@@ -179,23 +257,30 @@ routerAdd("POST", "/api/app/chat", (e) => {
       return body.choices && body.choices[0] && body.choices[0].message && body.choices[0].message.content;
     } catch (err) { return null; }
   }
-  function faqFallback(message, settingsRec) {
+  function faqFallback(message, settingsRec, books) {
     const q = (message || "").toLowerCase();
     let reply = "";
     if (q.indexOf("envio") >= 0 || q.indexOf("entrega") >= 0) reply = "A entrega padrão demora 5-7 dias úteis em Luanda e 7-14 noutras províncias.";
     else if (q.indexOf("grátis") >= 0 || q.indexOf("gratis") >= 0) reply = "Envio grátis para encomendas acima do limiar configurado na loja.";
     else if (q.indexOf("pagamento") >= 0 || q.indexOf("pagar") >= 0) reply = "Aceitamos transferência, Multicaixa Express e pagamento na entrega.";
     else if (q.indexOf("rastrear") >= 0 || q.indexOf("encomenda") >= 0) reply = "Rastreie em /track com o número e email da compra.";
-    else if (q.indexOf("catálogo") >= 0 || q.indexOf("catalogo") >= 0 || q.indexOf("livro") >= 0) reply = "Explore o catálogo em /shop ou diga-me o tema que procura.";
+    else if (q.indexOf("catálogo") >= 0 || q.indexOf("catalogo") >= 0 || q.indexOf("livro") >= 0) {
+      if (books.length) {
+        reply = "Temos " + books.length + " sugestões no catálogo, por exemplo «" + books[0].title + "». Explore /shop.";
+      } else {
+        reply = "Explore o catálogo em /shop ou diga-me o tema que procura.";
+      }
+    }
     else {
       const wa = settingsRec ? (settingsRec.get("whatsapp") || settingsRec.get("contact_phone") || "") : "";
       reply = "Posso ajudar com envios, pagamentos e catálogo. Visite /contact" + (wa ? " ou WhatsApp " + wa : "") + ".";
     }
+    const productIds = books.slice(0, 2).map(function (b) { return b.id; });
     return {
       reply: reply,
       suggestions: ["Ver catálogo", "Envio grátis?", "Rastrear encomenda", "Falar com a equipa"],
       links: [{ label: "Loja", path: "/shop" }, { label: "FAQ", path: "/faq" }, { label: "Contacto", path: "/contact" }],
-      product_ids: [],
+      product_ids: productIds,
     };
   }
   function enrichProducts(productIds, catalogBooks) {
@@ -208,12 +293,23 @@ routerAdd("POST", "/api/app/chat", (e) => {
     if (!out.length && catalogBooks.length) out.push(catalogBooks[0]);
     return out.slice(0, 4);
   }
+  function trimHistory(history) {
+    if (!Array.isArray(history)) return [];
+    return history.slice(-8).filter(function (h) {
+      return h && (h.role === "user" || h.role === "assistant") && h.content;
+    });
+  }
 
   try {
+    const ip = requestClientIp(e);
+    if (!checkRateLimit("chat", ip, 20)) {
+      throw new BadRequestError("Demasiadas mensagens. Aguarde um minuto.");
+    }
+
     const data = e.requestInfo().body;
     const message = (data.message || "").trim();
     const page = (data.page || "/").slice(0, 120);
-    const history = data.history || [];
+    const history = trimHistory(data.history);
     if (!message) throw new BadRequestError("Mensagem vazia.");
     if (message.length > 800) throw new BadRequestError("Mensagem demasiado longa.");
 
@@ -248,7 +344,7 @@ routerAdd("POST", "/api/app/chat", (e) => {
       }
     }
 
-    if (!parsed) parsed = faqFallback(message, settings);
+    if (!parsed) parsed = faqFallback(message, settings, books);
 
     const products = enrichProducts(parsed.product_ids || [], books);
     const links = parsed.links || [];

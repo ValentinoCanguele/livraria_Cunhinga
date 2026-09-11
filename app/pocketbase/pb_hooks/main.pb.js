@@ -1,5 +1,128 @@
 /// <reference path="../pb_data/types.d.ts" />
 
+var rateLimitStore = rateLimitStore || {};
+
+function checkRateLimit(bucket, ip, maxPerMinute) {
+  const key = bucket + ":" + (ip || "anon");
+  const now = Date.now();
+  const max = maxPerMinute || 30;
+  if (!rateLimitStore[key]) rateLimitStore[key] = [];
+  rateLimitStore[key] = rateLimitStore[key].filter(function (t) { return now - t < 60000; });
+  if (rateLimitStore[key].length >= max) return false;
+  rateLimitStore[key].push(now);
+  return true;
+}
+
+function requestClientIp(e) {
+  try {
+    const info = e.requestInfo();
+    const headers = info.headers || {};
+    const forwarded = headers["X-Forwarded-For"] || headers["x-forwarded-for"] || "";
+    if (forwarded) return String(forwarded).split(",")[0].trim();
+    return info.clientIP || info.remoteIP || "anon";
+  } catch (err) { return "anon"; }
+}
+
+function pbFileUrl(app, record, field) {
+  const f = record.get(field);
+  if (!f) return "";
+  const name = Array.isArray(f) ? f[0] : f;
+  if (!name) return "";
+  try {
+    let url = app.files().getUrl(record, name);
+    if (!url) return "";
+    if (String(url).indexOf("http") === 0) return String(url);
+    let base = "";
+    try { base = String(app.settings().meta.appURL || "").replace(/\/$/, ""); } catch (err) {}
+    if (!base) base = "http://127.0.0.1:8090";
+    if (String(url).indexOf("/") === 0) return base + url;
+    return base + "/" + url;
+  } catch (err) {
+    try {
+      const col = record.collection();
+      const colId = col ? (col.id || col.name) : "stock_books";
+      let base = "";
+      try { base = String(app.settings().meta.appURL || "").replace(/\/$/, ""); } catch (e2) {}
+      if (!base) base = "http://127.0.0.1:8090";
+      return base + "/api/files/" + colId + "/" + record.id + "/" + name;
+    } catch (e3) { return ""; }
+  }
+}
+
+function syncBookCoverFromFile(app, record) {
+  const f = record.get("cover_image");
+  if (!f) return false;
+  const name = Array.isArray(f) ? f[0] : f;
+  if (!name) return false;
+  const current = String(record.get("cover") || "");
+  // Evita regravar se a URL já aponta para este ficheiro (tokens podem variar).
+  if (current && current.indexOf(String(name)) >= 0) return false;
+  const coverFromFile = pbFileUrl(app, record, "cover_image");
+  if (!coverFromFile) return false;
+  record.set("cover", coverFromFile);
+  return true;
+}
+
+function restoreOrderStock(app, order) {
+  if (order.get("stock_restored")) return 0;
+  const items = order.get("items") || [];
+  let restored = 0;
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const bookId = it.book_id || "";
+    const qty = Math.max(0, Number(it.quantity) || 0);
+    if (!bookId || qty <= 0) continue;
+    try {
+      const book = app.findRecordById("stock_books", bookId);
+      const stock = Number(book.get("stock")) || 0;
+      book.set("stock", stock + qty);
+      applyStockFlags(book);
+      app.save(book);
+      restored++;
+    } catch (err) {
+      console.log("restoreOrderStock: " + err);
+    }
+  }
+  try { order.set("stock_restored", true); } catch (err) {}
+  return restored;
+}
+
+function bumpBookSales(app, orderItems) {
+  if (!orderItems || !orderItems.length) return;
+  for (let i = 0; i < orderItems.length; i++) {
+    const it = orderItems[i];
+    const bookId = it.book_id || "";
+    const qty = Math.max(0, Number(it.quantity) || 0);
+    if (!bookId || qty <= 0) continue;
+    try {
+      const book = app.findRecordById("stock_books", bookId);
+      const sales = Number(book.get("sales_count")) || 0;
+      book.set("sales_count", sales + qty);
+      app.save(book);
+    } catch (err) {}
+  }
+}
+
+function applyStockFlags(record) {
+  const stock = Number(record.get("stock")) || 0;
+  try {
+    if (stock <= 0) { record.set("stock_alert", true); record.set("stock_low", false); }
+    else if (stock <= 5) { record.set("stock_low", true); record.set("stock_alert", false); }
+    else { record.set("stock_low", false); record.set("stock_alert", false); }
+  } catch (err) {}
+}
+
+function normalizeDriveCoverUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (trimmed.indexOf("blob:") === 0) return "";
+  let m = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m && m[1]) return "https://drive.google.com/uc?export=view&id=" + m[1];
+  m = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m && m[1]) return "https://drive.google.com/uc?export=view&id=" + m[1];
+  return trimmed;
+}
+
 function nowISO() {
   return new Date().toISOString();
 }
@@ -58,7 +181,7 @@ function mergeContactTags(existing, incoming) {
 function countCollectionRecords(collection, filter) {
   try {
     if (filter) {
-      const recs = $app.findRecordsByFilter(collection, filter, 500, 0, "");
+      const recs = $app.findRecordsByFilter(collection, filter, "", 500, 0);
       return recs ? recs.length : 0;
     }
     return $app.countRecords(collection);
@@ -82,7 +205,7 @@ function findContactByExternalOrEmail(externalId, email, phone) {
   const ph = normalizeContactPhone(phone);
   if (ph && ph.length >= 9) {
     try {
-      const all = $app.findRecordsByFilter("contacts", "phone != ''", 500, 0, "");
+      const all = $app.findRecordsByFilter("contacts", "phone != ''", "", 500, 0);
       for (let i = 0; i < all.length; i++) {
         if (normalizeContactPhone(all[i].get("phone")) === ph) return all[i];
       }
@@ -126,7 +249,7 @@ function buildWhatsAppNotifyUrl(phone, message) {
 function getNewBooksDigest() {
   let books = [];
   try {
-    books = $app.findRecordsByFilter("stock_books", "stock > 0", 5, 0, "-created");
+    books = $app.findRecordsByFilter("stock_books", "stock > 0", "-created", 5, 0);
   } catch (err) {}
   if (!books.length) return "";
   const lines = ["📚 *Novidades na Livraria Adventista*", ""];
@@ -150,7 +273,7 @@ function calcNextSendAt(frequency) {
 
 function getDefaultContactOwnerId() {
   try {
-    const admins = $app.findRecordsByFilter("users", "role = 'admin'", 1, 0, "");
+    const admins = $app.findRecordsByFilter("users", "role = 'admin'", "", 1, 0);
     if (admins && admins.length) return admins[0].id;
   } catch (err) {}
   return "";
@@ -465,7 +588,7 @@ function sanitizeIntegrationConfig(code, config) {
 
 function getDriveIntegration() {
   try {
-    const records = $app.findRecordsByFilter("app_integrations", "code = 'google_drive'", 1, 0, "");
+    const records = $app.findRecordsByFilter("app_integrations", "code = 'google_drive'", "", 1, 0);
     if (!records || !records.length) return null;
     return records[0];
   } catch (err) {
@@ -475,7 +598,7 @@ function getDriveIntegration() {
 
 function getSettingsRecord() {
   try {
-    const list = $app.findRecordsByFilter("site_settings", "id != ''", 1, 0, "-updated");
+    const list = $app.findRecordsByFilter("site_settings", "id != ''", "-updated", 1, 0);
     if (list && list.length) return list[0];
   } catch (err) {}
   return null;
@@ -674,7 +797,8 @@ routerAdd("GET", "/api/app/admin/media-config", (e) => {
     google_drive: {
       enabled: true,
       config: {
-        api_key: config.api_key || "",
+        api_key: config.api_key ? "••••••••" + String(config.api_key).slice(-4) : "",
+        has_api_key: !!config.api_key,
         client_id: config.client_id || "",
         folder_id: config.folder_id || "",
       },
@@ -786,7 +910,7 @@ routerAdd("GET", "/api/app/book-collections", (e) => {
 routerAdd("GET", "/api/app/payment-methods", (e) => {
   let records = [];
   try {
-    const result = $app.findRecordsByFilter("payment_methods", "enabled = true", 50, 0, "sort_order");
+    const result = $app.findRecordsByFilter("payment_methods", "enabled = true", "sort_order", 50, 0);
     records = result || [];
   } catch (err) {
     try {
@@ -860,13 +984,11 @@ routerAdd("POST", "/api/app/track", (e) => {
 // --- Mapa administrativo Angola (Censo 2024) ---
 routerAdd("GET", "/api/app/geo/provinces", (e) => {
   try {
-    let hasData = false;
-    try {
-      const existing = $app.findRecordsByFilter("angola_provinces", "id != ''", 1, 0, "");
-      hasData = existing && existing.length > 0;
-    } catch (err) {}
+    let provinceCount = 0;
+    try { provinceCount = $app.countRecords("angola_provinces"); } catch (err) { provinceCount = 0; }
+    const hasData = provinceCount > 0 && provinceCount <= 30;
 
-    if (!hasData) {
+    if (!hasData && provinceCount === 0) {
       const paths = [
         $filepath.join(__hooks, "data", "angola-geo-2024.json"),
         $filepath.join($filepath.dir(__hooks), "data", "angola-geo-2024.json"),
@@ -928,7 +1050,7 @@ routerAdd("GET", "/api/app/geo/provinces", (e) => {
 
     let records = [];
     try {
-      records = $app.findRecordsByFilter("angola_provinces", "id != ''", 500, 0, "sort_order");
+      records = $app.findRecordsByFilter("angola_provinces", "id != ''", "sort_order", 500, 0);
     } catch (err) {
       return e.json(200, { provinces: [], version: "RGPH-2024" });
     }
@@ -965,7 +1087,7 @@ routerAdd("GET", "/api/app/geo/municipalities", (e) => {
 
   let records = [];
   try {
-    records = $app.findRecordsByFilter("angola_municipalities", filter, 500, 0, "sort_order", params);
+    records = $app.findRecordsByFilter("angola_municipalities", filter, "sort_order", 500, 0, params);
   } catch (err) {
     return e.json(200, { municipalities: [] });
   }
@@ -989,7 +1111,7 @@ routerAdd("GET", "/api/app/geo/localities", (e) => {
 
   let records = [];
   try {
-    records = $app.findRecordsByFilter("angola_localities", "municipality = {:mid}", 500, 0, "sort_order", { mid: municipalityId });
+    records = $app.findRecordsByFilter("angola_localities", "municipality = {:mid}", "sort_order", 500, 0, { mid: municipalityId });
   } catch (err) {
     return e.json(200, { localities: [] });
   }
@@ -1106,9 +1228,13 @@ routerAdd("POST", "/api/app/delivery-event", (e) => {
   return e.json(200, { timeline: timeline });
 });
 
-// --- Checkout melhorado ---
+// --- Checkout melhorado (transaccional) ---
 routerAdd("POST", "/api/app/checkout", (e) => {
   try {
+  const ip = requestClientIp(e);
+  if (!checkRateLimit("checkout", ip, 15)) {
+    throw new BadRequestError("Demasiadas tentativas de checkout. Aguarde um minuto.");
+  }
   const data = e.requestInfo().body;
   const items = data.items || [];
 
@@ -1165,105 +1291,129 @@ routerAdd("POST", "/api/app/checkout", (e) => {
 
   let total = 0;
   const orderItems = [];
-  const stockUpdates = [];
+  let order = null;
+  let orderNum = "";
 
-  for (const item of items) {
-    const bookId = parseBookId(item.variant_id || item.book_id || "");
-    const quantity = Math.min(Math.max(Number(item.quantity) || 1, 1), 99);
-    if (!bookId) throw new BadRequestError("Item inválido no carrinho.");
+  $app.runInTransaction(function (txApp) {
+    const stockUpdates = [];
 
-    let book;
-    try {
-      book = $app.findRecordById("stock_books", bookId);
-    } catch (err) {
-      throw new BadRequestError("Livro não encontrado.");
+    for (const item of items) {
+      const bookId = parseBookId(item.variant_id || item.book_id || "");
+      const quantity = Math.min(Math.max(Number(item.quantity) || 1, 1), 99);
+      if (!bookId) throw new BadRequestError("Item inválido no carrinho.");
+
+      let book;
+      try {
+        book = txApp.findRecordById("stock_books", bookId);
+      } catch (err) {
+        throw new BadRequestError("Livro não encontrado.");
+      }
+
+      const stock = Number(book.get("stock")) || 0;
+      if (stock < quantity) {
+        throw new BadRequestError("Stock insuficiente para: " + book.get("title"));
+      }
+
+      const price = Number(book.get("price")) || 0;
+      if (price <= 0) throw new BadRequestError("Preço inválido para: " + book.get("title"));
+      total += price * quantity;
+      orderItems.push({
+        book_id: bookId,
+        title: book.get("title"),
+        book_code: book.get("book_code") || "",
+        quantity: quantity,
+        price: price,
+      });
+      stockUpdates.push({ book: book, newStock: stock - quantity });
     }
 
-    const stock = Number(book.get("stock")) || 0;
-    if (stock < quantity) {
-      throw new BadRequestError("Stock insuficiente para: " + book.get("title"));
+    const itemsSubtotal = total;
+    const shippingCost = calcShippingServer(shippingMethod, itemsSubtotal, settings || {});
+    total = itemsSubtotal + shippingCost;
+
+    const deliveryAddress = shippingMethod === "pickup"
+      ? ("Levantamento: " + (pickupStore || "Loja física"))
+      : (data.deliveryAddressFull || address);
+
+    const deliveryCity = shippingMethod === "pickup"
+      ? (pickupStore || "Loja física")
+      : (data.deliveryMunicipality || data.city || "Luanda");
+
+    const timelineLocation = shippingMethod === "pickup"
+      ? (pickupStore || "Loja física")
+      : (data.deliveryMunicipality || data.deliveryProvince || "Angola");
+
+    orderNum = "ENC-" + Date.now().toString(36).toUpperCase().slice(-6);
+    const paymentCode = data.paymentMethodCode || data.paymentMethod || "entrega";
+    const isP2P = paymentCode !== "entrega" && paymentCode !== "transferencia";
+    const saleChannel = data.saleChannel || data.orderType || "web_purchase";
+    const isWhatsApp = saleChannel === "whatsapp";
+
+    const timeline = [
+      timelineEvent("received", isWhatsApp ? "Pedido via WhatsApp" : "Compra registada", isWhatsApp ? "Cliente iniciou pedido pelo WhatsApp." : "A sua compra foi registada com sucesso.", timelineLocation),
+    ];
+
+    const orders = txApp.findCollectionByNameOrId("orders");
+    order = new Record(orders);
+    order.set("order_number", orderNum);
+    order.set("customer_email", email);
+    order.set("customer_name", name);
+    order.set("phone", phone);
+    order.set("address", deliveryAddress);
+    order.set("city", deliveryCity);
+    if (shippingMethod !== "pickup") {
+      safeSetOrderField(order, "delivery_province_id", data.deliveryProvinceId || "");
+      safeSetOrderField(order, "delivery_province", data.deliveryProvince || "");
+      safeSetOrderField(order, "delivery_municipality_id", data.deliveryMunicipalityId || "");
+      safeSetOrderField(order, "delivery_municipality", data.deliveryMunicipality || "");
+      safeSetOrderField(order, "delivery_locality_id", data.deliveryLocalityId || "");
+      safeSetOrderField(order, "delivery_locality", data.deliveryLocality || "");
+      safeSetOrderField(order, "delivery_street", (data.deliveryStreet || "").trim());
+      safeSetOrderField(order, "delivery_reference", (data.deliveryReference || "").trim());
+      safeSetOrderField(order, "delivery_address_full", data.deliveryAddressFull || deliveryAddress);
+      safeSetOrderField(order, "delivery_relative_name", (data.deliveryRelativeName || "").trim());
+      safeSetOrderField(order, "delivery_relative_phone", (data.deliveryRelativePhone || "").trim());
     }
+    safeSetOrderField(order, "checkout_signature_data", checkoutSignature);
+    safeSetOrderField(order, "checkout_signature_at", new Date().toISOString());
+    try { order.set("shipping_method", shippingMethod); } catch (err) {}
+    try { order.set("pickup_store", pickupStore); } catch (err) {}
+    order.set("payment_method_code", paymentCode);
+    order.set("payment_reference", data.paymentReference || "");
+    if (paymentCode === "entrega" || paymentCode === "transferencia") {
+      order.set("payment_method", paymentCode);
+    }
+    order.set("payment_status", isP2P ? "awaiting_confirmation" : "pending");
+    order.set("shipping_cost", shippingCost);
+    order.set("delivery_status", "received");
+    order.set("delivery_timeline", timeline);
+    order.set("items", orderItems);
+    order.set("total", total);
+    order.set("status", "pending");
+    if (data.notes) order.set("notes", data.notes);
+    try { order.set("sale_channel", saleChannel); } catch (err) {}
+    try { order.set("order_type", isWhatsApp ? "whatsapp_order" : "online_purchase"); } catch (err) {}
+    txApp.save(order);
 
-    const price = Number(book.get("price")) || 0;
-    total += price * quantity;
-    orderItems.push({
-      book_id: bookId,
-      title: book.get("title"),
-      book_code: book.get("book_code") || "",
-      quantity: quantity,
-      price: price,
-    });
-    stockUpdates.push({ book: book, newStock: stock - quantity });
-  }
+    for (let u = 0; u < stockUpdates.length; u++) {
+      const upd = stockUpdates[u];
+      const fresh = txApp.findRecordById("stock_books", upd.book.id);
+      const currentStock = Number(fresh.get("stock")) || 0;
+      const qtySold = orderItems.find(function (it) { return it.book_id === fresh.id; });
+      const needed = qtySold ? qtySold.quantity : 0;
+      if (currentStock < needed) {
+        throw new BadRequestError("Stock alterado durante o checkout: " + fresh.get("title"));
+      }
+      const newStock = currentStock - needed;
+      fresh.set("stock", newStock);
+      applyStockFlags(fresh);
+      txApp.save(fresh);
+    }
+  });
 
-  const itemsSubtotal = total;
-  const shippingCost = calcShippingServer(shippingMethod, itemsSubtotal, settings || {});
-  total = itemsSubtotal + shippingCost;
-
-  const deliveryAddress = shippingMethod === "pickup"
-    ? ("Levantamento: " + (pickupStore || "Loja física"))
-    : (data.deliveryAddressFull || address);
-
-  const deliveryCity = shippingMethod === "pickup"
-    ? (pickupStore || "Loja física")
-    : (data.deliveryMunicipality || data.city || "Luanda");
-
-  const timelineLocation = shippingMethod === "pickup"
-    ? (pickupStore || "Loja física")
-    : (data.deliveryMunicipality || data.deliveryProvince || "Angola");
-
-  const orderNum = "ENC-" + Date.now().toString(36).toUpperCase().slice(-6);
   const paymentCode = data.paymentMethodCode || data.paymentMethod || "entrega";
-  const isP2P = paymentCode !== "entrega" && paymentCode !== "transferencia";
   const saleChannel = data.saleChannel || data.orderType || "web_purchase";
   const isWhatsApp = saleChannel === "whatsapp";
-
-  const timeline = [
-    timelineEvent("received", isWhatsApp ? "Pedido via WhatsApp" : "Compra registada", isWhatsApp ? "Cliente iniciou pedido pelo WhatsApp." : "A sua compra foi registada com sucesso.", timelineLocation),
-  ];
-
-  const orders = $app.findCollectionByNameOrId("orders");
-  const order = new Record(orders);
-  order.set("order_number", orderNum);
-  order.set("customer_email", email);
-  order.set("customer_name", name);
-  order.set("phone", phone);
-  order.set("address", deliveryAddress);
-  order.set("city", deliveryCity);
-  if (shippingMethod !== "pickup") {
-    safeSetOrderField(order, "delivery_province_id", data.deliveryProvinceId || "");
-    safeSetOrderField(order, "delivery_province", data.deliveryProvince || "");
-    safeSetOrderField(order, "delivery_municipality_id", data.deliveryMunicipalityId || "");
-    safeSetOrderField(order, "delivery_municipality", data.deliveryMunicipality || "");
-    safeSetOrderField(order, "delivery_locality_id", data.deliveryLocalityId || "");
-    safeSetOrderField(order, "delivery_locality", data.deliveryLocality || "");
-    safeSetOrderField(order, "delivery_street", (data.deliveryStreet || "").trim());
-    safeSetOrderField(order, "delivery_reference", (data.deliveryReference || "").trim());
-    safeSetOrderField(order, "delivery_address_full", data.deliveryAddressFull || deliveryAddress);
-    safeSetOrderField(order, "delivery_relative_name", (data.deliveryRelativeName || "").trim());
-    safeSetOrderField(order, "delivery_relative_phone", (data.deliveryRelativePhone || "").trim());
-  }
-  safeSetOrderField(order, "checkout_signature_data", checkoutSignature);
-  safeSetOrderField(order, "checkout_signature_at", new Date().toISOString());
-  try { order.set("shipping_method", shippingMethod); } catch (err) {}
-  try { order.set("pickup_store", pickupStore); } catch (err) {}
-  order.set("payment_method_code", paymentCode);
-  order.set("payment_reference", data.paymentReference || "");
-  // payment_method é select limitado — só definir valores conhecidos
-  if (paymentCode === "entrega" || paymentCode === "transferencia") {
-    order.set("payment_method", paymentCode);
-  }
-  order.set("payment_status", isP2P ? "awaiting_confirmation" : "pending");
-  order.set("shipping_cost", shippingCost);
-  order.set("delivery_status", "received");
-  order.set("delivery_timeline", timeline);
-  order.set("items", orderItems);
-  order.set("total", total);
-  order.set("status", "pending");
-  if (data.notes) order.set("notes", data.notes);
-  try { order.set("sale_channel", saleChannel); } catch (err) {}
-  try { order.set("order_type", isWhatsApp ? "whatsapp_order" : "online_purchase"); } catch (err) {}
-  $app.save(order);
 
   let emailSent = false;
   let whatsappSent = false;
@@ -1274,14 +1424,25 @@ routerAdd("POST", "/api/app/checkout", (e) => {
     console.log("Post-checkout messaging: " + err);
   }
 
-  for (const u of stockUpdates) {
-    const newStock = u.newStock;
-    u.book.set("stock", newStock);
-    try {
-      if (newStock <= 0) u.book.set("stock_alert", true);
-      else if (newStock <= 5) u.book.set("stock_low", true);
-    } catch (err) {}
-    $app.save(u.book);
+  try {
+    bumpBookSales($app, orderItems);
+  } catch (err) {
+    console.log("Post-checkout sales counters: " + err);
+  }
+
+  try {
+    upsertContact({
+      name: name,
+      email: email,
+      phone: phone,
+      source: "checkout",
+      is_buyer: true,
+      tags: ["comprador", saleChannel || "web_purchase"],
+      notes: "Encomenda " + orderNum + " · " + fmtMoneyKz(total),
+      metadata: { last_order_id: order.get("id"), last_order_number: orderNum },
+    }, getDefaultContactOwnerId());
+  } catch (err) {
+    console.log("Post-checkout CRM: " + err);
   }
 
   const successUrl = data.successUrl || "/success";
@@ -1340,12 +1501,32 @@ routerAdd("GET", "/api/app/messaging/status", (e) => {
 
 routerAdd("POST", "/api/app/whatsapp/receipt", (e) => {
   try {
+    const ip = requestClientIp(e);
+    if (!checkRateLimit("whatsapp_receipt", ip, 10)) {
+      throw new BadRequestError("Demasiados pedidos. Aguarde um minuto.");
+    }
     const data = e.requestInfo().body;
     const phone = (data.phone || "").trim();
     const text = (data.text || "").trim();
     const orderNumber = (data.order_number || "").trim();
     const email = (data.email || "").trim();
     if (!phone || !text) throw new BadRequestError("Telefone e texto do recibo são obrigatórios.");
+    if (!orderNumber) throw new BadRequestError("Número de encomenda obrigatório para enviar recibo.");
+    let order = null;
+    try {
+      order = $app.findFirstRecordByFilter("orders", "order_number = {:n}", { n: orderNumber });
+    } catch (err) {}
+    if (!order) throw new BadRequestError("Encomenda não encontrada.");
+    const orderPhone = normalizeContactPhone(order.get("phone") || "");
+    const reqPhone = normalizeContactPhone(phone);
+    const orderEmail = normalizeContactEmail(order.get("customer_email") || "");
+    const reqEmail = normalizeContactEmail(email);
+    if (orderPhone && reqPhone && orderPhone !== reqPhone) {
+      throw new BadRequestError("Telefone não corresponde à encomenda.");
+    }
+    if (orderEmail && reqEmail && orderEmail !== reqEmail) {
+      throw new BadRequestError("Email não corresponde à encomenda.");
+    }
     if (!isWhatsAppBusinessReady()) {
       return e.json(200, { sent: false, fallback: true, message: "API WhatsApp não configurada — use link manual." });
     }
@@ -1425,6 +1606,10 @@ routerAdd("POST", "/api/app/push/subscribe", (e) => {
 
 routerAdd("POST", "/api/app/contact-message", (e) => {
   try {
+    const ip = requestClientIp(e);
+    if (!checkRateLimit("contact", ip, 8)) {
+      throw new BadRequestError("Demasiados pedidos. Aguarde um minuto.");
+    }
     const data = e.requestInfo().body;
     const name = (data.name || "").trim();
     const email = normalizeContactEmail(data.email || "");
@@ -1640,7 +1825,7 @@ routerAdd("POST", "/api/app/contacts/campaigns/run-due", (e) => {
   const now = new Date().toISOString();
   let campaigns = [];
   try {
-    campaigns = $app.findRecordsByFilter("contact_campaigns", "is_active = true", 50, 0, "");
+    campaigns = $app.findRecordsByFilter("contact_campaigns", "is_active = true", "", 50, 0);
   } catch (err) {}
 
   const digest = getNewBooksDigest();
@@ -1769,6 +1954,10 @@ onRecordCreate((e) => {
 }, "contact_campaigns");
 
 routerAdd("POST", "/api/app/newsletter", (e) => {
+  const ip = requestClientIp(e);
+  if (!checkRateLimit("newsletter", ip, 6)) {
+    throw new BadRequestError("Demasiadas tentativas. Aguarde um minuto.");
+  }
   const data = e.requestInfo().body;
   const email = (data.email || "").trim().toLowerCase();
   if (!email) throw new BadRequestError("Email obrigatório.");
@@ -1785,7 +1974,7 @@ routerAdd("POST", "/api/app/newsletter", (e) => {
   return e.json(200, { message: "Subscrição realizada!" });
 });
 
-// Timeline automática ao mudar estado de entrega
+// Timeline automática + restauro de stock ao cancelar
 onRecordUpdate((e) => {
   try {
     const record = e.record;
@@ -1805,24 +1994,50 @@ onRecordUpdate((e) => {
         cancelled: "Cancelada",
       };
       const timeline = record.get("delivery_timeline") || [];
-      timeline.push(makeTimelineEvent(newStatus, labels[newStatus] || newStatus, "", record.get("city") || ""));
+      timeline.push({
+        status: newStatus,
+        title: labels[newStatus] || newStatus,
+        description: "",
+        location: record.get("city") || "",
+        at: new Date().toISOString(),
+      });
       record.set("delivery_timeline", timeline);
+    }
+
+    const newOrderStatus = record.get("status");
+    const oldOrderStatus = original ? original.get("status") : null;
+    const becameCancelled =
+      (newOrderStatus === "cancelled" && oldOrderStatus !== "cancelled") ||
+      (newStatus === "cancelled" && oldStatus !== "cancelled");
+
+    if (becameCancelled && !record.get("stock_restored")) {
+      const items = record.get("items") || [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const bookId = it.book_id || "";
+        const qty = Math.max(0, Number(it.quantity) || 0);
+        if (!bookId || qty <= 0) continue;
+        try {
+          const book = $app.findRecordById("stock_books", bookId);
+          const stock = Number(book.get("stock")) || 0;
+          const newStock = stock + qty;
+          book.set("stock", newStock);
+          try {
+            if (newStock <= 0) { book.set("stock_alert", true); book.set("stock_low", false); }
+            else if (newStock <= 5) { book.set("stock_low", true); book.set("stock_alert", false); }
+            else { book.set("stock_low", false); book.set("stock_alert", false); }
+          } catch (flagErr) {}
+          $app.save(book);
+        } catch (bookErr) {
+          console.log("restore stock item: " + bookErr);
+        }
+      }
+      try { record.set("stock_restored", true); } catch (flagErr) {}
     }
   } catch (err) {
     console.log("Error in orders hook: " + err);
   }
 }, "orders");
-
-function normalizeDriveCoverUrl(url) {
-  if (!url || typeof url !== "string") return "";
-  const trimmed = url.trim();
-  if (trimmed.indexOf("blob:") === 0) return "";
-  let m = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m && m[1]) return "https://drive.google.com/uc?export=view&id=" + m[1];
-  m = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m && m[1]) return "https://drive.google.com/uc?export=view&id=" + m[1];
-  return trimmed;
-}
 
 onRecordValidate((e) => {
   try {
@@ -1834,22 +2049,209 @@ onRecordValidate((e) => {
     if (!record.get("sku")) record.set("sku", record.get("book_code"));
     if (!record.get("publisher")) record.set("publisher", "Livraria Adventista");
     if (!record.get("language")) record.set("language", "Português");
+
+    const price = Number(record.get("price"));
+    if (!isNaN(price) && price < 0) record.set("price", 0);
+    const stock = Number(record.get("stock"));
+    if (!isNaN(stock) && stock < 0) record.set("stock", 0);
+
+    const code = (record.get("book_code") || "").trim();
+    if (code) {
+      try {
+        const dup = $app.findFirstRecordByFilter(
+          "stock_books",
+          "book_code = {:c} && id != {:id}",
+          { c: code, id: record.id }
+        );
+        if (dup) throw new BadRequestError("Código de livro já existe: " + code);
+      } catch (err) {
+        if (err instanceof BadRequestError) throw err;
+      }
+    }
+
+    function normalizeUrl(url) {
+      if (!url || typeof url !== "string") return "";
+      const trimmed = url.trim();
+      if (trimmed.indexOf("blob:") === 0) return "";
+      let m = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) return "https://drive.google.com/uc?export=view&id=" + m[1];
+      m = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) return "https://drive.google.com/uc?export=view&id=" + m[1];
+      return trimmed;
+    }
+
     const cover = record.get("cover");
-    if (cover) record.set("cover", normalizeDriveCoverUrl(cover));
+    if (cover) record.set("cover", normalizeUrl(cover));
     const authorPhoto = record.get("author_photo");
-    if (authorPhoto) record.set("author_photo", normalizeDriveCoverUrl(authorPhoto));
+    if (authorPhoto) record.set("author_photo", normalizeUrl(authorPhoto));
+
+    try {
+      if (stock <= 0) { record.set("stock_alert", true); record.set("stock_low", false); }
+      else if (stock <= 5) { record.set("stock_low", true); record.set("stock_alert", false); }
+      else { record.set("stock_low", false); record.set("stock_alert", false); }
+    } catch (flagErr) {}
+
+    try {
+      const fileField = record.get("cover_image");
+      const fileName = Array.isArray(fileField) ? fileField[0] : fileField;
+      if (fileName) {
+        const current = String(record.get("cover") || "");
+        if (!current || current.indexOf(String(fileName)) < 0) {
+          let url = "";
+          try { url = $app.files().getUrl(record, fileName); } catch (urlErr) {}
+          if (url) {
+            if (String(url).indexOf("http") !== 0) {
+              url = "http://127.0.0.1:8090" + (String(url).indexOf("/") === 0 ? url : "/" + url);
+            }
+            record.set("cover", url);
+          }
+        }
+      }
+    } catch (coverErr) {}
   } catch (err) {
+    if (err instanceof BadRequestError) throw err;
     console.log("Error in stock_books hook: " + err);
   }
 }, "stock_books");
 
+onRecordAfterCreateSuccess((e) => {
+  try {
+    const record = e.record;
+    const fileField = record.get("cover_image");
+    const fileName = Array.isArray(fileField) ? fileField[0] : fileField;
+    if (!fileName) return;
+    const current = String(record.get("cover") || "");
+    if (current && current.indexOf(String(fileName)) >= 0) return;
+    let url = "";
+    try { url = $app.files().getUrl(record, fileName); } catch (urlErr) {}
+    if (!url) return;
+    if (String(url).indexOf("http") !== 0) {
+      url = "http://127.0.0.1:8090" + (String(url).indexOf("/") === 0 ? url : "/" + url);
+    }
+    record.set("cover", url);
+    $app.save(record);
+  } catch (err) {
+    console.log("stock_books after create cover: " + err);
+  }
+}, "stock_books");
+
+onRecordAfterUpdateSuccess((e) => {
+  try {
+    const record = e.record;
+    const fileField = record.get("cover_image");
+    const fileName = Array.isArray(fileField) ? fileField[0] : fileField;
+    if (!fileName) return;
+    const current = String(record.get("cover") || "");
+    if (current && current.indexOf(String(fileName)) >= 0) return;
+    let url = "";
+    try { url = $app.files().getUrl(record, fileName); } catch (urlErr) {}
+    if (!url) return;
+    if (String(url).indexOf("http") !== 0) {
+      url = "http://127.0.0.1:8090" + (String(url).indexOf("/") === 0 ? url : "/" + url);
+    }
+    record.set("cover", url);
+    $app.save(record);
+  } catch (err) {
+    console.log("stock_books after update cover: " + err);
+  }
+}, "stock_books");
+
+routerAdd("GET", "/api/app/catalog/summary", (e) => {
+  try {
+    // Assinatura: (collection, filter, sort, limit, offset)
+    const books = $app.findRecordsByFilter("stock_books", "id != ''", "title", 500, 0) || [];
+    const genres = {};
+    let inStock = 0;
+    let featured = 0;
+    let lowStock = 0;
+    let outOfStock = 0;
+    let withCover = 0;
+    const topSellers = [];
+
+    for (let i = 0; i < books.length; i++) {
+      const b = books[i];
+      const stock = Number(b.get("stock")) || 0;
+      const genre = b.get("genre") || "Catálogo Geral";
+      if (!genres[genre]) genres[genre] = { name: genre, total: 0, in_stock: 0 };
+      genres[genre].total++;
+      if (stock > 0) {
+        genres[genre].in_stock++;
+        inStock++;
+      } else {
+        outOfStock++;
+      }
+      if (b.get("featured")) featured++;
+      if (stock > 0 && stock <= 5) lowStock++;
+      if (b.get("cover") || b.get("cover_image")) withCover++;
+      topSellers.push({
+        id: b.id,
+        title: b.get("title") || "",
+        book_code: b.get("book_code") || "",
+        sales_count: Number(b.get("sales_count")) || 0,
+        stock: stock,
+      });
+    }
+
+    topSellers.sort(function (a, b) { return b.sales_count - a.sales_count; });
+
+    const genreList = [];
+    for (const key in genres) {
+      if (Object.prototype.hasOwnProperty.call(genres, key)) genreList.push(genres[key]);
+    }
+    genreList.sort(function (a, b) { return b.total - a.total; });
+
+    return e.json(200, {
+      total: books.length,
+      in_stock: inStock,
+      out_of_stock: outOfStock,
+      featured: featured,
+      low_stock: lowStock,
+      with_cover: withCover,
+      genres: genreList,
+      top_sellers: topSellers.slice(0, 10),
+    });
+  } catch (err) {
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
+routerAdd("POST", "/api/app/catalog/view", (e) => {
+  try {
+    const ip = requestClientIp(e);
+    if (!checkRateLimit("catalog-view", ip, 60)) {
+      return e.json(200, { ok: true });
+    }
+    const data = e.requestInfo().body || {};
+    const bookId = (data.book_id || data.id || "").trim();
+    if (!bookId) throw new BadRequestError("book_id obrigatório.");
+    const book = $app.findRecordById("stock_books", bookId);
+    const views = Number(book.get("views_count")) || 0;
+    book.set("views_count", views + 1);
+    $app.save(book);
+    return e.json(200, { ok: true, views_count: views + 1 });
+  } catch (err) {
+    if (err instanceof BadRequestError || err instanceof NotFoundError) throw err;
+    return e.json(400, { message: err.message || String(err) });
+  }
+});
+
 onRecordValidate((e) => {
   try {
     const record = e.record;
+    function normalizeUrl(url) {
+      if (!url || typeof url !== "string") return "";
+      const trimmed = url.trim();
+      if (trimmed.indexOf("blob:") === 0) return "";
+      let m = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) return "https://drive.google.com/uc?export=view&id=" + m[1];
+      m = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) return "https://drive.google.com/uc?export=view&id=" + m[1];
+      return trimmed;
+    }
     const image = record.get("image");
-    if (image) record.set("image", normalizeDriveCoverUrl(image));
+    if (image) record.set("image", normalizeUrl(image));
     const bookCover = record.get("book_cover");
-    if (bookCover) record.set("book_cover", normalizeDriveCoverUrl(bookCover));
+    if (bookCover) record.set("book_cover", normalizeUrl(bookCover));
   } catch (err) {
     console.log("Error in hero_slides hook: " + err);
   }

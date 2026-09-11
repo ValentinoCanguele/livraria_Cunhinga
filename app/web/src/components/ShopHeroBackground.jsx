@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getShopSlides } from '@/api/EcommerceApi';
 import { sortSlides, getTransition, getSlideDuration } from '@/lib/slideTransitions';
 import { resolveShopBgMode } from '@/lib/shopTheme';
+import ShopHeroMotion from '@/components/ShopHeroMotion';
 
 function ShopSlideMedia({ slide }) {
   if (slide.media_type === 'video' && slide.video_url) {
@@ -69,7 +70,7 @@ export default function ShopHeroBackground({ settings, children }) {
       {mode === 'gradient' && (
         <>
           <div className="absolute inset-0" style={gradientStyle} />
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_30%_20%,white,transparent_50%)]" />
+          <ShopHeroMotion />
         </>
       )}
 
@@ -96,11 +97,26 @@ export default function ShopHeroBackground({ settings, children }) {
         </AnimatePresence>
       )}
 
-      {mode === 'slides' && slides.length === 0 && <div className="absolute inset-0" style={gradientStyle} />}
+      {mode === 'slides' && slides.length === 0 && (
+        <>
+          <div className="absolute inset-0" style={gradientStyle} />
+          <ShopHeroMotion />
+        </>
+      )}
 
-      {mode === 'image' && !settings.shop_bg_image_url && <div className="absolute inset-0" style={gradientStyle} />}
+      {mode === 'image' && !settings.shop_bg_image_url && (
+        <>
+          <div className="absolute inset-0" style={gradientStyle} />
+          <ShopHeroMotion />
+        </>
+      )}
 
-      {mode === 'video' && !settings.shop_bg_video_url && <div className="absolute inset-0" style={gradientStyle} />}
+      {mode === 'video' && !settings.shop_bg_video_url && (
+        <>
+          <div className="absolute inset-0" style={gradientStyle} />
+          <ShopHeroMotion />
+        </>
+      )}
 
       <div className="container-custom relative z-10">{children}</div>
 

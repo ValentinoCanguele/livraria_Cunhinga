@@ -19,48 +19,10 @@ const SUPER_PASS = 'Admin123456!';
 const APP_EMAIL = 'admin@livraria.ao';
 const APP_PASS = 'admin123456';
 
-const SAMPLE_BOOKS = [
-  { title: 'O Pequeno Príncipe', author: 'Antoine de Saint-Exupéry', genre: 'Clássicos', price: 4500, stock: 25, cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&q=80', description: 'Uma fábula atemporal sobre amizade, amor e o sentido da vida.' },
-  { title: '1984', author: 'George Orwell', genre: 'Ficção', price: 5200, stock: 18, cover: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=400&q=80', description: 'Distopia clássica sobre vigilância, poder e liberdade individual.' },
-  { title: 'Orgulho e Preconceito', author: 'Jane Austen', genre: 'Romance', price: 4800, stock: 12, cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80', description: 'Romance eterno sobre amor, classe social e preconceitos.' },
-  { title: 'Dom Casmurro', author: 'Machado de Assis', genre: 'Clássicos', price: 4200, stock: 15, cover: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&q=80', description: 'Obra-prima da literatura brasileira sobre ciúme e memória.' },
-  { title: 'A Bíblia para Crianças', author: 'Vários Autores', genre: 'Infantil', price: 3800, stock: 30, cover: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80', description: 'Histórias bíblicas adaptadas para leitores jovens.' },
-  { title: 'Caminho a Cristo', author: 'Ellen G. White', genre: 'Religião', price: 3200, stock: 40, featured: true, cover: 'https://images.unsplash.com/photo-1507692049790-de58290a4334?w=400&q=80', description: 'Guia clássico sobre fé, conversão e vida cristã.' },
-  { title: 'O Grande Conflito', author: 'Ellen G. White', genre: 'Religião', price: 7500, stock: 20, featured: true, cover: 'https://images.unsplash.com/photo-1456513088650-9b9390942247?w=400&q=80', description: 'A história do conflito entre o bem e o mal ao longo dos séculos.' },
-  { title: 'Patriarcas e Profetas', author: 'Ellen G. White', genre: 'Religião', price: 6800, stock: 18, cover: 'https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=400&q=80', description: 'Do Génesis ao reinado de Davi — a narrativa bíblica expandida.' },
-  { title: 'Educação', author: 'Ellen G. White', genre: 'Religião', price: 4500, stock: 22, cover: 'https://images.unsplash.com/photo-1524995997942-a1fc3e46a42d?w=400&q=80', description: 'Princípios de educação cristã para pais e educadores.' },
-  { title: 'Jardim de Infância', author: 'Ellen G. White', genre: 'Infantil', price: 2800, stock: 35, cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80', description: 'Histórias e lições para os mais pequenos.' },
-  { title: 'O Segredo da Felicidade', author: 'Ellen G. White', genre: 'Religião', price: 2900, stock: 28, cover: 'https://images.unsplash.com/photo-1544716278-e513176f20b5?w=400&q=80', description: 'Reflexões sobre alegria, paz e propósito na vida cristã.' },
-  { title: 'História da Igreja Cristã', author: 'Ellen G. White', genre: 'Religião', price: 6200, stock: 14, cover: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80', description: 'Da era apostólica ao século XIX — a marcha da igreja.' },
-  { title: 'Alma Vencendo o Mundo', author: 'Ellen G. White', genre: 'Religião', price: 3400, stock: 24, cover: 'https://images.unsplash.com/photo-1516979187456-0a1dd7228f2d?w=400&q=80', description: 'Como viver a fé em meio aos desafios do mundo moderno.' },
-  { title: 'Steve Jobs', author: 'Walter Isaacson', genre: 'Biografia', price: 6500, stock: 8, cover: 'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=400&q=80', description: 'A biografia definitiva do cofundador da Apple.' },
-  { title: 'Harry Potter e a Pedra Filosofal', author: 'J.K. Rowling', genre: 'Infantil', price: 5500, stock: 22, cover: 'https://images.unsplash.com/photo-1618667067346-c0b2f4e2b4d6?w=400&q=80', description: 'O início da saga mágica que conquistou gerações.' },
-  { title: 'A Cura da Alma', author: 'Pastor João Silva', genre: 'Religião', price: 3100, stock: 19, cover: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80', description: 'Encontro com Deus nos momentos de dor e restauração.' },
-  { title: 'Manual do Jovem Cristão', author: 'Livraria Adventista', genre: 'Infantil', price: 2600, stock: 45, featured: true, cover: 'https://images.unsplash.com/photo-1524995997942-a1fc3e46a42d?w=400&q=80', description: 'Guia prático para jovens que desejam crescer na fé.' },
-  { title: 'Profetas e Reis', author: 'Ellen G. White', genre: 'Religião', price: 7000, stock: 12, cover: 'https://images.unsplash.com/photo-1456513088650-9b9390942247?w=400&q=80', description: 'De Salomão ao exílio — a história dos reis de Israel.' },
-  { title: 'Atos dos Apóstolos', author: 'Ellen G. White', genre: 'Religião', price: 5800, stock: 16, cover: 'https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=400&q=80', description: 'A história da igreja primitiva e a expansão do evangelho.' },
-  { title: 'Desejado de Todas as Gerações', author: 'Ellen G. White', genre: 'Religião', price: 6200, stock: 20, featured: true, cover: 'https://images.unsplash.com/photo-1507692049790-de58290a4334?w=400&q=80', description: 'A vida de Jesus Cristo narrada com profundidade espiritual.' },
-  { title: 'Mensagens Escolhidas', author: 'Ellen G. White', genre: 'Religião', price: 4800, stock: 14, cover: 'https://images.unsplash.com/photo-1544716278-e513176f20b5?w=400&q=80', description: 'Compilação de mensagens inspiradoras para o dia a dia.' },
-  { title: 'O Poder da Oração', author: 'Ellen G. White', genre: 'Devocional', price: 2700, stock: 32, cover: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80', description: 'Como desenvolver uma vida de oração transformadora.' },
-  { title: 'Ministério da Cura', author: 'Ellen G. White', genre: 'Saúde', price: 5200, stock: 11, cover: 'https://images.unsplash.com/photo-1524995997942-a1fc3e46a42d?w=400&q=80', description: 'Princípios de saúde física, mental e espiritual.' },
-  { title: 'Conselhos sobre Alimentação', author: 'Ellen G. White', genre: 'Saúde', price: 3500, stock: 18, cover: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=400&q=80', description: 'Orientações práticas sobre nutrição e bem-estar.' },
-  { title: 'A História de José', author: 'Ellen G. White', genre: 'Infantil', price: 2400, stock: 40, cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80', description: 'A história bíblica de José adaptada para crianças.' },
-  { title: 'A História de Moisés', author: 'Ellen G. White', genre: 'Infantil', price: 2400, stock: 38, cover: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80', description: 'As aventuras de Moisés contadas para os mais pequenos.' },
-  { title: 'O Apocalipse Revelado', author: 'Ellen G. White', genre: 'Religião', price: 4900, stock: 15, cover: 'https://images.unsplash.com/photo-1456513088650-9b9390942247?w=400&q=80', description: 'Comentário sobre o livro do Apocalipse.' },
-  { title: 'Evangelismo', author: 'Ellen G. White', genre: 'Religião', price: 4100, stock: 17, cover: 'https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=400&q=80', description: 'Métodos e princípios para a obra evangelística.' },
-  { title: 'Fundamentos da Fé Cristã', author: 'Livraria Adventista', genre: 'Educação', price: 3300, stock: 25, cover: 'https://images.unsplash.com/photo-1524995997942-a1fc3e46a42d?w=400&q=80', description: 'Estudo introdutório sobre doutrinas adventistas.' },
-  { title: 'Família Feliz', author: 'Ellen G. White', genre: 'Família', price: 3600, stock: 21, cover: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&q=80', description: 'Princípios para construir um lar cristão harmonioso.' },
-  { title: 'Aventuras de Daniel', author: 'Livraria Adventista', genre: 'Juvenil', price: 2900, stock: 30, featured: true, cover: 'https://images.unsplash.com/photo-1618667067346-c0b2f4e2b4d6?w=400&q=80', description: 'Histórias bíblicas de coragem e fé para jovens.' },
-  { title: 'Guia de Estudo Bíblico', author: 'Livraria Adventista', genre: 'Educação', price: 2200, stock: 50, cover: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&q=80', description: 'Material de apoio para estudos bíblicos em grupo.' },
-  { title: 'História de Angola', author: 'Maria Santos', genre: 'História', price: 5500, stock: 10, cover: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&q=80', description: 'Panorama histórico de Angola do século XV ao presente.' },
-  { title: 'Sabedoria para o Dia a Dia', author: 'Pastor João Silva', genre: 'Devocional', price: 2500, stock: 35, cover: 'https://images.unsplash.com/photo-1544716278-e513176f20b5?w=400&q=80', description: '365 devocionais para meditação diária.' },
-  { title: 'Música e Adoração', author: 'Livraria Adventista', genre: 'Religião', price: 2800, stock: 22, cover: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=400&q=80', description: 'Hinário e guia de adoração para igrejas.' },
-];
-
 const HERO_SLIDES = [
-  { title: 'Cada livro, uma nova viagem', subtitle: 'Literatura cristã adventista para toda a família.', image: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80', cta_text: 'Explorar o Catálogo', cta_link: '/shop', sort_order: 1, active: true },
-  { title: 'Obras de Ellen G. White', subtitle: 'Clássicos da literatura adventista com os melhores preços.', image: 'https://images.unsplash.com/photo-1456513088650-9b9390942247?w=1920&q=80', cta_text: 'Ver Coleção', cta_link: '/shop?search=Ellen', sort_order: 2, active: true },
-  { title: 'Livros para Crianças e Jovens', subtitle: 'Histórias que formam carácter e fortalecem a fé.', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80', cta_text: 'Descobrir', cta_link: '/shop?category=Infantil', sort_order: 3, active: true },
+  { title: 'Catálogo Oficial da Livraria', subtitle: 'Mais de 100 títulos adventistas para toda a família.', image: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80', cta_text: 'Ver Catálogo Geral', cta_link: '/shop?category=Cat%C3%A1logo%20Geral', sort_order: 1, active: true },
+  { title: 'Obras de Ellen G. White', subtitle: 'Clássicos da literatura adventista com os melhores preços.', image: 'https://images.unsplash.com/photo-1456513088650-9b9390942247?w=1920&q=80', cta_text: 'Pesquisar Ellen G. White', cta_link: '/shop?search=Ellen', sort_order: 2, active: true },
+  { title: 'Colportagem', subtitle: 'Títulos para evangelização e saúde com condições especiais.', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80', cta_text: 'Ver Colportagem', cta_link: '/shop?category=Colportagem', sort_order: 3, active: true },
   { title: 'Bem-vindo à Livraria Adventista', subtitle: 'A sua loja online de publicações que edificam e transformam.', image: 'https://images.unsplash.com/photo-1524995997942-a1fc3e46a42d?w=1920&q=80', cta_text: 'Sobre Nós', cta_link: '/about', sort_order: 4, active: true },
 ];
 
@@ -83,31 +45,17 @@ async function getAuthHeaders() {
 }
 
 async function seedBooks(headers) {
-  const existing = await pbFetch('/api/collections/stock_books/records?perPage=200');
-  const existingTitles = new Set(existing.items.map((b) => b.title.toLowerCase()));
-  let added = 0;
-  let backfilled = 0;
-  let seq = existing.items.length + 1;
+  const existing = await pbFetch('/api/collections/stock_books/records?perPage=500');
+  const total = existing.totalItems ?? existing.items?.length ?? 0;
 
-  for (const book of SAMPLE_BOOKS) {
-    if (existingTitles.has(book.title.toLowerCase())) continue;
-    const code = `LA-${String(seq).padStart(4, '0')}`;
-    await pbFetch('/api/collections/stock_books/records', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        ...book,
-        book_code: code,
-        sku: code,
-        publisher: book.publisher || 'Livraria Adventista',
-        language: 'Português',
-        year: book.year || 2024,
-      }),
-    });
-    console.log(`  + ${book.title} (${code})`);
-    added++;
-    seq++;
+  if (total === 0) {
+    console.log('  Catálogo vazio. Execute: npm run import:catalog');
+    return;
   }
+
+  console.log(`  Catálogo com ${total} livros (dados reais).`);
+  let backfilled = 0;
+  let seq = total + 1;
 
   for (const item of existing.items) {
     if (!item.book_code) {
@@ -123,24 +71,42 @@ async function seedBooks(headers) {
     }
   }
 
-  const total = existing.items.length + added;
-  console.log(added > 0 ? `${added} livros adicionados.` : 'Catálogo já está completo.');
   if (backfilled > 0) console.log(`${backfilled} livros receberam código.`);
-  console.log(`Total no catálogo: ${total} livros.`);
 }
 
 async function seedSlides(headers) {
   try {
-    const existing = await pbFetch('/api/collections/hero_slides/records?perPage=50');
-    const existingTitles = new Set(existing.items.map((s) => s.title.toLowerCase()));
+    const existing = await pbFetch('/api/collections/hero_slides/records?perPage=50&sort=sort_order');
+    const byOrder = new Map((existing.items || []).map((s) => [s.sort_order, s]));
+    const byTitle = new Set((existing.items || []).map((s) => s.title.toLowerCase()));
     let added = 0;
+    let updated = 0;
+
     for (const slide of HERO_SLIDES) {
-      if (existingTitles.has(slide.title.toLowerCase())) continue;
+      const match = byOrder.get(slide.sort_order);
+      if (match) {
+        await pbFetch(`/api/collections/hero_slides/records/${match.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            title: slide.title,
+            subtitle: slide.subtitle,
+            image: slide.image,
+            cta_text: slide.cta_text,
+            cta_link: slide.cta_link,
+            active: slide.active,
+          }),
+        });
+        console.log(`  ↻ slide: ${slide.title}`);
+        updated++;
+        continue;
+      }
+      if (byTitle.has(slide.title.toLowerCase())) continue;
       await pbFetch('/api/collections/hero_slides/records', { method: 'POST', headers, body: JSON.stringify(slide) });
       console.log(`  + slide: ${slide.title}`);
       added++;
     }
-    console.log(added > 0 ? `${added} slides adicionados.` : 'Slides já configurados.');
+    console.log(added || updated ? `${added} adicionados, ${updated} actualizados.` : 'Slides já configurados.');
   } catch (e) {
     console.log('Slides: coleção ainda não disponível. Reinicie o PocketBase para aplicar migrations.');
   }

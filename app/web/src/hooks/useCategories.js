@@ -11,9 +11,10 @@ export function useCategories() {
       try {
         setLoading(true);
         // Fetch a large batch of products to extract all unique categories
-        const response = await getProducts({ limit: 100 });
+        const response = await getProducts({});
         
         const uniqueCategories = new Map();
+        const PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzc0MTUxIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzlDQTNBRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K";
         
         response.products.forEach(product => {
           const typeValue = product.type?.value;
@@ -22,8 +23,7 @@ export function useCategories() {
               id: typeValue.toLowerCase().replace(/\s+/g, '-'),
               name: typeValue,
               slug: typeValue.toLowerCase().replace(/\s+/g, '-'),
-              // Use the first product's image as the category image, or a fallback
-              image: product.image || product.images?.[0]?.url || 'https://images.unsplash.com/photo-1615529182904-14819c35db37'
+              image: product.image || product.images?.[0]?.url || PLACEHOLDER,
             });
           }
         });

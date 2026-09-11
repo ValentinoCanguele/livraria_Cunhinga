@@ -148,8 +148,9 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
   );
 }
 
-export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid' }) {
+export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid', onQuickView }) {
   const [quickView, setQuickView] = useState(null);
+  const handleQuickView = onQuickView || setQuickView;
 
   if (isLoading) {
     return (
@@ -165,10 +166,12 @@ export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid'
     <>
       <div className={`product-grid grid gap-6 ${viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
         {products.map((product, index) => (
-          <ProductCard key={product.id} product={product} onCartOpen={onCartOpen} index={index} viewMode={viewMode} onQuickView={setQuickView} />
+          <ProductCard key={product.id} product={product} onCartOpen={onCartOpen} index={index} viewMode={viewMode} onQuickView={handleQuickView} />
         ))}
       </div>
-      <QuickViewModal product={quickView} open={!!quickView} onClose={() => setQuickView(null)} onCartOpen={onCartOpen} />
+      {!onQuickView && (
+        <QuickViewModal product={quickView} open={!!quickView} onClose={() => setQuickView(null)} onCartOpen={onCartOpen} />
+      )}
     </>
   );
 }

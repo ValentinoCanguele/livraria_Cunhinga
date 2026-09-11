@@ -7,12 +7,15 @@
     "dev": "concurrently --kill-others --raw \"npm run dev --prefix app/web\" \"npm run dev --prefix app/pocketbase\"",
     "seed": "npm run seed --prefix app/pocketbase",
     "seed:books": "npm run seed:books --prefix app/pocketbase",
+    "import:catalog": "npm run import:catalog --prefix app/pocketbase",
     "build": "npm run build --prefix app/web",
     "start": "concurrently --kill-others --raw \"npm run start --prefix app/pocketbase\" \"npm run start --prefix app/web\"",
     "lint": "npm run lint --prefix app/web"
   },
   "devDependencies": {
-    "concurrently": "^10.0.3"
+    "concurrently": "^10.0.3",
+    "imagetracerjs": "^1.2.6",
+    "potrace": "^2.1.8"
   },
   "workspaces": [
     "app/*"

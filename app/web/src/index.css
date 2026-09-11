@@ -181,4 +181,29 @@
   .animation-delay-800 {
     animation-delay: 0.8s;
   }
+
+  .catalog-marquee-ltr {
+    animation: catalog-marquee-ltr linear infinite;
+  }
+
+  .catalog-marquee-rtl {
+    animation: catalog-marquee-rtl linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .catalog-marquee-ltr,
+    .catalog-marquee-rtl {
+      animation: none;
+    }
+  }
+}
+
+@keyframes catalog-marquee-ltr {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-25%, 0, 0); }
+}
+
+@keyframes catalog-marquee-rtl {
+  0% { transform: translate3d(-25%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }

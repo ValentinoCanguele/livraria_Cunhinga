@@ -3,6 +3,18 @@ import pb from '@/lib/pocketbaseClient';
 const CURRENCY = { code: 'AOA', symbol: 'Kz' };
 const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
 
+function resolveBookCover(book) {
+  if (book.cover) return book.cover;
+  if (book.cover_image) {
+    try {
+      return pb.files.getURL(book, book.cover_image);
+    } catch {
+      return `${PB_URL}/api/files/stock_books/${book.id}/${book.cover_image}`;
+    }
+  }
+  return '';
+}
+
 export function formatCurrency(amountInCents, currencyInfo = CURRENCY) {
   const amount = amountInCents / 100;
   const symbol = currencyInfo?.symbol || 'Kz';
@@ -14,6 +26,7 @@ function bookToProduct(book, collectionsMap = {}) {
   const stock = Number(book.stock) || 0;
   const variantId = `${book.id}-default`;
   const collectionId = book.collection_id || '';
+  const cover = resolveBookCover(book);
 
   const variant = {
     id: variantId,
@@ -25,7 +38,7 @@ function bookToProduct(book, collectionsMap = {}) {
     currency_info: CURRENCY,
     inventory_quantity: stock,
     manage_inventory: true,
-    image_url: book.cover || null,
+    image_url: cover || null,
   };
 
   return {
@@ -33,8 +46,8 @@ function bookToProduct(book, collectionsMap = {}) {
     title: book.title,
     subtitle: book.author || '',
     description: book.description || '',
-    image: book.cover || '',
-    images: book.cover ? [{ url: book.cover }] : [],
+    image: cover || '',
+    images: cover ? [{ url: cover }] : [],
     price_in_cents: priceInCents,
     type: { value: book.genre || 'Geral' },
     purchasable: stock > 0,

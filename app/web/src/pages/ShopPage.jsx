@@ -16,7 +16,10 @@ import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import AdvancedSearchPanel from '@/components/AdvancedSearchPanel';
 import ShopHeroBackground from '@/components/ShopHeroBackground';
+import CategoryBookMarquee from '@/components/home/CategoryBookMarquee';
+import QuickViewModal from '@/components/QuickViewModal';
 import ProductCard from '@/components/ProductCard';
+import { getProduct } from '@/api/EcommerceApi';
 import { pageTitle } from '@/lib/brand';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { applyShopTheme, shopDefaults } from '@/lib/shopTheme';
@@ -58,6 +61,10 @@ const ShopPage = () => {
 
   const [sortBy, setSortBy] = useState(shop.shop_default_sort || 'featured');
   const [viewMode, setViewMode] = useState('grid');
+  const [gridCols, setGridCols] = useState(shop.shop_grid_columns || 4);
+  const [quickView, setQuickView] = useState(null);
+  const [modalProduct, setModalProduct] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     applyShopTheme(settings);
@@ -66,6 +73,20 @@ const ShopPage = () => {
   useEffect(() => {
     setSortBy(shop.shop_default_sort || 'featured');
   }, [shop.shop_default_sort]);
+
+  useEffect(() => {
+    if (!quickView) {
+      setModalProduct(null);
+      setModalLoading(false);
+      return undefined;
+    }
+    setModalProduct(quickView);
+    setModalLoading(true);
+    getProduct(quickView.id)
+      .then(setModalProduct)
+      .catch(() => {})
+      .finally(() => setModalLoading(false));
+  }, [quickView]);
 
   const {
     allProducts,
@@ -106,9 +127,15 @@ const ShopPage = () => {
   );
 
   const gridClass = {
+    2: 'xl:grid-cols-2',
     3: 'xl:grid-cols-3',
     4: 'xl:grid-cols-4',
-  }[shop.shop_grid_columns] || 'xl:grid-cols-4';
+  }[gridCols] || 'xl:grid-cols-4';
+
+  const inStockProducts = useMemo(
+    () => allProducts.filter((p) => p.purchasable && (p.variants?.[0]?.inventory_quantity ?? 0) > 0),
+    [allProducts]
+  );
 
   const heroTitle = shop.shop_hero_title || shopDefaults.shop_hero_title;
   const heroSubtitle = shop.shop_hero_subtitle || shop.tagline || shopDefaults.shop_hero_subtitle;
@@ -180,11 +207,35 @@ const ShopPage = () => {
               variant="hero"
               bookCollections={bookCollections}
               publishers={availableFilters.publishers}
+              quickGenres={availableFilters.genres}
               resultCount={hasActiveBrowsing ? filteredProducts.length : undefined}
               filterCount={filterCount}
             />
           </motion.div>
       </ShopHeroBackground>
+
+      {/* Faixa infinita — livros disponíveis */}
+      {!hasActiveBrowsing && inStockProducts.length > 0 && (
+        <div className="border-b border-border bg-muted/10">
+          <CategoryBookMarquee
+            title="Disponíveis para Encomenda"
+            description="Deslize sem fim — toque para pausar"
+            products={inStockProducts}
+            direction="ltr"
+            viewMode="marquee"
+            onBookSelect={setQuickView}
+            categoryFilter="inStockOnly=true"
+          />
+        </div>
+      )}
+
+      <QuickViewModal
+        product={modalProduct}
+        loading={modalLoading}
+        open={!!quickView}
+        onClose={() => setQuickView(null)}
+        onCartOpen={() => setIsCartOpen(true)}
+      />
 
       {/* Destaques — só sem filtros activos */}
       {!hasActiveBrowsing && shop.shop_show_featured && featuredProducts.length > 0 && (
@@ -203,7 +254,13 @@ const ShopPage = () => {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-4 md:gap-6">
               {featuredProducts.map((product, i) => (
-                <ProductCard key={product.id} product={product} onCartOpen={() => setIsCartOpen(true)} index={i} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onCartOpen={() => setIsCartOpen(true)}
+                  onQuickView={setQuickView}
+                  index={i}
+                />
               ))}
             </div>
           </div>
@@ -300,7 +357,27 @@ const ShopPage = () => {
                   {' '}· catálogo com <strong className="text-foreground">{catalogStats.total}</strong> livros
                 </div>
               </div>
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
+                {viewMode === 'grid' && (
+                  <div className="flex border rounded-lg overflow-hidden">
+                    {[
+                      { cols: 2, label: '2 colunas' },
+                      { cols: 3, label: '3 colunas' },
+                      { cols: 4, label: '4 colunas' },
+                    ].map(({ cols, label }) => (
+                      <Button
+                        key={cols}
+                        variant={gridCols === cols ? 'secondary' : 'ghost'}
+                        size="icon"
+                        className="h-9 w-9 rounded-none"
+                        onClick={() => setGridCols(cols)}
+                        title={label}
+                      >
+                        <span className="text-[10px] font-bold">{cols}</span>
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 <div className="flex border rounded-lg overflow-hidden">
                   <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9 rounded-none" onClick={() => setViewMode('grid')}>
                     <LayoutGrid className="h-4 w-4" />
@@ -341,10 +418,15 @@ const ShopPage = () => {
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                   {lowStockProducts.map((product) => (
-                    <Link key={product.id} to={`/product/${product.id}`} className="text-center group">
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => setQuickView(product)}
+                      className="text-center group"
+                    >
                       <img src={product.image} alt="" className="w-full aspect-[3/4] object-cover rounded-lg border group-hover:shadow-md transition-shadow" />
                       <p className="text-xs font-medium mt-1 line-clamp-2">{product.title}</p>
-                    </Link>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -358,10 +440,12 @@ const ShopPage = () => {
               className={viewMode === 'grid' ? `[&_.product-grid]:grid-cols-2 md:[&_.product-grid]:grid-cols-3 ${gridClass}` : ''}
             >
               <ProductsList
+                embedded
                 products={displayProducts}
                 isLoading={isLoading}
                 onCartOpen={() => setIsCartOpen(true)}
                 viewMode={viewMode}
+                onQuickView={setQuickView}
               />
             </motion.div>
 

@@ -1,6 +1,7 @@
+import pb from '@/lib/pocketbaseClient';
+
 export const BOOK_GENRES = [
-  'Religião', 'Clássicos', 'Romance', 'Infantil', 'Ficção', 'Biografia',
-  'Devocional', 'Educação', 'Saúde', 'História', 'Família', 'Juvenil',
+  'Catálogo Geral', 'Colportagem',
 ];
 
 export const BOOK_LANGUAGES = ['Português', 'Inglês', 'Francês', 'Espanhol'];
@@ -8,7 +9,7 @@ export const BOOK_LANGUAGES = ['Português', 'Inglês', 'Francês', 'Espanhol'];
 export const emptyBookForm = {
   title: '',
   author: '',
-  genre: 'Religião',
+  genre: 'Catálogo Geral',
   price: '',
   stock: '',
   cover: '',
@@ -45,13 +46,14 @@ export function previewBookCode() {
 }
 
 export function bookToForm(record) {
+  const cover = record.cover || (record.cover_image ? pb.files.getURL(record, record.cover_image) : '');
   return {
     title: record.title || '',
     author: record.author || '',
-    genre: record.genre || 'Religião',
+    genre: record.genre || 'Catálogo Geral',
     price: record.price ?? '',
     stock: record.stock ?? '',
-    cover: record.cover || '',
+    cover,
     description: record.description || '',
     featured: !!record.featured,
     isbn: record.isbn || '',

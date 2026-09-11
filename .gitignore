@@ -7,3 +7,10 @@ dist
 app/pocketbase/pb/
 app/pocketbase/pb_data/
 app/pocketbase/*.zip
+/covers_clean/
+/capas_catalogo6.zip
+/images.png
+/logo.png
+/logo.svg
+/logo_vector.svg
+.vscode/

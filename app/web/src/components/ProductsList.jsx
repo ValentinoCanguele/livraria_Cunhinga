@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid' }) => {
+const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid', onQuickView, embedded = false }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
@@ -48,13 +48,17 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid' 
     });
   }, [products, searchQuery, selectedCategory]);
 
+  const displayList = embedded ? products : filteredList;
+
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between pb-4 border-b">
-          <Skeleton className="h-10 w-full sm:w-64 rounded-xl" />
-          <Skeleton className="h-8 w-full sm:w-80 rounded-full" />
-        </div>
+        {!embedded && (
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between pb-4 border-b">
+            <Skeleton className="h-10 w-full sm:w-64 rounded-xl" />
+            <Skeleton className="h-8 w-full sm:w-80 rounded-full" />
+          </div>
+        )}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="space-y-4">
@@ -70,7 +74,7 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid' 
 
   return (
     <div className="space-y-6">
-      {/* Search and category filtering header */}
+      {!embedded && (
       <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center bg-card border border-border p-4 rounded-2xl shadow-sm">
         {/* Search Input */}
         <div className="relative flex-1 max-w-md">
@@ -112,16 +116,20 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid' 
           })}
         </div>
       </div>
+      )}
 
-      {/* Grid containing the products */}
-      {filteredList.length === 0 ? (
+      {displayList.length === 0 ? (
         <div className="text-center py-20 bg-muted/20 rounded-2xl border border-dashed border-border p-8">
           <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-foreground mb-2">Nenhum livro corresponde à pesquisa</h3>
+          <h3 className="text-lg font-bold text-foreground mb-2">
+            {embedded ? 'Nenhum livro nesta seleção' : 'Nenhum livro corresponde à pesquisa'}
+          </h3>
           <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-6">
-            Não encontrámos resultados para as opções selecionadas. Tente redefinir a sua pesquisa ou os filtros.
+            {embedded
+              ? 'Tente ajustar os filtros na barra lateral ou limpar a pesquisa no topo da loja.'
+              : 'Não encontrámos resultados para as opções selecionadas. Tente redefinir a sua pesquisa ou os filtros.'}
           </p>
-          {(searchQuery || selectedCategory !== 'all') && (
+          {!embedded && (searchQuery || selectedCategory !== 'all') && (
             <Button
               variant="outline"
               onClick={() => {
@@ -141,7 +149,7 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid' 
           animate={{ opacity: 1 }}
           className="transition-all duration-300"
         >
-          <ProductGrid products={filteredList} isLoading={false} onCartOpen={onCartOpen} viewMode={viewMode} />
+          <ProductGrid products={displayList} isLoading={false} onCartOpen={onCartOpen} viewMode={viewMode} onQuickView={onQuickView} />
         </motion.div>
       )}
     </div>

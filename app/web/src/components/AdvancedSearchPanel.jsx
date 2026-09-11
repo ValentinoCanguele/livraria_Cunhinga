@@ -17,6 +17,7 @@ export default function AdvancedSearchPanel({
   publishers = [],
   resultCount,
   filterCount = 0,
+  quickGenres = [],
 }) {
   const [expanded, setExpanded] = useState(false);
   const [local, setLocal] = useState({
@@ -115,9 +116,9 @@ export default function AdvancedSearchPanel({
         </p>
       )}
 
-      {isHero && !expanded && (
+      {isHero && !expanded && (quickGenres.length > 0 || BOOK_GENRES.length > 0) && (
         <div className="flex flex-wrap gap-2 mt-3">
-          {BOOK_GENRES.slice(0, 6).map((g) => (
+          {(quickGenres.length > 0 ? quickGenres : BOOK_GENRES).slice(0, 8).map((g) => (
             <button
               key={g}
               type="button"

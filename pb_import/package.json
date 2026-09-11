@@ -1,0 +1,15 @@
+{
+  "name": "pb-import-catalogo",
+  "version": "1.0.0",
+  "description": "Importa o catálogo da Livraria e Editora Adventista para o PocketBase (registos + imagens de capa)",
+  "type": "module",
+  "main": "import.js",
+  "scripts": {
+    "import": "node import.js"
+  },
+  "dependencies": {
+    "csv-parse": "^5.5.6",
+    "dotenv": "^16.4.5",
+    "pocketbase": "^0.21.5"
+  }
+}

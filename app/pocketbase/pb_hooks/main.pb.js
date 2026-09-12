@@ -1004,7 +1004,11 @@ routerAdd("GET", "/api/app/geo/provinces", (e) => {
           if (content.length) {
             let out = "";
             for (let j = 0; j < content.length; j++) out += String.fromCharCode(content[j]);
-            raw = out;
+            try {
+              raw = decodeURIComponent(escape(out));
+            } catch (_) {
+              raw = out;
+            }
             break;
           }
         } catch (err) {}

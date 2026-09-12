@@ -14,3 +14,4 @@ app/pocketbase/*.zip
 /logo.svg
 /logo_vector.svg
 .vscode/
+api-keys*.csv

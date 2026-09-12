@@ -1,7 +1,14 @@
 import pb from '@/lib/pocketbaseClient';
 
 export const BOOK_GENRES = [
-  'Catálogo Geral', 'Colportagem',
+  'Catálogo Geral',
+  'Ellen G. White',
+  'Apocalipse & Profecia',
+  'Família & Relacionamentos',
+  'Saúde & Estilo de Vida',
+  'Fé & Doutrina',
+  'Pregação & Liderança',
+  'Colportagem',
 ];
 
 export const BOOK_LANGUAGES = ['Português', 'Inglês', 'Francês', 'Espanhol'];

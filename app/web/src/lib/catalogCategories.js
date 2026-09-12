@@ -21,10 +21,10 @@ export const SHOWCASE_CATEGORIES = [
   {
     id: 'ellen',
     title: 'Ellen G. White',
-    description: 'Obras da autora adventista',
+    description: 'Obras da autora adventista e biografia',
     accent: '#f59e0b',
-    minBooks: 3,
-    filter: (p) => /ellen\s*g\.?\s*white/i.test(p.subtitle || p.title || ''),
+    minBooks: 2,
+    filter: (p) => /ellen\s*g?\.?\s*white/i.test(`${p.author || ''} ${p.title || ''} ${p.subtitle || ''}`),
   },
   {
     id: 'apocalipse',
@@ -32,7 +32,7 @@ export const SHOWCASE_CATEGORIES = [
     description: 'Daniel, Apocalipse e escatologia',
     accent: '#6366f1',
     minBooks: 3,
-    filter: (p) => /apocalipse|profec|daniel|revela|milenar/i.test(`${p.title} ${p.subtitle}`),
+    filter: (p) => /apocalipse|profec|daniel|revela|milenar|escatolog|sinais dos tempos/i.test(`${p.title || ''} ${p.subtitle || ''}`),
   },
   {
     id: 'familia',
@@ -40,7 +40,7 @@ export const SHOWCASE_CATEGORIES = [
     description: 'Namoro, casamento e educação',
     accent: '#ec4899',
     minBooks: 3,
-    filter: (p) => /família|familia|namoro|casamento|relacionamento|sexualidade|lua de mel|criança|filho/i.test(p.title || ''),
+    filter: (p) => /família|familia|namoro|casamento|relacionamento|sexualidade|lua de mel|criança|crianca|filho|pais|mãe|mae/i.test(`${p.title || ''} ${p.subtitle || ''}`),
   },
   {
     id: 'saude',
@@ -48,7 +48,7 @@ export const SHOWCASE_CATEGORIES = [
     description: 'Corpo, mente e estilo de vida',
     accent: '#10b981',
     minBooks: 3,
-    filter: (p) => /saúde|saude|depressão|vegetarian|alimentação|menopausa|esperança|cura|medicina/i.test(p.title || ''),
+    filter: (p) => /saúde|saude|depressão|depressao|vegetarian|alimentação|alimentacao|menopausa|esperança|cura|medicina|estilo de vida|viver melhor/i.test(`${p.title || ''} ${p.subtitle || ''}`),
   },
   {
     id: 'pregacao',
@@ -56,7 +56,7 @@ export const SHOWCASE_CATEGORIES = [
     description: 'Sermões, liderança e missão',
     accent: '#0c4a6e',
     minBooks: 3,
-    filter: (p) => /pregação|pregacao|sermão|sermao|liderança|lideranca|líder|lider|igreja em missão/i.test(p.title || ''),
+    filter: (p) => /pregação|pregacao|sermão|sermao|liderança|lideranca|líder|lider|igreja em missão|evangelismo/i.test(`${p.title || ''} ${p.subtitle || ''}`),
   },
   {
     id: 'fe',
@@ -64,7 +64,7 @@ export const SHOWCASE_CATEGORIES = [
     description: 'Fundamentos e apologética',
     accent: '#14b8a6',
     minBooks: 3,
-    filter: (p) => /fé|fe|doutrina|crenças|justificação|sábado|adventismo|bíblia|biblia|hermenêutica/i.test(p.title || ''),
+    filter: (p) => /fé|fe|doutrina|crenças|crencas|justificação|justificacao|sábado|sabado|adventismo|adventista|bíblia|biblia|hermenêutica|hermeneutica|deus|cristo|oração|oracao/i.test(`${p.title || ''} ${p.subtitle || ''}`),
   },
   {
     id: 'stock',

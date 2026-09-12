@@ -97,9 +97,24 @@ function toOptionalNumber(value) {
   return Number.isNaN(n) ? undefined : n;
 }
 
+function smartGenre(title, author, rawGenre) {
+  const t = `${title || ''} ${author || ''}`.toLowerCase();
+  if (/ellen\s*g?\.?\s*white/.test(t)) return 'Ellen G. White';
+  if (/apocalipse|profec|daniel|revela|milenar|escatolog|sinais dos tempos/.test(t)) return 'Apocalipse & Profecia';
+  if (/saúde|saude|depressão|depressao|vegetarian|alimentação|alimentacao|menopausa|esperança|cura|medicina|viver melhor/.test(t)) return 'Saúde & Estilo de Vida';
+  if (/família|familia|namoro|casamento|relacionamento|sexualidade|lua de mel|criança|crianca|filho|pais|mãe|mae/.test(t)) return 'Família & Relacionamentos';
+  if (/pregação|pregacao|sermão|sermao|liderança|lideranca|líder|lider|igreja em missão|evangelismo/.test(t)) return 'Pregação & Liderança';
+  if (/fé|fe|doutrina|crenças|crencas|justificação|justificacao|sábado|sabado|adventismo|adventista|bíblia|biblia|hermenêutica|hermeneutica|deus|cristo|oração|oracao/.test(t)) return 'Fé & Doutrina';
+  if (rawGenre && rawGenre !== 'Catálogo Geral') return rawGenre;
+  return 'Catálogo Geral';
+}
+
 function rowToBook(row) {
   const code = clean(row.codigo);
-  const genre = clean(row.categoria) || 'Catálogo Geral';
+  const rawGenre = clean(row.categoria);
+  const title = clean(row.titulo) || code;
+  const author = clean(row.autor) || '';
+  const genre = smartGenre(title, author, rawGenre);
   const stock = toNumber(row.estoque, 0);
   let description = clean(row.descricao) || '';
   const extra = colportagemNote(row);
@@ -110,8 +125,8 @@ function rowToBook(row) {
   const book = {
     book_code: code,
     sku: code,
-    title: clean(row.titulo) || code,
-    author: clean(row.autor) || '',
+    title,
+    author,
     genre,
     price: toNumber(row.preco_kz, 0),
     stock,

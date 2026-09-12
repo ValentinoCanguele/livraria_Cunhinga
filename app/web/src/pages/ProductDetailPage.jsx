@@ -230,11 +230,10 @@ function ProductDetailPage() {
             setSelectedVariant(productWithQuantities.variants[0]);
           }
 
-          if (productWithQuantities.subtitle) {
-            getRelatedProducts(productWithQuantities.subtitle, productWithQuantities.id, 4)
-              .then((res) => setRelatedProducts(res.products || []))
-              .catch(() => {});
-          }
+          const bookGenre = productWithQuantities.type?.value || productWithQuantities.category || '';
+          getRelatedProducts(productWithQuantities.subtitle, productWithQuantities.id, 4, bookGenre)
+            .then((res) => setRelatedProducts(res.products || []))
+            .catch(() => {});
         } catch (quantityError) {
           throw quantityError;
         }

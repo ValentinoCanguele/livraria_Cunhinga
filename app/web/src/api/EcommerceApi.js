@@ -320,13 +320,53 @@ export async function subscribeNewsletter(email) {
   return data;
 }
 
-export async function getRelatedProducts(author, excludeId, limit = 4) {
-  if (!author?.trim()) return { products: [] };
+export async function getRelatedProducts(author, excludeId, limit = 4, genre = null) {
   try {
     const collectionsMap = await getCollectionsMap();
-    const filter = `author ~ "${author.trim()}" && id != "${excludeId}"`;
-    const records = await pb.collection('stock_books').getList(1, limit, { filter, sort: BOOK_SORT });
-    return { products: records.items.map((b) => bookToProduct(b, collectionsMap)) };
+    const items = [];
+    const seenIds = new Set(excludeId ? [excludeId] : []);
+
+    // 1. Same author first
+    if (author?.trim()) {
+      const cleanAuthor = author.trim().replace(/["\\]/g, '');
+      const filter = excludeId ? `author ~ "${cleanAuthor}" && id != "${excludeId}"` : `author ~ "${cleanAuthor}"`;
+      const byAuthor = await pb.collection('stock_books').getList(1, limit, { filter, sort: BOOK_SORT }).catch(() => ({ items: [] }));
+      for (const b of byAuthor.items) {
+        if (!seenIds.has(b.id)) {
+          seenIds.add(b.id);
+          items.push(b);
+        }
+      }
+    }
+
+    // 2. Same genre if we need more
+    if (items.length < limit && genre?.trim()) {
+      const cleanGenre = genre.trim().replace(/["\\]/g, '');
+      const filter = excludeId ? `genre = "${cleanGenre}" && id != "${excludeId}"` : `genre = "${cleanGenre}"`;
+      const byGenre = await pb.collection('stock_books').getList(1, limit * 2, { filter, sort: BOOK_SORT }).catch(() => ({ items: [] }));
+      for (const b of byGenre.items) {
+        if (items.length >= limit) break;
+        if (!seenIds.has(b.id)) {
+          seenIds.add(b.id);
+          items.push(b);
+        }
+      }
+    }
+
+    // 3. Fallback to top books
+    if (items.length < limit) {
+      const filter = excludeId ? `id != "${excludeId}"` : undefined;
+      const fallback = await pb.collection('stock_books').getList(1, limit * 2, { filter, sort: '-featured,stock' }).catch(() => ({ items: [] }));
+      for (const b of fallback.items) {
+        if (items.length >= limit) break;
+        if (!seenIds.has(b.id)) {
+          seenIds.add(b.id);
+          items.push(b);
+        }
+      }
+    }
+
+    return { products: items.map((b) => bookToProduct(b, collectionsMap)) };
   } catch {
     return { products: [] };
   }

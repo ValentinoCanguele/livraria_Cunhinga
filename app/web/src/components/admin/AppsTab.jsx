@@ -206,104 +206,19 @@ function DriveConfigForm({ app, onSave }) {
   );
 }
 
-function SmtpConfigForm({ app, onSave }) {
-  const cfg = app.config || {};
-  const [host, setHost] = useState(cfg.host || 'smtp.livrariaadventista.ao');
-  const [port, setPort] = useState(cfg.port || 587);
-  const [user, setUser] = useState(cfg.user || 'no-reply@livrariaadventista.ao');
-  const [fromName, setFromName] = useState(cfg.fromName || 'Livraria Adventista Aurora');
-  const [secure, setSecure] = useState(!!cfg.secure);
-
-  useEffect(() => {
-    setHost(cfg.host || 'smtp.livrariaadventista.ao');
-    setPort(cfg.port || 587);
-    setUser(cfg.user || 'no-reply@livrariaadventista.ao');
-    setFromName(cfg.fromName || 'Livraria Adventista Aurora');
-    setSecure(!!cfg.secure);
-  }, [app.id, cfg.host, cfg.port, cfg.user, cfg.fromName, cfg.secure]);
-
+// O servidor envia os emails com os dados SMTP/SendGrid das Configurações do site
+// (site_settings.smtp_*), não com o config desta integração.
+function SmtpConfigInfo() {
   return (
-    <div className="space-y-3 p-4 rounded-lg bg-muted/30 border text-sm grid md:grid-cols-2 gap-3">
-      <div className="space-y-1.5 col-span-2">
-        <p className="text-xs text-muted-foreground">
-          Configure um servidor SMTP seguro para enviar e-mails transacionais aos clientes de forma autónoma e profissional.
-        </p>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold">Host SMTP</Label>
-        <Input value={host} onChange={(e) => setHost(e.target.value)} placeholder="smtp.exemplo.com" className="text-xs font-mono" />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold">Porta SMTP</Label>
-        <Input type="number" value={port} onChange={(e) => setPort(Number(e.target.value))} placeholder="587" className="text-xs font-mono" />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold">Utilizador / E-mail de Envio</Label>
-        <Input value={user} onChange={(e) => setUser(e.target.value)} placeholder="encomendas@livraria.ao" className="text-xs font-mono" />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold">Nome do Remetente</Label>
-        <Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Livraria Aurora" className="text-xs" />
-      </div>
-      <div className="flex items-center gap-2 pt-2 col-span-2">
-        <Switch id="smtp-ssl" checked={secure} onCheckedChange={setSecure} />
-        <Label htmlFor="smtp-ssl" className="text-xs cursor-pointer">Usar conexão SSL/TLS protegida (Porta 465)</Label>
-      </div>
-      <div className="col-span-2 pt-1">
-        <Button
-          type="button"
-          size="sm"
-          className="bg-sky-600 hover:bg-sky-700 text-white"
-          onClick={() => onSave(app, { host: host.trim(), port, user: user.trim(), fromName: fromName.trim(), secure })}
-        >
-          Guardar Configuração SMTP
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function WhatsAppConfigForm({ app, onSave }) {
-  const cfg = app.config || {};
-  const [phoneId, setPhoneId] = useState(cfg.phoneId || '108264935391054');
-  const [templateNamespace, setTemplateNamespace] = useState(cfg.templateNamespace || 'livraria_aurora_templates');
-  const [templateName, setTemplateName] = useState(cfg.templateName || 'confirmacao_pedido_ao');
-
-  useEffect(() => {
-    setPhoneId(cfg.phoneId || '108264935391054');
-    setTemplateNamespace(cfg.templateNamespace || 'livraria_aurora_templates');
-    setTemplateName(cfg.templateName || 'confirmacao_pedido_ao');
-  }, [app.id, cfg.phoneId, cfg.templateNamespace, cfg.templateName]);
-
-  return (
-    <div className="space-y-3 p-4 rounded-lg bg-muted/30 border text-sm grid md:grid-cols-2 gap-3">
-      <div className="space-y-1.5 col-span-2">
-        <p className="text-xs text-muted-foreground">
-          Integração com o WhatsApp Business Cloud API Oficial da Meta para envio de alertas por templates autenticados.
-        </p>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold">Phone Number ID (Meta Developer)</Label>
-        <Input value={phoneId} onChange={(e) => setPhoneId(e.target.value)} placeholder="10826..." className="text-xs font-mono" />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs font-semibold">Namespace dos Modelos (Templates)</Label>
-        <Input value={templateNamespace} onChange={(e) => setTemplateNamespace(e.target.value)} placeholder="livraria_aurora_templates" className="text-xs font-mono" />
-      </div>
-      <div className="space-y-1.5 col-span-2">
-        <Label className="text-xs font-semibold">Nome do Modelo Oficial (Template Name)</Label>
-        <Input value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="confirmacao_pedido_ao" className="text-xs font-mono" />
-      </div>
-      <div className="col-span-2 pt-1">
-        <Button
-          type="button"
-          size="sm"
-          className="bg-teal-600 hover:bg-teal-700 text-white"
-          onClick={() => onSave(app, { phoneId: phoneId.trim(), templateNamespace: templateNamespace.trim(), templateName: templateName.trim() })}
-        >
-          Guardar Configuração WhatsApp
-        </Button>
-      </div>
+    <div className="p-4 rounded-lg bg-sky-500/5 border border-sky-500/20 text-sm space-y-2 max-w-2xl">
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        O servidor, o utilizador, a palavra-passe e o remetente dos emails configuram-se em
+        <strong className="text-foreground"> Configurações → Email, push e chat</strong>.
+        Use o botão "Testar Email" no separador "Monitor de Envio &amp; Logs" para confirmar que o envio funciona.
+      </p>
+      <Button asChild type="button" size="sm" variant="outline">
+        <a href="/admin?tab=settings">Abrir Configurações</a>
+      </Button>
     </div>
   );
 }
@@ -523,7 +438,7 @@ export default function AppsTab() {
                   )}
 
                   {app.code === 'smtp_email' && (
-                    <SmtpConfigForm app={app} onSave={saveConfig} />
+                    <SmtpConfigInfo />
                   )}
 
                   {app.code === 'whatsapp_business' && (

@@ -71,7 +71,8 @@ function SlideMedia({ slide, eager }) {
 
 function SlideContent({ slide }) {
   const template = slide.template || 'classic';
-  const priceLabel = slide.promo_price != null && slide.promo_price !== ''
+  // 0 significa "sem preço promocional" (é o valor por omissão do campo).
+  const priceLabel = Number(slide.promo_price) > 0
     ? `Kz ${Number(slide.promo_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}`
     : null;
 

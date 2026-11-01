@@ -15,3 +15,6 @@ api-keys*.csv
 
 # Credenciais OAuth descarregadas da Google Cloud
 client_secret_*.json
+
+# Restos locais do PocketBase (retirado do projecto; nunca voltar a enviar bases de dados)
+app/pocketbase/

@@ -6,7 +6,7 @@
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
-[![PocketBase](https://img.shields.io/badge/PocketBase-Backend-B8DBE4?style=for-the-badge)](https://pocketbase.io)
+[![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![License](https://img.shields.io/badge/Licença-Privado-0ea5c9?style=for-the-badge)](LICENSE)
 
@@ -22,7 +22,7 @@
 
 A **Livraria Adventista IASD** é uma plataforma de e-commerce moderna, pensada para congregações, leitores e famílias que procuram literatura adventista com uma experiência fluida — do catálogo ao recibo, passando pela confirmação de entrega.
 
-Construída como **monorepo** com frontend React e backend PocketBase, oferece controlo total sobre catálogo, encomendas, identidade visual e operações locais, sem dependência de plataformas fechadas.
+Construída como **monorepo** com frontend React e backend **Supabase** (Postgres, Auth, Storage e Edge Functions), oferece controlo total sobre catálogo, encomendas, identidade visual e operações locais. O frontend é publicado no **Cloudflare Pages**.
 
 ```mermaid
 flowchart LR
@@ -33,13 +33,18 @@ flowchart LR
     B[React + Vite]
     C[Tailwind + shadcn/ui]
   end
-  subgraph Backend
-    D[PocketBase API]
-    E[Hooks & Migrações]
-    F[SQLite]
+  subgraph Supabase
+    D[PostgREST + RLS]
+    E[Edge Function app]
+    F[(Postgres)]
+    G[Storage media]
+    H[Auth]
   end
-  A --> B --> D --> F
-  D --> E
+  A --> B
+  B --> D --> F
+  B --> E --> F
+  B --> G
+  B --> H
 ```
 
 ---
@@ -100,8 +105,9 @@ flowchart LR
 |--------|-------------|
 | **Frontend** | React 18, Vite 7, React Router 7, Framer Motion |
 | **UI** | Tailwind CSS, Radix UI, shadcn/ui, Lucide Icons |
-| **Backend** | PocketBase (REST API, auth, ficheiros, hooks JS) |
-| **Dados** | SQLite via PocketBase + migrações versionadas |
+| **Backend** | Supabase: Postgres com RLS, Auth, Storage e Edge Function `app` (Deno) |
+| **Dados** | Postgres + migrações SQL versionadas em `supabase/migrations` |
+| **Deploy** | Cloudflare Pages (frontend) via GitHub Actions |
 | **Extras** | PWA, react-helmet, Sonner toasts, assinatura canvas |
 
 ---
@@ -118,10 +124,14 @@ livraria/
 │   │   │   ├── hooks/       # Auth, carrinho, definições
 │   │   │   └── lib/         # Recibos, telefone AO, temas
 │   │   └── public/          # PWA, ícones, service worker
-│   └── pocketbase/          # Backend (porta 8090)
-│       ├── pb_hooks/        # APIs custom (checkout, settings)
-│       ├── pb_migrations/   # Schema & evolução da BD
-│       └── scripts/         # Start automático + seed
+│   └── pocketbase/          # Backend antigo (só para referência e migração)
+├── supabase/
+│   ├── migrations/          # Esquema, RLS, triggers, Storage
+│   ├── functions/app/       # API própria (checkout, rastreio, CRM, chat…)
+│   └── config.toml
+├── scripts/
+│   └── migrar-pocketbase-supabase.mjs   # Cópia de dados PocketBase → Supabase
+├── .github/workflows/       # Deploy Cloudflare Pages e Supabase
 ├── package.json             # Scripts do monorepo
 └── README.md
 ```
@@ -150,8 +160,11 @@ cp app/web/.env.example app/web/.env
 ```
 
 ```env
-VITE_POCKETBASE_URL=http://127.0.0.1:8090
+VITE_SUPABASE_URL=https://bggqkjjqbjhbjsckzopj.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
 ```
+
+A chave *publishable* é pública. A chave `service_role` / `sb_secret_…` nunca vai para o frontend nem para o repositório.
 
 ### 3. Executar em desenvolvimento
 
@@ -162,16 +175,10 @@ npm run dev
 | Serviço | URL |
 |---------|-----|
 | Loja | http://localhost:3000 |
-| API PocketBase | http://127.0.0.1:8090 |
-| Admin PocketBase | http://127.0.0.1:8090/_/ |
+| API (Edge Function) | https://bggqkjjqbjhbjsckzopj.supabase.co/functions/v1/app |
+| Painel Supabase | https://supabase.com/dashboard/project/bggqkjjqbjhbjsckzopj |
 
-> Na primeira execução, o binário PocketBase é descarregado automaticamente.
-
-### 4. Dados iniciais (seed)
-
-```bash
-npm run seed
-```
+Não é preciso correr nenhum servidor local além do Vite: os dados estão no Supabase.
 
 ---
 
@@ -184,12 +191,7 @@ npm run seed
 | Email | `admin@livraria.ao` |
 | Password | `admin123456` |
 
-### PocketBase (`/_/`)
-
-| Campo | Valor |
-|-------|-------|
-| Email | `admin@livraria.local` |
-| Password | `Admin123456!` |
+As contas foram migradas do PocketBase com as mesmas palavras-passe. Os papéis (`admin`, `manager`, `member`) estão na tabela `profiles` e só um administrador os pode alterar.
 
 > Altere estas credenciais antes de qualquer ambiente público.
 
@@ -199,30 +201,38 @@ npm run seed
 
 | Comando | Descrição |
 |---------|-----------|
-| `npm run dev` | Frontend + PocketBase em modo desenvolvimento |
+| `npm run dev` | Frontend em modo desenvolvimento (dados no Supabase) |
 | `npm run build` | Build de produção do frontend → `dist/app/web` |
-| `npm run start` | PocketBase + preview do frontend |
-| `npm run seed` | Cria superuser, admin e livros de exemplo |
-| `npm run seed:books` | Repõe livros e slides em falta |
+| `npm run start` | Preview do build de produção |
 | `npm run lint` | ESLint no frontend |
+| `npm run migrate:supabase` | Copia dados do PocketBase local para o Supabase (ver script) |
+| `npm run dev:pocketbase` | Arranca o PocketBase antigo (só para a migração) |
 
 ---
 
-## APIs customizadas (PocketBase Hooks)
+## API própria (Edge Function `app`)
 
 | Endpoint | Método | Descrição |
 |----------|--------|-----------|
-| `/api/app/settings` | GET | Definições públicas do site |
-| `/api/app/checkout` | POST | Finalizar compra com assinatura |
-| `/api/app/track` | GET | Rastreio de encomenda |
-| `/api/app/newsletter` | POST | Subscrição de newsletter |
-| `/api/app/integrations` | GET | Integrações activas |
-| `/api/app/messaging/status` | GET | Estado WhatsApp/email/push (sem segredos) |
-| `/api/app/whatsapp/receipt` | POST | Enviar recibo via WhatsApp API |
-| `/api/app/admin/whatsapp/test` | POST | Teste de envio (staff) |
+Base: `https://bggqkjjqbjhbjsckzopj.supabase.co/functions/v1/app`
+
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/settings` | GET | Definições públicas do site |
+| `/checkout` | POST | Finalizar compra com assinatura (transacção em `place_order`) |
+| `/track` | POST | Rastreio de encomenda |
+| `/newsletter` | POST | Subscrição de newsletter |
+| `/integrations` | GET | Integrações activas |
+| `/messaging/status` | GET | Estado WhatsApp/email/push (sem segredos) |
+| `/whatsapp/receipt` | POST | Enviar recibo via WhatsApp API |
+| `/admin/whatsapp/test` | POST | Teste de envio (staff) |
+| `/chat`, `/chat/config` | POST/GET | Assistente (Gemini/DeepSeek ou FAQ) |
+| `/contacts/*` | — | CRM: sincronização, notificações e campanhas (staff) |
+
+O frontend continua a usar a API do SDK do PocketBase (`pb.collection(...)`), implementada sobre o Supabase em `app/web/src/lib/dataClient.js`.
 
 > Guia completo de lançamento: [docs/LANCAMENTO.md](docs/LANCAMENTO.md)  
-> Arquitectura PocketBase + Firebase: [docs/ARQUITETURA.md](docs/ARQUITETURA.md)
+> O login Google e o Google Workspace continuam no Firebase.
 
 ---
 
@@ -239,22 +249,35 @@ npm run seed
 
 ## Build de produção
 
-```bash
-npm run build
-npm run start
-```
+Cada push para `main` publica automaticamente:
 
-O frontend compilado fica em `dist/app/web`. Configure o reverse proxy (Nginx, Caddy, etc.) para servir os ficheiros estáticos e expor o PocketBase na mesma origem ou subdomínio API.
+- **Frontend** → Cloudflare Pages (`.github/workflows/deploy-cloudflare.yml`)
+- **Migrações e Edge Function** → Supabase (`.github/workflows/deploy-supabase.yml`, só quando `supabase/` muda)
+
+Configuração no GitHub (Settings → Secrets and variables → Actions):
+
+| Tipo | Nome | Valor |
+|------|------|-------|
+| Variável | `VITE_SUPABASE_URL` | URL do projecto Supabase |
+| Variável | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publishable |
+| Variável | `CLOUDFLARE_PAGES_PROJECT` | `livraria-adventista` |
+| Variável | `SUPABASE_PROJECT_REF` | `bggqkjjqbjhbjsckzopj` |
+| Secret | `CLOUDFLARE_API_TOKEN` | Token com permissão *Cloudflare Pages: Edit* |
+| Secret | `CLOUDFLARE_ACCOUNT_ID` | ID da conta Cloudflare |
+| Secret | `SUPABASE_ACCESS_TOKEN` | Token pessoal do Supabase |
+| Secret | `SUPABASE_DB_PASSWORD` | Palavra-passe da base de dados |
+
+O ficheiro `app/web/public/_redirects` encaminha todas as rotas para `index.html` (SPA).
 
 ---
 
 ## Segurança & boas práticas
 
 - Nunca commitar `.env` — use `.env.example` como referência
-- `pb_data/` (base de dados local) está no `.gitignore`
+- A chave `service_role` só existe dentro das Edge Functions do Supabase
 - Alterar passwords padrão antes de deploy
 - Activar HTTPS em produção
-- Rever permissões de coleções no PocketBase Admin
+- Rever as políticas RLS e os avisos em Supabase → Advisors
 
 ---
 

@@ -32,7 +32,6 @@ import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { fetchMessagingStatus, isWhatsAppApiActive } from '@/lib/messaging';
 import { FloatingScrollTop } from '@/components/ui/FloatingScrollTop';
 import { useAuth } from '@/hooks/useAuth';
-import pb from '@/lib/dataClient';
 
 const DEFAULT_NOTIFY_BODY = `Olá! 👋
 
@@ -49,7 +48,6 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
   const { user, isAdmin, hasPermission } = useAuth();
   const token = googleToken || getCachedGoogleToken();
   const canUseCrm = isCrmReady() && (isAdmin || hasPermission('manage_marketing') || user?.role === 'manager');
-  const isFirebaseOnly = user?.isFirebase && !pb.authStore.isValid;
 
   const [activeTab, setActiveTab] = useState('contacts');
   const [loading, setLoading] = useState(true);
@@ -494,15 +492,13 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
     return ids.map((id) => contactsMap[id]).filter(Boolean);
   };
 
-  if (isFirebaseOnly || !canUseCrm) {
+  if (!canUseCrm) {
     return (
       <div className="border rounded-2xl p-8 text-center bg-muted/10 space-y-3">
         <AlertCircle className="h-10 w-10 text-amber-500 mx-auto" />
         <h3 className="font-semibold">Sessão administrativa necessária</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          {isFirebaseOnly
-            ? 'Iniciou sessão com Google (Firebase). Para usar o CRM de contactos, inicie sessão também com a conta de administrador da livraria (email + palavra-passe).'
-            : 'Precisa de permissões de administrador ou marketing para gerir contactos.'}
+          Precisa de permissões de administrador ou marketing para gerir contactos.
         </p>
       </div>
     );

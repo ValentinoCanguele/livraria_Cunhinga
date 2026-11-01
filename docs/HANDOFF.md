@@ -69,7 +69,7 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
    - módulo de utilizadores (criar, editar, suspender, apagar, link de acesso);
    - um gestor com permissões parciais.
 3. Limpezas pendentes:
-   - a Edge Function `migrar-dados` está publicada no Supabase mas não está no repositório (provavelmente de uso único);
-   - há ramos de código para o Firebase "só para utilizadores Google" que já não se usam: `ContactsManager.jsx` (`isFirebaseOnly`) e `GoogleWorkspaceHub.jsx` (`mainUser?.isFirebase`);
-   - as regras de `orders` e `notification_logs` em `firestore.rules` já não são usadas.
+   - a Edge Function `migrar-dados` está publicada no Supabase mas não está no repositório (provavelmente de uso único). Apagá-la só com autorização do dono;
+   - ~~ramos Firebase "só para utilizadores Google" em `ContactsManager.jsx` e `GoogleWorkspaceHub.jsx`~~ removidos;
+   - ~~regras de `orders` e `notification_logs` em `firestore.rules`~~ já não existem no ficheiro.
 4. As políticas de CRM (`contacts`, `contact_*`) e de Storage ainda usam `is_staff()` em vez de uma permissão específica. Decidir se passam a exigir `manage_users` ou `manage_marketing`.

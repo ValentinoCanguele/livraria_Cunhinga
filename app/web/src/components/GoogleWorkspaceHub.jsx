@@ -69,17 +69,7 @@ const GoogleWorkspaceHub = () => {
         setLoadingAuth(false);
       },
       () => {
-        // If the workspace token listener says no token, but we have a logged-in main user,
-        // we can still set googleUser as mainUser so we can view archived database copies!
-        if (mainUser?.isFirebase) {
-          setGoogleUser({
-            displayName: mainUser.name,
-            email: mainUser.email,
-            photoURL: mainUser.avatar
-          });
-        } else {
-          setGoogleUser(null);
-        }
+        setGoogleUser(null);
         setToken(null);
         setLoadingAuth(false);
       }
@@ -87,7 +77,7 @@ const GoogleWorkspaceHub = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [mainUser]);
+  }, []);
 
   // Fetch data depending on active sub-tab (with local firestore copy fallback)
   const fetchData = async (currentSubTab = subTab) => {

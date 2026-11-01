@@ -15,3 +15,6 @@ app/pocketbase/*.zip
 /logo_vector.svg
 .vscode/
 api-keys*.csv
+
+# Credenciais OAuth descarregadas da Google Cloud
+client_secret_*.json

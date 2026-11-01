@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, ExternalLink, Store, Search, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, ExternalLink, Store, Search, Star, Copy } from 'lucide-react';
 import CollectionsTab from '@/components/admin/CollectionsTab';
 import SlidesTab from '@/components/admin/SlidesTab';
 import { sanitizeBookPayload } from '@/lib/bookSave';
@@ -42,6 +42,7 @@ const AdminPage = () => {
 
   const [showBookForm, setShowBookForm] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
+  const [duplicatingBook, setDuplicatingBook] = useState(null);
   const [saving, setSaving] = useState(false);
   const [bookSearch, setBookSearch] = useState('');
   const [bookFilter, setBookFilter] = useState('all');
@@ -101,6 +102,7 @@ const AdminPage = () => {
       }
       setShowBookForm(false);
       setEditingBook(null);
+      setDuplicatingBook(null);
       loadAll();
     } catch (err) {
       const msg = pbErrorMessage(err);
@@ -111,7 +113,14 @@ const AdminPage = () => {
   };
 
   const openEditBook = (b) => {
+    setDuplicatingBook(null);
     setEditingBook(b);
+    setShowBookForm(true);
+  };
+
+  const openDuplicateBook = (b) => {
+    setEditingBook(null);
+    setDuplicatingBook(b);
     setShowBookForm(true);
   };
 
@@ -366,7 +375,7 @@ const AdminPage = () => {
                       <h2 className="text-2xl font-bold">Catálogo</h2>
                       <p className="text-sm text-muted-foreground mt-1">{books.length} livros · {books.filter((b) => b.featured).length} em destaque</p>
                     </div>
-                    <Button className="btn-primary" onClick={() => { setEditingBook(null); setShowBookForm(true); }} disabled={!canManageCatalog}>
+                    <Button className="btn-primary" onClick={() => { setEditingBook(null); setDuplicatingBook(null); setShowBookForm(true); }} disabled={!canManageCatalog}>
                       <Plus className="h-4 w-4 mr-2" /> Adicionar
                     </Button>
                   </div>
@@ -461,7 +470,8 @@ const AdminPage = () => {
                               </Button>
                             </td>
                             <td className="p-4 text-right whitespace-nowrap">
-                              <Button variant="ghost" size="icon" onClick={() => openEditBook(b)} disabled={!canManageCatalog}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => openEditBook(b)} disabled={!canManageCatalog} title="Editar"><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => openDuplicateBook(b)} disabled={!canManageCatalog} title="Duplicar"><Copy className="h-4 w-4" /></Button>
                               <Button variant="ghost" size="icon" onClick={() => handleDeleteBook(b)} disabled={!canManageCatalog}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                             </td>
                           </tr>
@@ -690,9 +700,10 @@ const AdminPage = () => {
 
         <BookFormModal
           open={showBookForm}
-          onClose={() => { setShowBookForm(false); setEditingBook(null); }}
+          onClose={() => { setShowBookForm(false); setEditingBook(null); setDuplicatingBook(null); }}
           onSave={handleSaveBook}
           editing={editingBook}
+          template={duplicatingBook}
           saving={saving}
         />
 

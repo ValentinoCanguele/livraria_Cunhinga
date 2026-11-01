@@ -19,7 +19,7 @@ import { useIntegrations } from '@/hooks/useIntegrations';
 
 const PLACEHOLDER_COVER = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&q=80';
 
-export default function BookFormModal({ open, onClose, onSave, editing, saving }) {
+export default function BookFormModal({ open, onClose, onSave, editing, template, saving }) {
   const [form, setForm] = useState(emptyBookForm);
   const [copied, setCopied] = useState(false);
   const [autoCode] = useState(() => previewBookCode());
@@ -31,9 +31,12 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
       pb.collection('book_collections').getFullList({ sort: 'title' })
         .then(setCollections)
         .catch(() => setCollections([]));
-      setForm(editing ? bookToForm(editing) : { ...emptyBookForm, book_code: autoCode });
+      if (editing) setForm(bookToForm(editing));
+      // Duplicar: copia tudo menos os códigos únicos; o ID e as métricas são novos.
+      else if (template) setForm({ ...bookToForm(template), title: `${template.title} (cópia)`, book_code: autoCode, sku: '' });
+      else setForm({ ...emptyBookForm, book_code: autoCode });
     }
-  }, [open, editing, autoCode]);
+  }, [open, editing, template, autoCode]);
 
   if (!open) return null;
 
@@ -79,7 +82,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
               <Sparkles className="h-5 w-5 text-[#0ea5c9]" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">{editing ? 'Editar Livro' : 'Adicionar Livro Premium'}</h2>
+              <h2 className="text-xl font-bold">{editing ? 'Editar Livro' : template ? 'Duplicar Livro' : 'Adicionar Livro Premium'}</h2>
               <p className="text-sm text-muted-foreground">Catálogo profissional com ID e código único</p>
             </div>
           </div>
@@ -204,7 +207,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
                   </div>
                   <div className="space-y-2">
                     <Label>Descrição</Label>
-                    <Textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Sinopse do livro..." />
+                    <RichTextEditor value={form.description} onChange={(v) => set('description', v)} placeholder="Sinopse do livro..." />
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0ea5c9]/5 border border-[#0ea5c9]/20">
                     <Switch checked={form.featured} onCheckedChange={(v) => set('featured', v)} />

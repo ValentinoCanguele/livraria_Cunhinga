@@ -308,7 +308,7 @@ function ProductDetailPage() {
     <>
       <Helmet>
         <title>{pageTitle(product.title)}</title>
-        <meta name="description" content={product.description?.substring(0, 160) || product.title} />
+        <meta name="description" content={(product.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 160) || product.title} />
       </Helmet>
 
       <Header onCartOpen={() => setIsCartOpen(true)} />

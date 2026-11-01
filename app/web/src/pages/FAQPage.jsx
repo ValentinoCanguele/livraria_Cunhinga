@@ -8,11 +8,17 @@ import ShoppingCart from '@/components/ShoppingCart.jsx';
 import { pageTitle } from '@/lib/brand';
 
 import { FAQ_SECTIONS } from '@/lib/faqData';
-
-const faqs = FAQ_SECTIONS;
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 const FAQPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const { settings } = useSiteSettings();
+  // O limite do envio grátis vem das Configurações, para a resposta não ficar desactualizada.
+  const freeThreshold = `${(Number(settings.shipping_free_threshold) || 20000).toLocaleString('pt-AO')} Kz`;
+  const faqs = FAQ_SECTIONS.map((section) => ({
+    ...section,
+    questions: section.questions.map((q) => ({ ...q, answer: q.answer.replace('{free_threshold}', freeThreshold) })),
+  }));
 
   return (
     <>

@@ -393,7 +393,7 @@ export default function StoresTab() {
             <FormSection title="Identificação">
               <div className="space-y-2">
                 <Label>Nome da loja *</Label>
-                <Input value={form.name} onChange={(e) => set('name', e.target.value)} required placeholder="Ex.: Livraria Adventista — Talatona" />
+                <Input value={form.name} onChange={(e) => set('name', e.target.value)} required placeholder="Ex.: Livraria Adventista — Huambo" />
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-2">

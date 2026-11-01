@@ -706,6 +706,7 @@ route("POST", "/track", async ({ body, ip }) => {
     tracking_number: order.tracking_number || "", carrier: order.carrier || "",
     estimated_delivery: order.estimated_delivery || "", payment_status: order.payment_status || "pending",
     timeline: order.delivery_timeline || [], created: order.created,
+    shipping_method: order.shipping_method || "", pickup_store: order.pickup_store || "",
   });
 });
 

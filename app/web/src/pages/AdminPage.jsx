@@ -196,9 +196,18 @@ const AdminPage = () => {
   };
 
   const updateTracking = async (order, tracking, carrier, estimatedDelivery) => {
+    // estimated_delivery é timestamptz: vazio tem de ir como null ('' faz o Postgres recusar o pedido todo).
+    const day = (v) => (v ? String(v).slice(0, 10) : '');
+    const data = {
+      tracking_number: (tracking || '').trim(),
+      carrier: (carrier || '').trim(),
+      estimated_delivery: estimatedDelivery ? estimatedDelivery : null,
+    };
+    const unchanged = data.tracking_number === (order.tracking_number || '')
+      && data.carrier === (order.carrier || '')
+      && day(data.estimated_delivery) === day(order.estimated_delivery);
+    if (unchanged) return;
     try {
-      const data = { tracking_number: tracking, carrier };
-      if (estimatedDelivery !== undefined) data.estimated_delivery = estimatedDelivery || '';
       await pb.collection('orders').update(order.id, data);
       toast({ title: 'Tracking actualizado' });
       loadAll();

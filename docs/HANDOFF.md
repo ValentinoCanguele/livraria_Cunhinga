@@ -110,3 +110,21 @@ Ainda não publicada; vai no deploy depois do merge.
   - o envio fica limitado a `delivery`/`express`/`pickup`, e todos os textos têm tamanho máximo.
 - `/push/subscribe`: limite de pedidos, endpoint `https` obrigatório e chaves validadas.
 - Dados: `payment_methods` tem 3 linhas `unitel_money` repetidas (todas desactivadas). Limpar no painel antes de as activar.
+
+## Integridade e regras configuráveis (2026-11-01)
+
+- Migração `20261101175250_integridade_dados`:
+  - stock, preços, totais e portes não podem ser negativos;
+  - `book_code` é único quando preenchido;
+  - o email do perfil acompanha o da conta (`private.sync_profile_email`).
+- Migração `20261101175332_regras_loja`: novos campos em `site_settings`, editáveis em **Configurações → Regras da loja**:
+  - `order_number_prefix`;
+  - `checkout_notes_max`;
+  - `checkout_rate_per_minute`;
+  - `track_rate_per_minute`;
+  - `receipt_per_order_per_minute`.
+
+  Cada campo tem um limite seguro na base de dados, no painel e na Edge Function (`storeRules`).
+- Métodos de pagamento no checkout: só os activos em Pagamentos. Se não houver nenhum activo, aceita "entrega".
+- Stock em 2026-11-01: 84 dos 102 livros com 1 a 4 unidades e 12 esgotados.
+

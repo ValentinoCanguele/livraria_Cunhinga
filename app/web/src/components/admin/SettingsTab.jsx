@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell, Sparkles, RotateCcw, Image as ImageIcon, Phone, Brush } from 'lucide-react';
+import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell, Sparkles, RotateCcw, Image as ImageIcon, Phone, Brush, ShieldCheck } from 'lucide-react';
 import pb from '@/lib/dataClient';
 import { useToast } from '@/hooks/use-toast';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -56,6 +56,11 @@ const empty = {
   shop_show_low_stock: true,
   shop_grid_columns: 4,
   shipping_express_cost: 3000,
+  order_number_prefix: 'ENC-',
+  checkout_notes_max: 2000,
+  checkout_rate_per_minute: 15,
+  track_rate_per_minute: 20,
+  receipt_per_order_per_minute: 3,
   ui_glass_enabled: true,
   ui_glass_opacity: 0.72,
   shop_bg_mode: 'gradient',
@@ -83,6 +88,11 @@ const empty = {
   chat_welcome: '',
 };
 
+const clampInt = (value, min, max, fallback) => {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.min(Math.max(n, min), max) : fallback;
+};
+
 const SETTINGS_SECTIONS = [
   { label: 'Identidade', items: [
     { value: 'brand', label: 'Marca', icon: Palette },
@@ -92,6 +102,7 @@ const SETTINGS_SECTIONS = [
   { label: 'Loja', items: [
     { value: 'shop', label: 'Catálogo e loja', icon: Store },
     { value: 'shipping', label: 'Envio', icon: Truck },
+    { value: 'rules', label: 'Regras da loja', icon: ShieldCheck },
   ] },
   { label: 'Comunicação', items: [
     { value: 'contact', label: 'Contacto', icon: Phone },
@@ -173,6 +184,11 @@ export default function SettingsTab() {
           shop_show_low_stock: r.shop_show_low_stock !== false,
           shop_grid_columns: r.shop_grid_columns ?? empty.shop_grid_columns,
           shipping_express_cost: r.shipping_express_cost ?? empty.shipping_express_cost,
+          order_number_prefix: r.order_number_prefix ?? empty.order_number_prefix,
+          checkout_notes_max: r.checkout_notes_max ?? empty.checkout_notes_max,
+          checkout_rate_per_minute: r.checkout_rate_per_minute ?? empty.checkout_rate_per_minute,
+          track_rate_per_minute: r.track_rate_per_minute ?? empty.track_rate_per_minute,
+          receipt_per_order_per_minute: r.receipt_per_order_per_minute ?? empty.receipt_per_order_per_minute,
           ui_glass_enabled: r.ui_glass_enabled !== false,
           ui_glass_opacity: r.ui_glass_opacity ?? empty.ui_glass_opacity,
           shop_bg_mode: r.shop_bg_mode || empty.shop_bg_mode,
@@ -236,6 +252,12 @@ export default function SettingsTab() {
         shipping_free_threshold: Number(form.shipping_free_threshold),
         shipping_cost: Number(form.shipping_cost),
         shipping_express_cost: Number(form.shipping_express_cost),
+        // Regras da loja: os mesmos limites que a base de dados aceita.
+        order_number_prefix: String(form.order_number_prefix || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 8),
+        checkout_notes_max: clampInt(form.checkout_notes_max, 0, 5000, 2000),
+        checkout_rate_per_minute: clampInt(form.checkout_rate_per_minute, 1, 60, 15),
+        track_rate_per_minute: clampInt(form.track_rate_per_minute, 1, 120, 20),
+        receipt_per_order_per_minute: clampInt(form.receipt_per_order_per_minute, 1, 10, 3),
         shop_per_page: Number(form.shop_per_page) || 24,
         shop_grid_columns: Number(form.shop_grid_columns) || 4,
         ui_glass_opacity: Number(form.ui_glass_opacity) || 0.72,
@@ -545,6 +567,49 @@ export default function SettingsTab() {
           <div className="space-y-2">
             <Label>Custo de envio expresso (Kz)</Label>
             <Input type="number" value={form.shipping_express_cost} onChange={(e) => set('shipping_express_cost', e.target.value)} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="rules" className="space-y-5 max-w-xl">
+          <p className="text-sm text-muted-foreground">
+            Regras aplicadas pelo servidor em cada encomenda. Os métodos de pagamento aceites são os que estiverem activos em <strong>Vendas → Pagamentos</strong>.
+          </p>
+          <div className="space-y-2">
+            <Label>Prefixo do número de encomenda</Label>
+            <Input
+              value={form.order_number_prefix}
+              onChange={(e) => set('order_number_prefix', e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 8))}
+              placeholder="ENC-"
+              className="font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              Até 8 caracteres (letras, números e hífen). Exemplo de número: <span className="font-mono">{form.order_number_prefix || ''}K3F9QA7XP</span>. Só afecta as encomendas novas.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Máximo de caracteres nas notas da encomenda</Label>
+            <Input type="number" min={0} max={5000} value={form.checkout_notes_max} onChange={(e) => set('checkout_notes_max', e.target.value)} />
+            <p className="text-xs text-muted-foreground">0 a 5000. Com 0, as notas do cliente não são guardadas.</p>
+          </div>
+          <div className="rounded-lg border p-4 space-y-4 bg-muted/20">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Protecção contra abusos (por minuto)</p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Compras por dispositivo</Label>
+                <Input type="number" min={1} max={60} value={form.checkout_rate_per_minute} onChange={(e) => set('checkout_rate_per_minute', e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">1 a 60</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Pesquisas de rastreio</Label>
+                <Input type="number" min={1} max={120} value={form.track_rate_per_minute} onChange={(e) => set('track_rate_per_minute', e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">1 a 120</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Recibos WhatsApp por encomenda</Label>
+                <Input type="number" min={1} max={10} value={form.receipt_per_order_per_minute} onChange={(e) => set('receipt_per_order_per_minute', e.target.value)} />
+                <p className="text-[11px] text-muted-foreground">1 a 10</p>
+              </div>
+            </div>
           </div>
         </TabsContent>
 

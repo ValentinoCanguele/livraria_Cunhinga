@@ -104,6 +104,22 @@ async function getSettings(): Promise<Row | null> {
   return data?.[0] || null;
 }
 
+// Regras da loja configuráveis pelo admin (Configurações → Regras da loja), sempre dentro de limites seguros.
+const clampInt = (value: unknown, min: number, max: number, fallback: number) => {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.min(Math.max(n, min), max) : fallback;
+};
+function storeRules(settings: Row | null) {
+  const prefix = String(settings?.order_number_prefix ?? "ENC-").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
+  return {
+    orderPrefix: prefix,
+    notesMax: clampInt(settings?.checkout_notes_max, 0, 5000, 2000),
+    checkoutRate: clampInt(settings?.checkout_rate_per_minute, 1, 60, 15),
+    trackRate: clampInt(settings?.track_rate_per_minute, 1, 120, 20),
+    receiptPerOrder: clampInt(settings?.receipt_per_order_per_minute, 1, 10, 3),
+  };
+}
+
 async function getIntegration(code: string): Promise<Row | null> {
   const { data } = await db.from("app_integrations").select("*").eq("code", code).limit(1);
   return data?.[0] || null;
@@ -639,7 +655,7 @@ async function findOrderByNumberAndEmail(orderNumber: string, email: string) {
 }
 
 route("POST", "/track", async ({ body, ip }) => {
-  if (!checkRateLimit("track", ip, 20)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
+  if (!checkRateLimit("track", ip, storeRules(await getSettings()).trackRate)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
   const orderNumber = String(body.orderNumber || "").trim();
   const email = normalizeEmail(body.email || "");
   if (!orderNumber || !email) throw bad("Número da encomenda e email são obrigatórios.");
@@ -688,7 +704,8 @@ route("GET", "/geo/localities", async ({ url }) => {
 });
 
 route("POST", "/confirm-delivery", async ({ body, ip }) => {
-  if (!checkRateLimit("confirm-delivery", ip, 10)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
+  const confirmRate = Math.max(1, Math.floor(storeRules(await getSettings()).trackRate / 2));
+  if (!checkRateLimit("confirm-delivery", ip, confirmRate)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
   const orderNumber = String(body.orderNumber || "").trim();
   const email = normalizeEmail(body.email || "");
   const recipientName = String(body.recipientName || "").trim();
@@ -758,7 +775,9 @@ route("POST", "/delivery-event", async ({ auth, body }) => {
 });
 
 route("POST", "/checkout", async ({ body: data, ip }) => {
-  if (!checkRateLimit("checkout", ip, 15)) throw bad("Demasiadas tentativas de checkout. Aguarde um minuto.");
+  const settings = await getSettings();
+  const rules = storeRules(settings);
+  if (!checkRateLimit("checkout", ip, rules.checkoutRate)) throw bad("Demasiadas tentativas de checkout. Aguarde um minuto.");
   const items: Row[] = data.items || [];
   if (!items.length) throw bad("Carrinho vazio.");
 
@@ -789,7 +808,6 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
     throw bad("Assinatura do comprador obrigatória. Assine no quadro.");
   }
 
-  const settings = await getSettings();
   if (settings?.maintenance_mode) throw bad("Loja em manutenção. Tente mais tarde.");
 
   const parseBookId = (variantId: string) => String(variantId || "").replace(/-(default|v\d+)$/, "");
@@ -800,10 +818,10 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
   });
 
   const paymentCode = clip(data.paymentMethodCode || data.paymentMethod || "entrega", 60);
-  // Só métodos de pagamento activos (entrega e transferência existem sempre).
-  const { data: paymentRows } = await db.from("payment_methods").select("name").eq("code", paymentCode).eq("enabled", true).limit(1);
-  const paymentMethodRow = paymentRows?.[0];
-  if (!paymentMethodRow && paymentCode !== "entrega" && paymentCode !== "transferencia") throw bad("Método de pagamento indisponível.");
+  // Só os métodos de pagamento que o admin tem activos. Se nenhum estiver activo, aceita "entrega".
+  const { data: activeMethods } = await db.from("payment_methods").select("code, name").eq("enabled", true);
+  const paymentMethodRow = (activeMethods || []).find((m: Row) => m.code === paymentCode);
+  if (!paymentMethodRow && !(paymentCode === "entrega" && !(activeMethods || []).length)) throw bad("Método de pagamento indisponível.");
   const isP2P = paymentCode !== "entrega" && paymentCode !== "transferencia";
   const saleChannel = clip(data.saleChannel || data.orderType || "web_purchase", 40);
   const isWhatsApp = saleChannel === "whatsapp";
@@ -812,7 +830,7 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
   const timelineLocation = shippingMethod === "pickup" ? (pickupStore || "Loja física") : (clip(data.deliveryMunicipality || data.deliveryProvince, 120) || "Angola");
   // Hora + 3 caracteres aleatórios: evita números repetidos em compras simultâneas e números fáceis de adivinhar.
   const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(3)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
-  const orderNum = "ENC-" + Date.now().toString(36).toUpperCase().slice(-6) + randomPart;
+  const orderNum = rules.orderPrefix + Date.now().toString(36).toUpperCase().slice(-6) + randomPart;
 
   const order: Row = {
     order_number: orderNum,
@@ -841,7 +859,7 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
     order_type: isWhatsApp ? "whatsapp_order" : "online_purchase",
   };
   if (paymentCode === "entrega" || paymentCode === "transferencia") order.payment_method = paymentCode;
-  if (data.notes) order.notes = clip(data.notes, 2000);
+  if (data.notes && rules.notesMax > 0) order.notes = clip(data.notes, rules.notesMax);
   if (shippingMethod !== "pickup") {
     Object.assign(order, {
       delivery_province_id: clip(data.deliveryProvinceId, 40),
@@ -947,10 +965,10 @@ route("POST", "/whatsapp/receipt", async ({ body, ip }) => {
   const reqPhone = normalizePhone(String(body.phone || ""));
   if (!phone) return json({ sent: false, fallback: true, message: "A encomenda não tem telefone — use o link manual." });
   if (reqPhone && reqPhone !== normalizePhone(phone)) throw bad("Telefone não corresponde à encomenda.");
-  if (!checkRateLimit("whatsapp_receipt_order", order.id, 3)) throw bad("O recibo desta encomenda já foi enviado. Aguarde um minuto.");
+  const settings = await getSettings();
+  if (!checkRateLimit("whatsapp_receipt_order", order.id, storeRules(settings).receiptPerOrder)) throw bad("O recibo desta encomenda já foi enviado. Aguarde um minuto.");
   const config = await getWhatsAppConfig();
   if (!config) return json({ sent: false, fallback: true, message: "API WhatsApp não configurada — use link manual." });
-  const settings = await getSettings();
   const text = buildReceiptText(order, settings?.site_name || "Livraria Adventista");
   const result = await sendWhatsAppMessage(phone, text, config, undefined, { context: "receipt", customer_name: order.customer_name, order_number: order.order_number });
   return json({

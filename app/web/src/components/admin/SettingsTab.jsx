@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell, Sparkles } from 'lucide-react';
+import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell, Sparkles, RotateCcw, Image as ImageIcon, Phone, MapPin, Brush } from 'lucide-react';
 import pb from '@/lib/dataClient';
 import { useToast } from '@/hooks/use-toast';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -83,6 +83,28 @@ const empty = {
   chat_model: '',
   chat_welcome: '',
 };
+
+const SETTINGS_SECTIONS = [
+  { label: 'Identidade', items: [
+    { value: 'brand', label: 'Marca', icon: Palette },
+    { value: 'images', label: 'Imagens', icon: ImageIcon },
+    { value: 'theme', label: 'Tema visual', icon: Brush },
+  ] },
+  { label: 'Loja', items: [
+    { value: 'shop', label: 'Catálogo e loja', icon: Store },
+    { value: 'shipping', label: 'Envio', icon: Truck },
+    { value: 'stores', label: 'Lojas físicas', icon: MapPin },
+  ] },
+  { label: 'Comunicação', items: [
+    { value: 'contact', label: 'Contacto', icon: Phone },
+    { value: 'messaging', label: 'Email, push e chat', icon: Mail },
+    { value: 'header', label: 'Barra superior', icon: MessageSquare },
+    { value: 'footer', label: 'Rodapé', icon: LayoutTemplate },
+  ] },
+  { label: 'Aplicação', items: [
+    { value: 'pwa', label: 'PWA / telemóvel', icon: Smartphone },
+  ] },
+];
 
 export default function SettingsTab() {
   const { toast } = useToast();
@@ -191,6 +213,18 @@ export default function SettingsTab() {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Alterações por gravar: compara com o estado carregado do servidor.
+  const [baseline, setBaseline] = useState('');
+  useEffect(() => {
+    if (!loading) setBaseline(JSON.stringify(form));
+  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dirty = !loading && (baseline !== JSON.stringify(form) || !!logoFile || !!faviconFile || logoRemoved || faviconRemoved);
+  const discard = () => {
+    setLogoFile(null);
+    setFaviconFile(null);
+    load();
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -270,20 +304,26 @@ export default function SettingsTab() {
 
   return (
     <form onSubmit={handleSave} className="space-y-6">
-      <Tabs defaultValue="brand">
-        <TabsList className="mb-6 flex-wrap h-auto">
-          <TabsTrigger value="brand"><Palette className="h-4 w-4 mr-1.5" />Marca</TabsTrigger>
-          <TabsTrigger value="images">Imagens</TabsTrigger>
-          <TabsTrigger value="contact">Contacto</TabsTrigger>
-          <TabsTrigger value="pwa"><Smartphone className="h-4 w-4 mr-1.5" />PWA / Mobile</TabsTrigger>
-          <TabsTrigger value="messaging"><Mail className="h-4 w-4 mr-1.5" />Email & Push</TabsTrigger>
-          <TabsTrigger value="shipping"><Truck className="h-4 w-4 mr-1.5" />Envio</TabsTrigger>
-          <TabsTrigger value="shop"><Store className="h-4 w-4 mr-1.5" />Loja / Shop</TabsTrigger>
-          <TabsTrigger value="theme"><Palette className="h-4 w-4 mr-1.5" />Tema UI</TabsTrigger>
-          <TabsTrigger value="header"><MessageSquare className="h-4 w-4 mr-1.5" />Barra Superior</TabsTrigger>
-          <TabsTrigger value="footer"><LayoutTemplate className="h-4 w-4 mr-1.5" />Rodapé</TabsTrigger>
-          <TabsTrigger value="stores">Lojas Físicas</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="brand" orientation="vertical" className="grid lg:grid-cols-[220px_minmax(0,1fr)] gap-6 items-start">
+        <aside className="lg:sticky lg:top-24 rounded-xl border border-border bg-background p-2 space-y-3">
+          {SETTINGS_SECTIONS.map((group) => (
+            <div key={group.label}>
+              <p className="px-2 pt-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{group.label}</p>
+              <TabsList className="flex flex-row flex-wrap lg:flex-col lg:items-stretch h-auto w-full gap-0.5 bg-transparent p-0">
+                {group.items.map(({ value, label, icon: Icon }) => (
+                  <TabsTrigger
+                    key={value}
+                    value={value}
+                    className="justify-start gap-2 px-2.5 py-2 data-[state=active]:bg-[#0ea5c9]/10 data-[state=active]:text-[#0ea5c9] data-[state=active]:shadow-none"
+                  >
+                    <Icon className="h-4 w-4" />{label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+          ))}
+        </aside>
+        <div className="min-w-0 rounded-xl border border-border bg-background p-5 md:p-6">
 
         <TabsContent value="brand" className="space-y-4 max-w-xl">
           <div className="space-y-2">
@@ -705,12 +745,24 @@ export default function SettingsTab() {
         <TabsContent value="stores">
           <StoresTab />
         </TabsContent>
+        </div>
       </Tabs>
 
-      <Button type="submit" className="btn-primary" disabled={saving}>
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        <Save className="mr-2 h-4 w-4" /> Guardar Configurações
-      </Button>
+      <div className={`sticky bottom-4 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-lg backdrop-blur transition-colors ${dirty ? 'border-amber-400/60 bg-amber-50/95 dark:bg-amber-950/80' : 'border-border bg-background/95'}`}>
+        <p className={`text-sm ${dirty ? 'text-amber-900 dark:text-amber-200 font-medium' : 'text-muted-foreground'}`}>
+          {dirty ? 'Há alterações por gravar.' : 'Tudo gravado.'}
+        </p>
+        <div className="flex gap-2">
+          {dirty && (
+            <Button type="button" variant="outline" onClick={discard} disabled={saving}>
+              <RotateCcw className="mr-2 h-4 w-4" /> Descartar
+            </Button>
+          )}
+          <Button type="submit" className="btn-primary" disabled={saving || !dirty}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Guardar configurações
+          </Button>
+        </div>
+      </div>
     </form>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, ShoppingCart, Menu, X, User, ShoppingBag, LogOut, LayoutDashboard } from 'lucide-react';
+import { Search, ShoppingCart, Menu, X, User, ShoppingBag, LogOut, LayoutDashboard, BarChart3 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,13 +8,18 @@ import { useCart } from '@/hooks/useCart';
 import { useAuth } from '@/hooks/useAuth';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import BrandLogo from '@/components/BrandLogo';
+import MegaMenu from '@/components/header/MegaMenu';
 import UserAvatar from '@/components/UserAvatar';
 import { UserMenu, GuestAuthButton } from '@/components/UserMenu';
 import { getUserDisplayName, getUserFirstName } from '@/lib/userUtils';
 
+// Menu do telemóvel: as mesmas secções do mega menu, em lista.
 const NAV_LINKS = [
   { to: '/', label: 'Início' },
   { to: '/shop', label: 'Livros' },
+  { to: '/colecoes', label: 'Coleções' },
+  { to: '/faq', label: 'Ajuda' },
+  { to: '/contact', label: 'Contacto' },
 ];
 
 const Header = ({ onCartOpen }) => {
@@ -73,27 +78,9 @@ const Header = ({ onCartOpen }) => {
         <div className="flex items-center justify-between h-16 gap-3">
           <BrandLogo variant="light" />
 
-          <nav className="hidden lg:flex items-center gap-6" aria-label="Navegação Principal">
-            {NAV_LINKS.map(({ to, label }) => (
-              <Link
-                key={to}
-                to={to}
-                className={`text-sm font-semibold transition-colors hover:text-[#22d3ee] ${
-                  location.pathname === to ? 'text-[#22d3ee]' : 'text-white/80'
-                }`}
-                aria-current={location.pathname === to ? 'page' : undefined}
-              >
-                {label}
-              </Link>
-            ))}
-            <button
-              onClick={onCartOpen}
-              className="text-sm font-semibold transition-colors text-white/80 hover:text-[#22d3ee] flex items-center gap-1.5"
-              aria-label={`Carrinho de compras, ${cartCount} itens`}
-            >
-              Carrinho {cartCount > 0 && <span className="bg-[#22d3ee]/20 text-[#22d3ee] text-[11px] px-1.5 py-0.5 rounded-full font-bold">{cartCount}</span>}
-            </button>
-          </nav>
+          <div className="hidden lg:block">
+            <MegaMenu />
+          </div>
 
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-sm mx-4" role="search" aria-label="Pesquisa rápida">
             <div className="relative w-full">
@@ -247,6 +234,15 @@ const Header = ({ onCartOpen }) => {
                   >
                     <LayoutDashboard className="h-4 w-4 text-[#22d3ee]" /> Painel Admin
                   </Link>
+                )}
+                {canAccessAdmin && (
+                  <a
+                    href="/painel-vendas.html"
+                    className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-lg text-white/80 hover:bg-white/5 hover:text-white"
+                    tabIndex={mobileOpen ? 0 : -1}
+                  >
+                    <BarChart3 className="h-4 w-4 text-[#22d3ee]" /> Painel de Vendas
+                  </a>
                 )}
                 <button
                   type="button"

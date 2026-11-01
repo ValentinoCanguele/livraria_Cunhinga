@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, ExternalLink } from 'lucide-react';
 import CollectionsTab from '@/components/admin/CollectionsTab';
 import SlidesTab from '@/components/admin/SlidesTab';
 import { sanitizeBookPayload } from '@/lib/bookSave';
@@ -31,6 +31,7 @@ import { getLowStockBooks, clearStockAlert } from '@/api/EcommerceApi';
 
 const AdminPage = () => {
   const { user, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -204,6 +205,36 @@ const AdminPage = () => {
 
   const defaultTab = canManageCatalog ? 'books' : canManageOrders ? 'orders' : canManageSettings ? 'settings' : canManageUsers ? 'users' : 'payments';
 
+  // Separadores agrupados por área; o separador activo fica no URL (/admin?tab=orders) para os atalhos do cabeçalho.
+  const tabGroups = [
+    { label: 'Catálogo', tabs: [
+      canManageCatalog && { value: 'books', label: `Livros (${books.length})`, icon: PackageSearch },
+      canManageCatalog && { value: 'collections', label: 'Coleções', icon: Layers },
+      canManageCatalog && { value: 'slides', label: `Slider (${slides.length})`, icon: Image },
+    ] },
+    { label: 'Vendas', tabs: [
+      canManageOrders && { value: 'orders', label: `Encomendas (${orders.length})`, icon: ShoppingBag },
+      canManagePayments && { value: 'payments', label: 'Pagamentos', icon: CreditCard },
+    ] },
+    { label: 'Clientes', tabs: [
+      canManageUsers && { value: 'users', label: 'Utilizadores', icon: Users },
+      canManageUsers && { value: 'crm', label: 'Clientes (CRM)', icon: Users },
+      canManageMarketing && { value: 'contacts', label: 'Contactos e campanhas', icon: Megaphone },
+    ] },
+    { label: 'Sistema', tabs: [
+      canManageSettings && { value: 'settings', label: 'Configurações', icon: Settings },
+      isAdmin && { value: 'apps', label: 'Integrações', icon: Plug },
+    ] },
+  ].map((g) => ({ ...g, tabs: g.tabs.filter(Boolean) })).filter((g) => g.tabs.length);
+  const allowedTabs = tabGroups.flatMap((g) => g.tabs.map((t) => t.value));
+  const requestedTab = searchParams.get('tab');
+  const activeTab = allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
+  const setActiveTab = (value) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    next.set('tab', value);
+    return next;
+  }, { replace: true });
+
   return (
     <>
       <Helmet><title>{pageTitle('Painel Admin')}</title></Helmet>
@@ -261,19 +292,29 @@ const AdminPage = () => {
             </div>
           )}
 
-          <Tabs defaultValue={defaultTab}>
-            <TabsList className="mb-8 flex-wrap h-auto gap-1">
-              {canManageCatalog && <TabsTrigger value="books"><PackageSearch className="h-4 w-4 mr-1.5" />Livros ({books.length})</TabsTrigger>}
-              {canManageCatalog && <TabsTrigger value="collections"><Layers className="h-4 w-4 mr-1.5" />Coleções</TabsTrigger>}
-              {canManageCatalog && <TabsTrigger value="slides"><Image className="h-4 w-4 mr-1.5" />Slider ({slides.length})</TabsTrigger>}
-              {canManageOrders && <TabsTrigger value="orders"><ShoppingBag className="h-4 w-4 mr-1.5" />Encomendas ({orders.length})</TabsTrigger>}
-              {canManageSettings && <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1.5" />Configurações</TabsTrigger>}
-              {canManageUsers && <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilizadores</TabsTrigger>}
-              {canManageUsers && <TabsTrigger value="crm"><Users className="h-4 w-4 mr-1.5" />CRM & Contactos</TabsTrigger>}
-              {canManagePayments && <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Pagamentos</TabsTrigger>}
-              {canManageMarketing && <TabsTrigger value="contacts"><Users className="h-4 w-4 mr-1.5" />CRM Contactos</TabsTrigger>}
-              {isAdmin && <TabsTrigger value="apps"><Plug className="h-4 w-4 mr-1.5" />Apps</TabsTrigger>}
-            </TabsList>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <div className="mb-8 flex flex-wrap items-stretch gap-3">
+              {tabGroups.map((group) => (
+                <div key={group.label} className="rounded-xl border border-border bg-background p-1.5">
+                  <p className="px-2 pt-0.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{group.label}</p>
+                  <TabsList className="h-auto flex-wrap gap-1 bg-transparent p-0">
+                    {group.tabs.map(({ value, label, icon: Icon }) => (
+                      <TabsTrigger key={value} value={value} className="data-[state=active]:bg-[#0ea5c9] data-[state=active]:text-white">
+                        <Icon className="h-4 w-4 mr-1.5" />{label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+              ))}
+              {canAccessAdmin && (
+                <a
+                  href="/painel-vendas.html"
+                  className="rounded-xl border border-dashed border-[#0ea5c9]/40 bg-[#0ea5c9]/5 px-4 flex items-center gap-2 text-sm font-semibold text-[#0ea5c9] hover:bg-[#0ea5c9]/10 transition-colors"
+                >
+                  <BarChart3 className="h-4 w-4" /> Painel de Vendas <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
 
             {canManageSettings && <TabsContent value="settings"><SettingsTab /></TabsContent>}
             {canManageUsers && <TabsContent value="users"><UsersTab /></TabsContent>}

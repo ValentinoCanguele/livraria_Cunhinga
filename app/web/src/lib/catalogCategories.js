@@ -84,6 +84,18 @@ export const SHOWCASE_CATEGORIES = [
   },
 ];
 
+/** Parâmetros da loja (/shop?...) que mostram cada categoria. */
+export const CATEGORY_SHOP_FILTERS = {
+  ellen: 'search=Ellen',
+  apocalipse: 'search=Apocalipse',
+  familia: 'search=Família',
+  saude: 'search=Saúde',
+  pregacao: 'search=Pregação',
+  fe: 'search=Fé',
+  stock: 'inStockOnly=true',
+  destaques: 'featuredOnly=true',
+};
+
 export function buildShowcaseCategories(products) {
   return SHOWCASE_CATEGORIES
     .map((cat) => {

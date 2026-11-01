@@ -6,18 +6,7 @@ import { getProducts, getProduct } from '@/api/EcommerceApi';
 import CategoryBookMarquee from '@/components/home/CategoryBookMarquee';
 import QuickViewModal from '@/components/QuickViewModal';
 import { Button } from '@/components/ui/button';
-import { buildShowcaseCategories } from '@/lib/catalogCategories';
-
-const CATEGORY_SHOP_FILTERS = {
-  ellen: 'search=Ellen',
-  apocalipse: 'search=Apocalipse',
-  familia: 'search=Família',
-  saude: 'search=Saúde',
-  pregacao: 'search=Pregação',
-  fe: 'search=Fé',
-  stock: 'inStockOnly=true',
-  destaques: 'featuredOnly=true',
-};
+import { buildShowcaseCategories, CATEGORY_SHOP_FILTERS } from '@/lib/catalogCategories';
 
 export default function CatalogShowcase({ onCartOpen }) {
   const [products, setProducts] = useState([]);

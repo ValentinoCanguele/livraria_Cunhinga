@@ -1,0 +1,268 @@
+<div class="wrap">
+  <section class="hero" id="topo">
+    <div>
+      <div class="brand">
+        <span class="logo"><img alt="Ministério de Publicações — Livraria e Editora Adventista" src="__LOGO__" id="logo-img"></span>
+        <span class="eyebrow">Livraria e Editora Adventista · Loja do Huambo</span>
+      </div>
+      <h1 class="h1" id="titulo">Painel de Vendas</h1>
+      <p class="take" id="takeaway"><span class="loading">A carregar os dados de vendas…</span></p>
+    </div>
+    <div class="side">
+      <div class="sels">
+        <label class="sel" for="sel-ano">Ano<select id="sel-ano" disabled></select></label>
+        <label class="sel" for="sel-comp">Comparar com<select id="sel-comp" disabled></select></label>
+      </div>
+      <div class="btns">
+        <span class="adm-badge" id="adm-badge" hidden>Admin activo <button type="button" id="btn-lock">Bloquear</button></span>
+        <button class="btn ghost" id="btn-admin" type="button" hidden>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 5V3.5a3 3 0 0 1 6 0V5h1v6H2V5zm1.5 0h3V3.5a1.5 1.5 0 0 0-3 0z" fill="currentColor"/></svg>
+          <span id="btn-admin-t">Administração</span>
+        </button>
+        <button class="btn" id="btn-pres" type="button" disabled>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1h10v7H1zM5 9h2v1.5h2V12H3v-1.5h2z" fill="currentColor"/></svg>
+          Modo apresentação
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis">
+    <div class="card kpi">
+      <span class="accent"></span>
+      <span class="lab" id="k1-lab">Vendas do ano</span>
+      <span class="val" id="k1"><span class="sk"></span></span>
+      <span class="delta" id="k1-d">&nbsp;</span>
+      <svg class="spark" id="spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"></svg>
+    </div>
+    <div class="card kpi">
+      <span class="lab" id="k2-lab">Meses fechados</span>
+      <span class="val" id="k2"><span class="sk"></span></span>
+      <span class="delta" id="k2-d">&nbsp;</span>
+    </div>
+    <div class="card kpi">
+      <span class="lab" id="k3-lab">Média mensal</span>
+      <span class="val" id="k3"><span class="sk"></span></span>
+      <span class="delta" id="k3-d">&nbsp;</span>
+    </div>
+    <div class="card kpi">
+      <span class="lab" id="k4-lab">Melhor mês</span>
+      <span class="val" id="k4"><span class="sk"></span></span>
+      <span class="delta" id="k4-d">&nbsp;</span>
+    </div>
+    <div class="card kpi">
+      <span class="lab" id="k5-lab">Projecção anual</span>
+      <span class="val" id="k5"><span class="sk"></span></span>
+      <span class="delta" id="k5-d">&nbsp;</span>
+      <div class="progress" aria-hidden="true"><span id="proj-bar"></span></div>
+    </div>
+  </section>
+
+  <section class="row">
+    <div class="card" id="card-mensal">
+      <div class="head">
+        <div>
+          <h2>Comparativo mensal · Janeiro a Dezembro</h2>
+          <p class="note" id="note-mensal">Vendas por mês em Kz. Clique num mês para o pôr em destaque.</p>
+        </div>
+        <div class="legend"><span><i style="background:var(--c25)"></i><span class="lgA">—</span></span><span><i style="background:var(--c26)"></i><span class="lgB">—</span></span><span><i class="hatch"></i>Em curso</span><span><i class="ghost"></i>Estimativa</span><span id="lg-meta" hidden><i class="meta"></i>Meta mensal</span></div>
+      </div>
+      <div class="box" id="chart-mensal"><div class="tip"></div></div>
+    </div>
+
+    <div class="card spot" id="apresentacao">
+      <div class="spot-top">
+        <div>
+          <div class="lab">Mês em destaque</div>
+          <div class="spot-month" id="sp-mes">—</div>
+        </div>
+        <div class="ctrls">
+          <button class="icon" id="sp-prev" type="button" aria-label="Mês anterior"><svg viewBox="0 0 12 12"><path d="M8 1L3 6l5 5z"/></svg></button>
+          <button class="icon play" id="sp-play" type="button" aria-label="Reproduzir sequência"><svg viewBox="0 0 12 12" id="sp-play-ico"><path d="M2 1l9 5-9 5z"/></svg></button>
+          <button class="icon" id="sp-next" type="button" aria-label="Mês seguinte"><svg viewBox="0 0 12 12"><path d="M4 1l5 5-5 5z"/></svg></button>
+        </div>
+      </div>
+      <div class="chips" id="sp-chips"></div>
+      <div class="timer" aria-hidden="true"><span id="sp-timer"></span></div>
+      <div class="stage">
+        <div>
+          <div class="bars">
+            <div class="bar y1" id="sp-b1"><span class="v" id="sp-v1">—</span><span class="b"></span></div>
+            <div class="bar y2" id="sp-b2"><span class="v" id="sp-v2">—</span><span class="b"></span></div>
+          </div>
+          <div class="bar-lbl"><span class="lgA">—</span><span class="lgB">—</span></div>
+        </div>
+        <div class="growth">
+          <span class="lab">Crescimento do mês</span>
+          <span class="big" id="sp-g">—</span>
+          <span class="sub" id="sp-d">&nbsp;</span>
+          <ol class="seq" aria-label="Sequência de apresentação">
+            <li class="s1" id="sq1"><b>1º</b>Vendas <span class="lgA">—</span></li>
+            <li class="s2" id="sq2"><b>2º</b>Vendas <span class="lgB">—</span></li>
+            <li class="s3" id="sq3"><b>3º</b>Crescimento</li>
+          </ol>
+        </div>
+      </div>
+      <div class="obs" id="sp-obs"></div>
+      <div class="meta-l">
+        <span>Média mensal <span class="lgA">—</span></span><b id="sp-mA">—</b>
+        <span>Média mensal <span class="lgB">—</span> (meses fechados)</span><b id="sp-mB">—</b>
+        <span>Estado do mês</span><b id="sp-estado">—</b>
+      </div>
+    </div>
+  </section>
+
+  <section class="row even">
+    <div class="card">
+      <div class="head">
+        <div>
+          <h2>Acumulado do ano e projecção</h2>
+          <p class="note" id="note-acum">Vendas somadas mês a mês até Dezembro.</p>
+        </div>
+        <div class="legend"><span><i style="background:var(--c25)"></i><span class="lgA">—</span></span><span><i style="background:var(--c26)"></i><span class="lgB">—</span></span><span><i class="dash"></i>Projecção</span></div>
+      </div>
+      <div class="box" id="chart-acum"><div class="tip"></div></div>
+    </div>
+    <div class="card">
+      <div class="head">
+        <div>
+          <h2>Ganho mensal</h2>
+          <p class="note">Diferença em Kz entre cada mês de <span class="lgB">—</span> e o mesmo mês de <span class="lgA">—</span>.</p>
+        </div>
+      </div>
+      <div class="box" id="chart-var"><div class="tip"></div></div>
+    </div>
+  </section>
+
+  <section class="card" id="quadro">
+    <div class="head">
+      <div>
+        <h2>Quadro geral</h2>
+        <p class="note">Valores em Kwanzas (AOA). Clique numa linha para a pôr em destaque.</p>
+      </div>
+    </div>
+    <div class="tw">
+      <table class="t click" id="tbl-quadro">
+        <thead><tr><th>Mês</th><th class="lgA">—</th><th class="lgB">—</th><th>Diferença</th><th>Crescimento</th><th>Estado</th><th class="o">Observação</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section class="card editor" id="editar" hidden>
+    <div class="ed-top">
+      <div>
+        <h2 class="h2">Administração dos dados</h2>
+        <p class="note">Escreva os valores em Kz (ex.: 2 171 368 ou 2.171.368,50). Deixe vazio o mês que ainda não tem vendas. Nada é gravado até carregar em Guardar.</p>
+      </div>
+      <div class="ed-actions">
+        <div class="tabs" id="ed-tabs" role="tablist" aria-label="Ano a editar"></div>
+        <button class="btn teal sm" id="ed-add" type="button">+ Adicionar ano</button>
+      </div>
+    </div>
+
+    <div class="ed-set">
+      <div class="fld"><label for="ed-curso">Mês em curso (ainda não fechado)</label><select id="ed-curso"></select></div>
+      <div class="fld"><label for="ed-meta">Meta anual (Kz) <span>opcional</span></label><input id="ed-meta" type="text" inputmode="decimal" autocomplete="off" placeholder="sem meta"></div>
+      <div class="fld"><label for="ed-crit">Critério da projecção</label>
+        <select id="ed-crit">
+          <option value="media">Média dos meses fechados</option>
+          <option value="tendencia">Tendência face ao ano anterior</option>
+          <option value="meta">Meta anual</option>
+        </select>
+      </div>
+      <div class="fld"><label for="ed-fonte">Fonte dos dados <span>opcional</span></label><input id="ed-fonte" type="text" autocomplete="off" placeholder="ex.: Relatório mensal"></div>
+    </div>
+
+    <div class="grid12" id="ed-grid"></div>
+
+    <details class="more">
+      <summary>Colar valores do Excel</summary>
+      <div class="fld">
+        <label for="ed-paste">Cole 12 valores (um por linha, de Janeiro a Dezembro). Linhas vazias deixam o mês vazio.</label>
+        <textarea id="ed-paste" placeholder="218675&#10;189500&#10;743550&#10;…"></textarea>
+      </div>
+      <div class="ed-actions" style="margin-top:8px"><button class="btn line sm" id="ed-paste-go" type="button">Aplicar à grelha</button><span class="st" id="ed-paste-st"></span></div>
+    </details>
+
+    <details class="more">
+      <summary>Exportar, apagar e senha</summary>
+      <div class="ed-actions" style="margin-bottom:12px">
+        <button class="btn line sm" id="ed-export" type="button">Exportar CSV (todos os anos)</button>
+        <button class="btn line sm" id="ed-pass" type="button" hidden>Alterar senha de administrador</button>
+      </div>
+      <div class="danger-zone">
+        <button class="btn danger sm" id="ed-del" type="button">Apagar este ano</button>
+        <span id="ed-del-confirm" hidden class="danger-zone">
+          <label class="st" for="ed-del-txt">Escreva o ano para confirmar:</label>
+          <input id="ed-del-txt" type="text" inputmode="numeric" style="width:6rem;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--input);color:var(--fg)">
+          <button class="btn danger sm" id="ed-del-go" type="button">Apagar definitivamente</button>
+          <button class="btn line sm" id="ed-del-no" type="button">Cancelar</button>
+        </span>
+      </div>
+      <p class="st" id="ed-misc-st"></p>
+    </details>
+
+    <details class="more">
+      <summary>Histórico de alterações</summary>
+      <ul class="hist" id="ed-hist"><li>Sem alterações registadas.</li></ul>
+    </details>
+
+    <div class="ed-bottom">
+      <span class="st" id="ed-status" role="status"></span>
+      <div class="ed-actions">
+        <button class="btn line" id="ed-cancel" type="button">Descartar alterações</button>
+        <button class="btn" id="ed-save" type="button">Guardar</button>
+        <button class="btn line" id="ed-close" type="button">Fechar</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="conferencia" hidden>
+    <div class="head">
+      <div>
+        <h2>Correcções aplicadas ao relatório e ao PowerPoint</h2>
+        <p class="note">Valores que estavam errados nos documentos originais e o valor correcto, calculado a partir dos meses.</p>
+      </div>
+    </div>
+    <div class="tw">
+      <table class="t" id="tbl-conf">
+        <thead><tr><th>Indicador</th><th>Documento</th><th>Valor anterior</th><th>Valor corrigido</th><th>Diferença</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="foot">Livraria e Editora Adventista, S.A. · Loja do Huambo</div>
+</div>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mdl-t">
+  <div class="dlg">
+    <div class="lock"><svg width="18" height="18" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 5V3.5a3 3 0 0 1 6 0V5h1v6H2V5zm1.5 0h3V3.5a1.5 1.5 0 0 0-3 0z" fill="currentColor"/></svg></div>
+    <h3 id="mdl-t">Entrar como administrador</h3>
+    <p class="note" id="mdl-n">Introduza a senha de administrador para editar os dados.</p>
+    <div class="fld"><label for="mdl-p1" id="mdl-l1">Senha</label><input id="mdl-p1" type="password" autocomplete="current-password"></div>
+    <div class="fld" id="mdl-f2" hidden><label for="mdl-p2">Confirmar senha</label><input id="mdl-p2" type="password" autocomplete="new-password"></div>
+    <span class="st" id="mdl-st" role="status"></span>
+    <div class="ed-actions" style="justify-content:flex-end">
+      <button class="btn line" id="mdl-no" type="button">Cancelar</button>
+      <button class="btn" id="mdl-ok" type="button">Entrar</button>
+    </div>
+    <button class="btn line sm" id="mdl-reset" type="button" hidden>Esqueci-me da senha (repor como dono)</button>
+  </div>
+</div>
+
+<div class="pres" id="pres" hidden role="dialog" aria-label="Modo apresentação">
+  <div class="pres-view" id="pres-view"><div class="pres-ptimer"><span id="pres-timer"></span></div></div>
+  <div class="pres-bar">
+    <button type="button" id="pr-prev" aria-label="Diapositivo anterior">◀</button>
+    <span class="cnt" id="pr-cnt">1 / 1</span>
+    <button type="button" id="pr-next" aria-label="Diapositivo seguinte">▶</button>
+    <button type="button" id="pr-play">Reproduzir</button>
+    <label for="pr-speed">Ritmo<select id="pr-speed"><option value="6000">6 s</option><option value="8000" selected>8 s</option><option value="12000">12 s</option></select></label>
+    <div class="grow" aria-hidden="true"><span id="pr-prog"></span></div>
+    <button type="button" id="pr-fs">Ecrã inteiro</button>
+    <button type="button" id="pr-close">Sair (Esc)</button>
+  </div>
+</div>

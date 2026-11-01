@@ -33,6 +33,10 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
   - A versão no repositório é **mais recente** do que a publicada. Tem as rotas `/admin/users*`, `requirePermission()` e não guarda no registo os emails com links de acesso.
   - É publicada pelo `deploy-supabase.yml` depois do merge. A função publicada continua a funcionar com as migrações novas, porque usa a service role.
 - **Registo de comunicações:** o painel Integrações → Logs lê `notification_logs`, onde a Edge Function grava os envios reais. Os registos simulados no Firestore foram removidos.
+- **Painel de Vendas da Loja do Huambo** (pacote `painel-vendas-huambo`):
+  - É o separador Relatórios › Vendas Huambo do Painel Admin (`/admin?tab=vendas-huambo`); os links antigos `/painel-vendas(.html)` vão para lá.
+  - O HTML, o CSS e o script do pacote estão em `app/web/src/painel-vendas/` quase sem alterações e correm num Shadow DOM (`components/admin/VendasHuamboTab.jsx`), para manter o design original sem misturar com o Tailwind. Segue o tema claro/escuro do sistema.
+  - Dados em `vendas_anos` e `painel_vendas_docs` (migração `painel_vendas`): gestores e administradores lêem, só administradores gravam (RLS). A senha local do pacote foi substituída pela sessão de administrador.
 - **Lista de desejos e avaliações no Supabase** (tabelas `wishlists` e `book_reviews`, migração `desejos_avaliacoes`):
   - Estavam no Firestore, que deixou de reconhecer a sessão quando o login passou para o Supabase; quem tinha sessão não conseguia guardar nada.
   - Sem sessão, a lista de desejos fica no browser e passa para a conta ao iniciar sessão.

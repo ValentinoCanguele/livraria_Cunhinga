@@ -1,6 +1,6 @@
 /**
  * Adaptador do Painel de Vendas (pacote painel-vendas-huambo) para o Supabase.
- * Implementa a interface window.claude.use('db' | 'user' | 'downloads') que a página espera:
+ * createPainelApi() devolve a interface que a página do pacote pedia a window.claude.use('db' | 'user' | 'downloads'):
  *   anos/{ano}                → public.vendas_anos
  *   historico/registo, notas/ → public.painel_vendas_docs
  *   config/admin              → não usado: a edição exige sessão de administrador da livraria (RLS no servidor)
@@ -97,26 +97,6 @@ const db = {
   },
 };
 
-async function currentProfile() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) return null;
-  const { data } = await supabase.from('profiles').select('id, name, role').eq('id', session.user.id).maybeSingle();
-  return data;
-}
-
-const profilePromise = currentProfile();
-
-const user = {
-  id: async () => (await profilePromise)?.id || null,
-  isOwner: async () => false,
-  canEdit: async () => (await profilePromise)?.role === 'admin',
-  can: async () => (await profilePromise)?.role === 'admin',
-  async profiles(ids) {
-    const { data } = await supabase.from('profiles').select('id, name, email').in('id', ids);
-    return Object.fromEntries((data || []).map((p) => [p.id, { name: p.name || p.email }]));
-  },
-};
-
 const downloads = {
   async save({ filename, data }) {
     const url = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8' }));
@@ -129,11 +109,18 @@ const downloads = {
   },
 };
 
-/** Papel da sessão actual: 'admin', 'manager', 'member' ou null (sem sessão). */
-export const sessionRole = profilePromise.then((p) => (p ? p.role || 'member' : null));
-
-window.claude = {
-  use: (name) => Promise.resolve(name === 'db' ? db : name === 'user' ? user : name === 'downloads' ? downloads : null),
-};
-
-window.__painelRole = sessionRole;
+/** Interface do painel para a sessão actual; `profile` = { id, role } do utilizador com sessão (useAuth). */
+export function createPainelApi(profile) {
+  const isAdmin = profile?.role === 'admin';
+  const user = {
+    id: async () => profile?.id || null,
+    isOwner: async () => false,
+    canEdit: async () => isAdmin,
+    can: async () => isAdmin,
+    async profiles(ids) {
+      const { data } = await supabase.from('profiles').select('id, name, email').in('id', ids);
+      return Object.fromEntries((data || []).map((p) => [p.id, { name: p.name || p.email }]));
+    },
+  };
+  return { db, user, downloads };
+}

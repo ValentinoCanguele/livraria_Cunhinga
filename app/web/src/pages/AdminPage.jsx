@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, ExternalLink, Store, Search, Star, Copy } from 'lucide-react';
+import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, Store, Search, Star, Copy } from 'lucide-react';
 import CollectionsTab from '@/components/admin/CollectionsTab';
 import SlidesTab from '@/components/admin/SlidesTab';
 import { sanitizeBookPayload } from '@/lib/bookSave';
@@ -29,6 +29,9 @@ import SalesReportsPanel from '@/components/admin/SalesReportsPanel';
 import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_METHODS, ORDER_STATUS, getPaymentStatusLabel, getDeliveryStatusLabel, getDeliveryStatusColor } from '@/lib/orderUtils';
 import { displayAngolaPhone } from '@/lib/angolaPhone';
 import { getLowStockBooks } from '@/api/EcommerceApi';
+
+// O painel de vendas traz o d3; só é carregado quando se abre o separador.
+const VendasHuamboTab = lazy(() => import('@/components/admin/VendasHuamboTab'));
 
 const AdminPage = () => {
   const { user, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout } = useAuth();
@@ -258,6 +261,9 @@ const AdminPage = () => {
       canManagePayments && { value: 'payments', label: 'Pagamentos', icon: CreditCard },
       canManageSettings && { value: 'stores', label: 'Lojas', icon: Store },
     ] },
+    { label: 'Relatórios', tabs: [
+      canAccessAdmin && { value: 'vendas-huambo', label: 'Vendas Huambo', icon: BarChart3 },
+    ] },
     { label: 'Clientes', tabs: [
       canManageUsers && { value: 'users', label: 'Utilizadores e Clientes', icon: Users },
       canManageMarketing && { value: 'contacts', label: 'Contactos e campanhas', icon: Megaphone },
@@ -347,14 +353,6 @@ const AdminPage = () => {
                   </TabsList>
                 </div>
               ))}
-              {canAccessAdmin && (
-                <a
-                  href="/painel-vendas.html"
-                  className="rounded-xl border border-dashed border-[#0ea5c9]/40 bg-[#0ea5c9]/5 px-4 flex items-center gap-2 text-sm font-semibold text-[#0ea5c9] hover:bg-[#0ea5c9]/10 transition-colors"
-                >
-                  <BarChart3 className="h-4 w-4" /> Painel de Vendas <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              )}
             </div>
 
             {canManageSettings && <TabsContent value="settings"><SettingsTab /></TabsContent>}
@@ -363,6 +361,13 @@ const AdminPage = () => {
             {canManageSettings && <TabsContent value="stores"><StoresTab /></TabsContent>}
             {canManageMarketing && <TabsContent value="contacts"><ContactsManager /></TabsContent>}
             {isAdmin && <TabsContent value="apps"><AppsTab /></TabsContent>}
+            {canAccessAdmin && (
+              <TabsContent value="vendas-huambo">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <VendasHuamboTab />
+                </Suspense>
+              </TabsContent>
+            )}
             {canManageCatalog && (
               <TabsContent value="collections">
                 <CollectionsTab books={books} onBooksChange={loadAll} />

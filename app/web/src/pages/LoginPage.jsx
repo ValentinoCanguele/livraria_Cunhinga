@@ -19,8 +19,6 @@ const LoginPage = () => {
   // ?redirect= só aceita caminhos internos (evita redireccionar para outros sites).
   const redirectParam = new URLSearchParams(location.search).get('redirect');
   const redirectTo = location.state?.from || (redirectParam?.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : null);
-  // Páginas fora da app React (ex.: /painel-vendas) precisam de navegação completa.
-  const goTo = (path) => (path.startsWith('/painel-vendas') ? window.location.assign(path) : navigate(path));
 
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState(() => sessionStorage.getItem('livraria_login_email') || '');
@@ -46,7 +44,7 @@ const LoginPage = () => {
 
   const afterAuthNavigate = (authRecord) => {
     if (redirectTo) {
-      goTo(redirectTo);
+      navigate(redirectTo);
       return;
     }
     const role = authRecord?.role;

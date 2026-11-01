@@ -237,13 +237,14 @@ const Header = ({ onCartOpen }) => {
                   </Link>
                 )}
                 {canAccessAdmin && (
-                  <a
-                    href="/painel-vendas.html"
+                  <Link
+                    to="/admin?tab=vendas-huambo"
+                    onClick={closeMobile}
                     className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold rounded-lg text-white/80 hover:bg-white/5 hover:text-white"
                     tabIndex={mobileOpen ? 0 : -1}
                   >
                     <BarChart3 className="h-4 w-4 text-[#22d3ee]" /> Painel de Vendas
-                  </a>
+                  </Link>
                 )}
                 <button
                   type="button"

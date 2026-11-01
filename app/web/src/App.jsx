@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { ThemeProvider } from '@/hooks/useTheme';
-import { Route, Routes, BrowserRouter as Router } from 'react-router-dom';
+import { Navigate, Route, Routes, BrowserRouter as Router } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
 import { AuthProvider } from '@/hooks/useAuth';
 import { SiteSettingsProvider } from '@/hooks/useSiteSettings';
@@ -70,6 +70,9 @@ function App() {
             <Route path="/track" element={<TrackOrderPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminPage />} />
+            {/* O painel de vendas era uma página à parte; os links antigos abrem o separador do admin. */}
+            <Route path="/painel-vendas.html" element={<Navigate to="/admin?tab=vendas-huambo" replace />} />
+            <Route path="/painel-vendas" element={<Navigate to="/admin?tab=vendas-huambo" replace />} />
             <Route path="*" element={
               <div className="min-h-screen flex items-center justify-center bg-background">
                 <div className="text-center">

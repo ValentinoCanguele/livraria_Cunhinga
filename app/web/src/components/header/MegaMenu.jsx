@@ -319,7 +319,7 @@ export default function MegaMenu() {
                 { to: '/admin?tab=users', label: 'Utilizadores', description: 'Papéis e permissões', icon: Users },
                 { to: '/admin?tab=payments', label: 'Pagamentos', description: 'Métodos e instruções', icon: CreditCard },
                 { to: '/admin?tab=apps', label: 'Integrações', description: 'WhatsApp, Drive, SMTP', icon: Plug },
-                { href: '/painel-vendas.html', label: 'Painel de Vendas', description: 'Loja do Huambo', icon: BarChart3 },
+                { to: '/admin?tab=vendas-huambo', label: 'Painel de Vendas', description: 'Loja do Huambo', icon: BarChart3 },
               ]}
             />
           )}

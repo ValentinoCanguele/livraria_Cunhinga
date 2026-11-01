@@ -1,18 +1,16 @@
+import DOMPurify from 'dompurify';
+
 /**
- * Sanitização básica de HTML — remove scripts, iframes e handlers inline.
- * Conteúdo vem do admin (editor); esta camada protege visitantes contra XSS.
+ * Sanitização de HTML com DOMPurify (descrições de livros, slides, biografias, registo de emails).
+ * Remove scripts, handlers inline (onerror, onload…) e URLs javascript:, incluindo variantes
+ * ofuscadas que as antigas expressões regulares deixavam passar (ex.: <img/src=x/onerror=…>).
  */
 export function sanitizeHtml(html) {
   if (!html || typeof html !== 'string') return '';
-  let out = html;
-  out = out.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  out = out.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
-  out = out.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
-  out = out.replace(/<embed\b[^>]*>/gi, '');
-  out = out.replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-  out = out.replace(/javascript:/gi, '');
-  out = out.replace(/data:\s*text\/html/gi, '');
-  return out;
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['style', 'form', 'input', 'button', 'textarea', 'select'],
+  });
 }
 
 /** Escapa valores para filtros PocketBase (evita injecção em filter strings). */

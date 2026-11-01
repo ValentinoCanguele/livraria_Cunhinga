@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useToast } from '@/hooks/use-toast';
-import { loadLastOrder, downloadReceipt, sendReceiptViaWhatsApp } from '@/lib/receipt';
+import { loadLastOrder, downloadReceipt, sendReceiptViaWhatsApp, receiptBrand } from '@/lib/receipt';
 import { showLocalNotification, subscribeToPush, isPushSupported } from '@/lib/pushNotifications';
 
 const SuccessPage = () => {
@@ -89,7 +89,7 @@ const SuccessPage = () => {
   const handleReceiptDownload = () => {
     if (!orderData) return;
     setReceiptChoice('download');
-    downloadReceipt(orderData);
+    downloadReceipt(orderData, receiptBrand(settings));
   };
 
   const nextSteps = isWhatsApp

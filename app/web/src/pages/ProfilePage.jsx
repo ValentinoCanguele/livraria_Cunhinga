@@ -25,6 +25,7 @@ import PhoneInput from '@/components/PhoneInput';
 import GoogleWorkspaceHub from '@/components/GoogleWorkspaceHub';
 import ContactsManager from '@/components/ContactsManager';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
+import { downloadReceipt, receiptBrand, receiptFromOrder } from '@/lib/receipt';
 import { Switch } from '@/components/ui/switch';
 import { isPushSupported, subscribeToPush, requestPushPermission } from '@/lib/pushNotifications';
 
@@ -299,6 +300,14 @@ const ProfilePage = () => {
                                     </Link>
                                   </Button>
                                 )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs text-[#0ea5c9] px-2"
+                                  onClick={() => downloadReceipt(receiptFromOrder(o), receiptBrand(settings))}
+                                >
+                                  Recibo
+                                </Button>
                               </div>
                               <p className="text-sm text-muted-foreground mt-1">
                                 {new Date(o.created).toLocaleDateString('pt-AO', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -309,9 +318,9 @@ const ProfilePage = () => {
                                   <Phone className="h-3 w-3" /> {displayAngolaPhone(o.phone)}
                                 </p>
                               )}
-                              {o.payment_method && (
+                              {(o.payment_method_name || o.payment_method || o.payment_method_code) && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  {PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method}
+                                  {o.payment_method_name || PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method}
                                   {o.payment_status && (
                                     <> · {getPaymentStatusLabel(o.payment_status)}</>
                                   )}

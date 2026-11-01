@@ -30,6 +30,8 @@ import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_ME
 import { displayAngolaPhone } from '@/lib/angolaPhone';
 import { getLowStockBooks } from '@/api/EcommerceApi';
 import { isBookVisible, isSaleActive, isSaleScheduled } from '@/lib/pricing';
+import { downloadReceipt, receiptBrand, receiptFromOrder } from '@/lib/receipt';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 // O painel de vendas traz o d3; só é carregado quando se abre o separador.
 const VendasHuamboTab = lazy(() => import('@/components/admin/VendasHuamboTab'));
@@ -39,6 +41,7 @@ const AdminPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { settings: siteSettings } = useSiteSettings();
 
   const [books, setBooks] = useState([]);
   const [slides, setSlides] = useState([]);
@@ -717,6 +720,11 @@ const AdminPage = () => {
                               <p className="text-sm text-muted-foreground italic">Nota: {o.notes}</p>
                             )}
 
+                            <div>
+                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => downloadReceipt(receiptFromOrder(o), receiptBrand(siteSettings))}>
+                                Emitir recibo
+                              </Button>
+                            </div>
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-muted-foreground">Confirmar pagamento</p>
                               <div className="flex flex-wrap gap-1">

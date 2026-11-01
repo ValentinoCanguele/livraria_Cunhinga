@@ -77,6 +77,7 @@ function ProductDetailPage() {
   const { reviews, loading: loadingReviews, stats, hasPurchased, submitReview, deleteReview, userReview, submitting } = useReviews(product?.id);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const [editingReview, setEditingReview] = useState(false);
   const [addingCalendarEvent, setAddingCalendarEvent] = useState(false);
 
   const handleAddLaunchToCalendar = async () => {
@@ -156,6 +157,7 @@ function ProductDetailPage() {
     if (success) {
       setReviewComment('');
       setReviewRating(5);
+      setEditingReview(false);
     }
   };
 
@@ -742,7 +744,7 @@ function ProductDetailPage() {
 
                   {/* Submission form or existing user review indicator */}
                   <div className="bg-card border p-6 rounded-2xl shadow-sm">
-                    {userReview ? (
+                    {userReview && !editingReview ? (
                       <div className="space-y-4">
                         <h4 className="font-bold text-base text-foreground flex items-center gap-2">
                           <CheckCircle className="h-5 w-5 text-green-500" /> A sua avaliação
@@ -750,14 +752,24 @@ function ProductDetailPage() {
                         <div className="p-4 bg-muted/20 border rounded-xl">
                           <div className="flex justify-between items-center mb-2">
                             <StarRating rating={userReview.rating} size={14} />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={deleteReview}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" /> Eliminar
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setReviewRating(userReview.rating); setReviewComment(userReview.comment); setEditingReview(true); }}
+                                className="h-7 px-2"
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { if (window.confirm('Eliminar a sua avaliação deste livro?')) deleteReview(); }}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1" /> Eliminar
+                              </Button>
+                            </div>
                           </div>
                           <p className="text-sm text-foreground break-words italic">"{userReview.comment}"</p>
                           {userReview.isVerified && (
@@ -769,7 +781,7 @@ function ProductDetailPage() {
                       </div>
                     ) : isAuthed ? (
                       <form onSubmit={handleReviewSubmit} className="space-y-4">
-                        <h4 className="font-bold text-base">Deixe a sua avaliação</h4>
+                        <h4 className="font-bold text-base">{editingReview ? 'Editar a sua avaliação' : 'Deixe a sua avaliação'}</h4>
                         
                         {/* Verified Buyer status highlight */}
                         {hasPurchased ? (
@@ -809,9 +821,14 @@ function ProductDetailPage() {
                               A enviar avaliação...
                             </>
                           ) : (
-                            'Publicar Avaliação'
+                            editingReview ? 'Guardar alterações' : 'Publicar Avaliação'
                           )}
                         </Button>
+                        {editingReview && (
+                          <Button type="button" variant="ghost" className="w-full" onClick={() => { setEditingReview(false); setReviewComment(''); setReviewRating(5); }}>
+                            Cancelar
+                          </Button>
+                        )}
                       </form>
                     ) : (
                       <div className="text-center py-6">

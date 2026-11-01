@@ -82,10 +82,6 @@ async function getAuth(req: Request): Promise<Auth> {
 }
 
 const isStaff = (auth: Auth) => !!auth && (auth.role === "admin" || auth.role === "manager");
-function requireStaff(auth: Auth) {
-  if (!isStaff(auth)) throw new HttpError(403, "Acesso restrito a administradores.");
-  return auth!;
-}
 
 // Igual a private.has_permission() na base de dados: admin pode tudo; gestor só o que tiver activo.
 const PERMISSION_KEYS = ["manage_catalog", "manage_orders", "manage_settings", "manage_users", "manage_payments", "manage_marketing"];
@@ -93,6 +89,11 @@ const can = (auth: Auth, key: string) =>
   !!auth && (auth.role === "admin" || (auth.role === "manager" && auth.permissions?.[key] === true));
 function requirePermission(auth: Auth, key: string) {
   if (!can(auth, key)) throw new HttpError(403, "Sem permissão para esta operação.");
+  return auth!;
+}
+/** CRM (contactos e campanhas): como nas políticas RLS, "Utilizadores e Clientes" ou "Marketing". */
+function requireCrm(auth: Auth) {
+  if (!can(auth, "manage_users") && !can(auth, "manage_marketing")) throw new HttpError(403, "Sem permissão para esta operação.");
   return auth!;
 }
 
@@ -951,7 +952,7 @@ route("POST", "/whatsapp/receipt", async ({ body, ip }) => {
 });
 
 route("POST", "/admin/whatsapp/test", async ({ auth, body }) => {
-  requireStaff(auth);
+  requirePermission(auth, "manage_settings");
   const phone = String(body.phone || "").trim();
   if (!phone) throw bad("Indique um número de teste.");
   const config = await getWhatsAppConfig();
@@ -963,7 +964,7 @@ route("POST", "/admin/whatsapp/test", async ({ auth, body }) => {
 });
 
 route("POST", "/admin/email/test", async ({ auth, body }) => {
-  requireStaff(auth);
+  requirePermission(auth, "manage_settings");
   const to = normalizeEmail(body.to || auth?.email || "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) throw bad("Indique um email de teste válido.");
   const settings = await getSettings();
@@ -1001,7 +1002,7 @@ route("POST", "/contact-message", async ({ body, ip }) => {
 });
 
 route("POST", "/contacts/sync-batch", async ({ auth, body }) => {
-  const staff = requireStaff(auth);
+  const staff = requireCrm(auth);
   const items: Row[] = body.contacts || [];
   if (!items.length) throw bad("Lista de contactos vazia.");
   let created = 0, updated = 0, skipped = 0;
@@ -1014,7 +1015,7 @@ route("POST", "/contacts/sync-batch", async ({ auth, body }) => {
 });
 
 route("POST", "/contacts/import-sources", async ({ auth }) => {
-  const staff = requireStaff(auth);
+  const staff = requireCrm(auth);
   let created = 0, updated = 0;
   const { data: orders } = await db.from("orders").select("customer_email, phone, customer_name");
   for (const o of orders || []) {
@@ -1035,7 +1036,7 @@ route("POST", "/contacts/import-sources", async ({ auth }) => {
 });
 
 route("GET", "/contacts/stats", async ({ auth }) => {
-  requireStaff(auth);
+  requireCrm(auth);
   return json({
     total: await countRows("contacts"),
     google: await countRows("contacts", (q) => q.eq("source", "google")),
@@ -1046,7 +1047,7 @@ route("GET", "/contacts/stats", async ({ auth }) => {
 });
 
 route("POST", "/contacts/notify", async ({ auth, body }) => {
-  const staff = requireStaff(auth);
+  const staff = requireCrm(auth);
   const contactIds: string[] = body.contact_ids || [];
   const channel = body.channel || "whatsapp";
   const subject = body.subject || "Novidades — Livraria Adventista";
@@ -1066,7 +1067,7 @@ route("POST", "/contacts/notify", async ({ auth, body }) => {
 });
 
 route("POST", "/contacts/campaigns/run-due", async ({ auth }) => {
-  const staff = requireStaff(auth);
+  const staff = requireCrm(auth);
   const now = nowISO();
   const { data: campaigns } = await db.from("contact_campaigns").select("*").eq("is_active", true).limit(50);
   const digest = await getNewBooksDigest();

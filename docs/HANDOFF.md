@@ -10,7 +10,7 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
 - **Cloudflare Pages:** projecto `livraria-adventista` (conta canguelev@fata.adventist.org), ramo de produção `main`.
   - Produção em https://livraria-adventista.pages.dev, com o código do PR #3. Foi publicada à mão com o Wrangler porque o Actions está bloqueado.
   - Cada ramo tem o seu URL de pré-visualização (`<ramo>.livraria-adventista.pages.dev`, ver `wrangler pages deployment list`). O `main` antigo (PocketBase) está em `main-pocketbase`, e esse e os ramos `cursor/*` não têm backend.
-  - Publicar à mão: `npm run build` e depois `npx wrangler@4 pages deploy dist/app/web --project-name=livraria-adventista --branch=<ramo>` (`--branch=main` vai para produção). As variáveis `VITE_SUPABASE_*` vêm de `app/web/.env`.
+  - Publicar à mão: `npm run deploy:site` (produção) ou `npm run deploy:site -- --preview`. O script recusa publicar se o HEAD não for a ponta do ramo remoto, faz lint e build, publica e confirma que o último deploy de produção é esse commit e que o site responde. Várias sessões publicam no mesmo projecto: nunca publicar um build antigo. As variáveis `VITE_SUPABASE_*` vêm de `app/web/.env`.
   - Workers, KV, D1 e R2 continuam por usar.
 
 ## Bloqueios (só o dono da conta resolve)

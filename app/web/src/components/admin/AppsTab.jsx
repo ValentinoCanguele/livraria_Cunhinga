@@ -4,6 +4,7 @@ import {
   Trash2, RefreshCw, Search, Play, Check, Shield, Activity, Save, Key, Smartphone, BookOpen, ExternalLink
 } from 'lucide-react';
 import pb from '@/lib/dataClient';
+import { pbErrorMessage } from '@/lib/mediaSave';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useIntegrations } from '@/hooks/useIntegrations';
@@ -32,34 +33,33 @@ const LOG_CONTEXT = {
   account: 'Conta',
 };
 
+// Integrações com efeito real no site (lidas pela Edge Function ou pelo painel).
 const DEFAULT_APPS = [
-  { name: 'Google OAuth', code: 'google_oauth', description: 'Login com conta Google — feito pelo Firebase Authentication', icon: '🔐' },
-  { name: 'Google Maps', code: 'google_maps', description: 'Mapas embutidos nas lojas físicas (requer API key em Tema UI)', icon: '🗺️' },
-  { name: 'Google Contactos', code: 'google_contacts', description: 'Link rápido para contactos Google no perfil admin', icon: '👤' },
   {
-    name: 'Google Drive (Imagens)',
+    name: 'Google Drive (imagens)',
     code: 'google_drive',
-    description: 'Escolher imagens do Drive ao adicionar livros, logotipo e capas — pasta filtrada do sistema',
+    description: 'Escolher imagens do Drive ao adicionar livros, logotipo e capas, a partir de uma pasta do sistema.',
     icon: '📁',
     config: { api_key: '', client_id: '', folder_id: '' },
   },
-  { name: 'Newsletter', code: 'newsletter', description: 'Subscrições de email no rodapé', icon: '📧' },
-  { name: 'PWA', code: 'pwa', description: 'App instalável no telemóvel', icon: '📱' },
-  { name: 'Rastreio de Entregas', code: 'delivery_tracking', description: 'Página pública de rastreio de encomendas', icon: '📦' },
   {
     name: 'WhatsApp Business API',
     code: 'whatsapp_business',
-    description: 'Envio automático de confirmações e notificações via Meta Cloud API',
+    description: 'Envio automático de confirmações e recibos pela Meta Cloud API.',
     icon: '💬',
     config: { phone_number_id: '', access_token: '', template_name: 'order_confirmation', template_language: 'pt_PT', use_template: false, auto_send: true },
   },
-  {
-    name: 'Envio de E-mail SMTP (Sem Gmail)',
-    code: 'smtp_email',
-    description: 'Notificações de confirmação de pedido via SMTP direto do servidor (sem depender das limitações do Gmail)',
-    icon: '📧',
-    config: { host: 'smtp.livrariaadventista.ao', port: 587, user: 'no-reply@livrariaadventista.ao', secure: false, fromName: 'Livraria Adventista Aurora' }
-  },
+];
+const ACTIVE_CODES = DEFAULT_APPS.map((a) => a.code);
+
+// Funcionalidades que se ligam e configuram noutros separadores (antes tinham aqui
+// interruptores que não faziam nada).
+const ELSEWHERE = [
+  { icon: '🔐', name: 'Login com Google', where: 'Configurações → Marca', note: 'Feito pelo Supabase Auth. O fornecedor Google também tem de estar activo no painel do Supabase.' },
+  { icon: '📧', name: 'Email (SMTP ou SendGrid)', where: 'Configurações → Email, push e chat', note: 'Servidor, utilizador, palavra-passe e remetente. Teste o envio no separador "Registo de envios".' },
+  { icon: '🔔', name: 'Notificações push', where: 'Configurações → Email, push e chat' },
+  { icon: '🗺️', name: 'Google Maps nas lojas', where: 'Configurações → Tema visual', note: 'Chave de incorporação usada nos mapas das lojas e do rodapé.' },
+  { icon: '📱', name: 'App instalável (PWA)', where: 'Configurações → PWA / telemóvel' },
 ];
 
 function WhatsAppBusinessConfigForm({ app, onSave }) {
@@ -206,28 +206,12 @@ function DriveConfigForm({ app, onSave }) {
   );
 }
 
-// O servidor envia os emails com os dados SMTP/SendGrid das Configurações do site
-// (site_settings.smtp_*), não com o config desta integração.
-function SmtpConfigInfo() {
-  return (
-    <div className="p-4 rounded-lg bg-sky-500/5 border border-sky-500/20 text-sm space-y-2 max-w-2xl">
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        O servidor, o utilizador, a palavra-passe e o remetente dos emails configuram-se em
-        <strong className="text-foreground"> Configurações → Email, push e chat</strong>.
-        Use o botão "Testar Email" no separador "Monitor de Envio &amp; Logs" para confirmar que o envio funciona.
-      </p>
-      <Button asChild type="button" size="sm" variant="outline">
-        <a href="/admin?tab=settings">Abrir Configurações</a>
-      </Button>
-    </div>
-  );
-}
-
 export default function AppsTab() {
   const { toast } = useToast();
   const { refresh: refreshIntegrations } = useIntegrations();
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [activeSubTab, setActiveSubTab] = useState('apps'); // 'apps', 'logs'
   
   // Notification logs state
@@ -239,31 +223,23 @@ export default function AppsTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       let list = await pb.collection('app_integrations').getFullList();
-      
-      // Auto provision any missing DEFAULT_APPS to support retrofitting
-      let hasModified = false;
-      for (const appDef of DEFAULT_APPS) {
-        const found = list.some(a => a.code === appDef.code);
-        if (!found) {
-          await pb.collection('app_integrations').create({
-            ...appDef,
-            enabled: ['google_drive', 'whatsapp_business', 'smtp_email'].includes(appDef.code) ? false : true,
-            config: appDef.config || {}
-          });
-          hasModified = true;
-        }
-      }
-
-      if (hasModified) {
+      // Cria as integrações que ainda não existem na base de dados (desactivadas).
+      const missing = DEFAULT_APPS.filter((def) => !list.some((a) => a.code === def.code));
+      if (missing.length) {
+        await Promise.all(missing.map((def) => pb.collection('app_integrations').create({ ...def, enabled: false, config: def.config || {} })));
         list = await pb.collection('app_integrations').getFullList();
       }
-
-      setApps(list);
+      setApps(
+        list
+          .filter((a) => ACTIVE_CODES.includes(a.code))
+          .sort((x, y) => ACTIVE_CODES.indexOf(x.code) - ACTIVE_CODES.indexOf(y.code)),
+      );
     } catch (err) {
-      console.warn('Falha ao carregar as integrações; a mostrar as predefinições:', err);
-      setApps(DEFAULT_APPS.map((a) => ({ ...a, enabled: true, id: a.code })));
+      setApps([]);
+      setLoadError(pbErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -298,14 +274,12 @@ export default function AppsTab() {
 
   const toggle = async (app, enabled) => {
     try {
-      if (app.id && app.id.length > 10) {
-        await pb.collection('app_integrations').update(app.id, { enabled });
-      }
+      await pb.collection('app_integrations').update(app.id, { enabled });
       setApps((prev) => prev.map((a) => (a.id === app.id ? { ...a, enabled } : a)));
       await refreshIntegrations();
-      toast({ title: enabled ? 'Funcionalidade Activada' : 'Funcionalidade Desactivada' });
+      toast({ title: enabled ? 'Integração activada' : 'Integração desactivada' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+      toast({ variant: 'destructive', title: 'Não foi possível alterar', description: pbErrorMessage(err) });
     }
   };
 
@@ -317,7 +291,7 @@ export default function AppsTab() {
       await refreshIntegrations();
       toast({ title: 'Configuração guardada com sucesso!' });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Erro de validação', description: err.message });
+      toast({ variant: 'destructive', title: 'Não foi possível guardar', description: pbErrorMessage(err) });
     }
   };
 
@@ -387,7 +361,7 @@ export default function AppsTab() {
           }`}
         >
           <Smartphone className="h-4 w-4" />
-          Configurações de APIs
+          Integrações
         </button>
         <button
           onClick={() => setActiveSubTab('logs')}
@@ -398,16 +372,19 @@ export default function AppsTab() {
           }`}
         >
           <Activity className="h-4 w-4" />
-          Monitor de Envio & Logs
-          <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
-            Novo
-          </span>
+          Registo de envios
         </button>
       </div>
 
       {activeSubTab === 'apps' ? (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">Active, desactive e configure as chaves de integração do sistema.</p>
+          <p className="text-sm text-muted-foreground">Active e configure as integrações externas usadas pelo site.</p>
+          {loadError && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+              <span className="text-destructive">Não foi possível carregar as integrações: {loadError}</span>
+              <Button size="sm" variant="outline" onClick={load}>Tentar de novo</Button>
+            </div>
+          )}
           
           {apps.map((app) => (
             <div key={app.id} className="bg-card border rounded-xl p-5 space-y-4 shadow-xs hover:shadow-md transition-shadow duration-300">
@@ -426,42 +403,39 @@ export default function AppsTab() {
 
               {app.enabled && (
                 <div className="pt-2 border-t border-border mt-2 animate-fadeIn">
-                  {app.code === 'google_oauth' && (
-                    <p className="text-xs p-3 rounded-lg bg-amber-500/10 text-amber-800 border border-amber-500/20 max-w-2xl leading-relaxed">
-                      O login com Google é feito pelo Firebase Authentication.<br />
-                      Adicione o domínio do site em Firebase Console → Authentication → Settings → <code className="font-mono bg-amber-500/10 px-1 py-0.5 rounded">Authorized domains</code>.
-                    </p>
-                  )}
-
                   {app.code === 'google_drive' && (
                     <DriveConfigForm app={app} onSave={saveConfig} />
-                  )}
-
-                  {app.code === 'smtp_email' && (
-                    <SmtpConfigInfo />
                   )}
 
                   {app.code === 'whatsapp_business' && (
                     <WhatsAppBusinessConfigForm app={app} onSave={saveConfig} />
                   )}
 
-                  {/* Fallback for JSON configs for other modules */}
-                  {!['google_drive', 'smtp_email', 'whatsapp_business', 'google_oauth'].includes(app.code) && (
-                    <div className="space-y-2 max-w-2xl">
-                      <Label className="text-xs font-semibold">Configuração Adicional (JSON)</Label>
-                      <Textarea
-                        rows={2}
-                        defaultValue={JSON.stringify(app.config || {}, null, 2)}
-                        className="font-mono text-xs bg-muted/20"
-                        onBlur={(e) => saveConfig(app, e.target.value)}
-                        placeholder="{}"
-                      />
-                    </div>
-                  )}
                 </div>
               )}
             </div>
           ))}
+
+          <div className="bg-muted/20 border rounded-xl p-5 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <p className="font-semibold text-sm">Configurado noutros separadores</p>
+              <Button asChild size="sm" variant="outline">
+                <a href="/admin?tab=settings">Abrir Configurações</a>
+              </Button>
+            </div>
+            <ul className="grid sm:grid-cols-2 gap-3">
+              {ELSEWHERE.map((item) => (
+                <li key={item.name} className="flex gap-3 text-sm">
+                  <span className="text-xl leading-none">{item.icon}</span>
+                  <span>
+                    <span className="font-medium">{item.name}</span>
+                    <span className="block text-xs text-muted-foreground">{item.where}</span>
+                    {item.note && <span className="block text-[11px] text-muted-foreground mt-0.5">{item.note}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       ) : (
         /* Logs tab */

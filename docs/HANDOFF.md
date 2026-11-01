@@ -91,3 +91,16 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
 - `vite.config.js`: sem o proxy `/api/pb` nem o chunk do PocketBase.
 - README, `docs/ARQUITETURA.md` e `docs/LANCAMENTO.md` reescritos para Supabase + Cloudflare.
 - **Segurança:** o README publicava `admin@livraria.ao` / `admin123456`, e essa palavra-passe funcionava numa conta `admin` real. A palavra-passe foi trocada por uma aleatória (não guardada) e a conta nunca tinha sido usada. As credenciais saíram da documentação, mas continuam no histórico do `main`, por isso não podem voltar a ser usadas.
+
+## Edge Function `app` — revisão de segurança (2026-11-01)
+
+Ainda não publicada; vai no deploy depois do merge.
+
+- `/whatsapp/receipt`:
+  - exige o email da encomenda;
+  - envia só para o telefone registado na encomenda;
+  - o texto é montado no servidor (antes aceitava texto e telefone vindos do browser, o que permitia enviar mensagens pelo número oficial da loja);
+  - no máximo 3 recibos por encomenda e por minuto.
+- `/track` e `/confirm-delivery`: limite de pedidos por IP; a assinatura fica limitada a cerca de 600 KB.
+- `/contacts/*`: exige `manage_users` ou `manage_marketing`. `/admin/email/test` e `/admin/whatsapp/test`: exigem `manage_settings`. `requireStaff` foi removida.
+- `/settings`, `/messaging/status`, `/push/config` e `/integrations` só devolvem dados públicos (verificado).

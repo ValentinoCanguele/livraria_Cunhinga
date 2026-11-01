@@ -153,6 +153,22 @@ const SuccessPage = () => {
               </div>
             )}
 
+            {hasOrder && /^https:\/\//.test(orderData?.paymentLink || '') && (
+              <div className="bg-card border border-[#0ea5c9]/40 rounded-xl p-6 mb-6 text-left space-y-3">
+                <h2 className="font-semibold text-lg">Pagamento</h2>
+                <p className="text-sm text-muted-foreground">
+                  {orderData.paymentReference
+                    ? `Indicou a referência ${orderData.paymentReference}. Se ainda não concluiu o pagamento, use o botão abaixo.`
+                    : 'Conclua o pagamento pelo link abaixo. A encomenda é confirmada quando o pagamento for verificado.'}
+                </p>
+                <Button asChild size="lg" className="btn-primary w-full sm:w-auto">
+                  <a href={orderData.paymentLink} target="_blank" rel="noopener noreferrer">
+                    Pagar agora{orderData.paymentMethod ? ` com ${orderData.paymentMethod}` : ''}
+                  </a>
+                </Button>
+              </div>
+            )}
+
             {hasOrder && orderData && (
               <div className="bg-card border border-border rounded-xl p-6 mb-8 text-left">
                 <h2 className="font-semibold text-lg flex items-center gap-2 mb-2">

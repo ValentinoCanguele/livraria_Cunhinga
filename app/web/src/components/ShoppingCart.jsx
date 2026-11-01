@@ -201,11 +201,14 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
 
       const isWhatsApp = viaWhatsApp || order_type === 'whatsapp_order';
       const waPhone = settings.whatsapp || settings.contact_phone;
-      const paymentLabel = paymentMethods.find((m) => m.code === form.paymentMethod)?.name || form.paymentMethod;
+      const paymentMethodInfo = paymentMethods.find((m) => m.code === form.paymentMethod);
+      const paymentLabel = paymentMethodInfo?.name || form.paymentMethod;
 
       saveLastOrder({
         orderId,
         orderNumber,
+        paymentLink: paymentMethodInfo?.payment_link || '',
+        paymentReference: (form.paymentReference || '').trim(),
         total,
         subtotal: subtotalCents / 100,
         shippingCost: shippingCents / 100,
@@ -461,6 +464,19 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                           </div>
                           {form.paymentMethod === m.code && (m.type === 'p2p' || m.type === 'transfer') && (
                             <div className="ml-6 space-y-2">
+                              {m.payment_link && (
+                                <a
+                                  href={m.payment_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-[var(--brand-primary)] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+                                >
+                                  <CreditCard className="h-4 w-4" /> Pagar agora com {m.name}
+                                </a>
+                              )}
+                              {m.payment_link && (
+                                <p className="text-xs text-muted-foreground">Depois de pagar, escreva abaixo a referência ou o número do comprovativo.</p>
+                              )}
                               {m.qr_url && <img src={m.qr_url} alt="QR pagamento" className="h-32 w-32 rounded-lg border" />}
                               <Input placeholder="Referência / comprovativo de pagamento" value={form.paymentReference} onChange={(e) => setForm({ ...form, paymentReference: e.target.value })} />
                             </div>

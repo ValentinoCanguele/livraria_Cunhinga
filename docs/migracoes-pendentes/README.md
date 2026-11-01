@@ -2,9 +2,5 @@
 
 Estes ficheiros ficam fora de `supabase/migrations` porque ainda não foram aplicados: lá só entram migrações com a versão e o SQL exactos que estão na base de dados.
 
-Aplicar por esta ordem, com acesso ao Supabase (MCP ou CLI com token da conta dona do projecto):
-
-1. `1_loja_talatona_para_huambo.sql`: **dados**, com `execute_sql`. Pedido do dono: a loja de Talatona passa a ser a do Huambo, e as lojas ficam Huambo e Benguela. Depois, acertar a morada, o telefone e o horário reais em Admin → Lojas.
-2. `2_painel_vendas_por_loja.sql`: **migração**, com `apply_migration` e o nome `painel_vendas_por_loja`. Depois ler a versão em `supabase_migrations.schema_migrations` e guardar o ficheiro em `supabase/migrations/<versão>_painel_vendas_por_loja.sql` com o mesmo SQL. Por fim, apagar este ficheiro pendente.
-
-O painel (separador "Vendas por loja") funciona antes e depois da migração. Sem ela mostra os dados actuais da Loja do Huambo; com ela aparece a escolha de loja e cada loja passa a ter os seus anos, metas e histórico.
+- ~~`2_painel_vendas_por_loja.sql`~~: aplicada a 2026-11-01 como `20261101205332_painel_vendas_por_loja` (dados de vendas ligados à loja do Huambo, `tlp93hkif52qxmy`).
+- `1_loja_talatona_para_huambo.sql`: **não aplicar como está.** O id `b9b427gh0585i72` é hoje a loja **"Livraria Adventista — Catumbela"** (Benguela), e já existe uma loja do Huambo (`tlp93hkif52qxmy`). Correr este SQL transformaria Catumbela numa segunda loja do Huambo. As lojas actuais são Catumbela (Benguela), Huambo e Lubango (Huíla). Falta o dono confirmar o que quer.

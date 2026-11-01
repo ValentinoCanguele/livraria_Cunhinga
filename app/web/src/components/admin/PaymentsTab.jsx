@@ -20,7 +20,7 @@ import ImageField from '@/components/admin/ImageField';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { pbErrorMessage, saveRecordWithMedia } from '@/lib/mediaSave';
 
-const empty = { name: '', code: '', type: 'p2p', enabled: true, instructions: '', account_info: '', qr_url: '', icon: '', sort_order: 0 };
+const empty = { name: '', code: '', type: 'p2p', enabled: true, instructions: '', account_info: '', payment_link: '', qr_url: '', icon: '', sort_order: 0 };
 
 const TYPE_LABELS = {
   p2p: { label: 'P2P (referência/QR)', icon: QrCode },
@@ -94,6 +94,7 @@ export default function PaymentsTab() {
     setForm({
       name: m.name, code: m.code, type: m.type || 'p2p', enabled: !!m.enabled,
       instructions: m.instructions || '', account_info: m.account_info || '',
+      payment_link: m.payment_link || '',
       qr_url: m.qr_url || (m.qr_code ? pb.files.getURL(m, m.qr_code) : ''),
       icon: m.icon || '', sort_order: m.sort_order ?? 0,
     });
@@ -123,6 +124,10 @@ export default function PaymentsTab() {
       });
       return;
     }
+    if (form.payment_link.trim() && !/^https:\/\/\S+$/.test(form.payment_link.trim())) {
+      toast({ variant: 'destructive', title: 'Link de pagamento inválido', description: 'Tem de começar por https://' });
+      return;
+    }
     setSaving(true);
     try {
       const data = {
@@ -131,6 +136,7 @@ export default function PaymentsTab() {
         code,
         instructions: form.instructions.trim(),
         account_info: form.account_info.trim(),
+        payment_link: form.payment_link.trim(),
         sort_order: Number(form.sort_order) || 0,
         enabled: !!form.enabled,
       };
@@ -298,6 +304,7 @@ export default function PaymentsTab() {
                   {TYPE_LABELS[m.type]?.label || m.type}
                   {m.account_info ? ` · ${m.account_info}` : ''}
                   {(m.qr_url || m.qr_code) ? ' · com QR' : ''}
+                  {m.payment_link ? ' · com link de pagamento' : ''}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -364,6 +371,20 @@ export default function PaymentsTab() {
               <div className="space-y-2">
                 <Label>Conta / número / IBAN</Label>
                 <Input value={form.account_info} onChange={(e) => setForm({ ...form, account_info: e.target.value })} maxLength={200} />
+              </div>
+              <div className="space-y-2">
+                <Label>Link de pagamento (opcional)</Label>
+                <Input
+                  type="url"
+                  value={form.payment_link}
+                  onChange={(e) => setForm({ ...form, payment_link: e.target.value })}
+                  placeholder="https://…"
+                  maxLength={500}
+                  className="font-mono text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Ex.: link do Multicaixa Express. Aparece como botão "Pagar agora" no checkout, na página de sucesso, no email de confirmação e nos recibos, para qualquer livro. Deixe vazio para retirar.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Instruções para o cliente</Label>

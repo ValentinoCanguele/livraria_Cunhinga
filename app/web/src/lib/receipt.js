@@ -93,6 +93,8 @@ export function buildReceiptText(order) {
   if (order.shippingCost != null) lines.push(`Envio: ${order.shippingCost > 0 ? fmtMoney(order.shippingCost) : 'Grátis'}`);
   lines.push(`*Total: ${fmtMoney(order.total)}*`);
   if (order.paymentMethod) lines.push(`Pagamento: ${order.paymentMethod}`);
+  if (order.paymentReference) lines.push(`Referência: ${order.paymentReference}`);
+  if (order.paymentLink) lines.push(`Link de pagamento: ${order.paymentLink}`);
 
   lines.push(buildSignatureTextBlock(order));
   lines.push('', 'Obrigado pela sua compra!');
@@ -144,6 +146,8 @@ export function buildReceiptHtml(order) {
   ${order.shippingCost != null ? `<p>Envio: ${order.shippingCost > 0 ? fmtMoney(order.shippingCost) : 'Grátis'}</p>` : ''}
   <p class="total">Total: ${fmtMoney(order.total)}</p>
   ${order.paymentMethod ? `<p>Pagamento: ${escapeHtml(order.paymentMethod)}</p>` : ''}
+  ${order.paymentReference ? `<p>Referência: ${escapeHtml(order.paymentReference)}</p>` : ''}
+  ${/^https:\/\//.test(order.paymentLink || '') ? `<p><a href="${escapeHtml(order.paymentLink)}">Link de pagamento</a></p>` : ''}
   ${buildSignatureHtmlBlock(order)}
   <p class="footer">Documento gerado automaticamente. Guarde para referência.</p>
 </body>

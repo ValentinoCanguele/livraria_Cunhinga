@@ -180,7 +180,15 @@ async function sendTransactionalEmail(settings: Row | null, to: string, subject:
   }
 }
 
-function buildOrderEmailHtml(order: Row, siteName: string) {
+/** Link de pagamento do método da encomenda (ex.: Multicaixa Express), se o pagamento ainda não estiver confirmado. */
+async function orderPaymentLink(order: Row) {
+  if (!order?.payment_method_code || order.payment_status === "paid") return "";
+  const { data } = await db.from("payment_methods").select("payment_link").eq("code", order.payment_method_code).eq("enabled", true).limit(1);
+  const link = String(data?.[0]?.payment_link || "");
+  return /^https:\/\//.test(link) ? link : "";
+}
+
+function buildOrderEmailHtml(order: Row, siteName: string, paymentLink = "") {
   const rows = (order.items || []).map((it: Row) => {
     const line = (Number(it.quantity) || 1) * (Number(it.price) || 0);
     return `<tr><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(it.quantity || 1)}× ${escapeHtml(it.title || "Livro")}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${fmtMoneyKz(line)}</td></tr>`;
@@ -197,6 +205,9 @@ function buildOrderEmailHtml(order: Row, siteName: string) {
     "</table>",
     `<p>Envio: ${fmtMoneyKz(order.shipping_cost)}</p>`,
     `<p style="font-size:18px"><strong>Total: ${fmtMoneyKz(order.total)}</strong></p>`,
+    paymentLink
+      ? `<p><a href="${escapeHtml(paymentLink)}" style="display:inline-block;padding:10px 18px;background:#0ea5c9;color:#fff;border-radius:8px;text-decoration:none">Pagar com ${escapeHtml(order.payment_method_name || "o método escolhido")}</a></p><p style="color:#666;font-size:13px">Se já pagou, ignore este botão: confirmamos o pagamento com a referência indicada.</p>`
+      : "",
     '<p style="color:#666;font-size:13px">Acompanhe em /track com o número e email utilizados na compra.</p>',
   ].join("");
 }
@@ -204,7 +215,8 @@ function buildOrderEmailHtml(order: Row, siteName: string) {
 async function sendOrderConfirmationEmail(order: Row, settings: Row | null) {
   if (!settings?.order_email_enabled || !order.customer_email) return false;
   const siteName = settings.site_name || "Livraria Adventista";
-  return sendTransactionalEmail(settings, order.customer_email, `Confirmação de encomenda ${order.order_number || ""}`, buildOrderEmailHtml(order, siteName), {
+  const paymentLink = await orderPaymentLink(order);
+  return sendTransactionalEmail(settings, order.customer_email, `Confirmação de encomenda ${order.order_number || ""}`, buildOrderEmailHtml(order, siteName, paymentLink), {
     context: "order", customer_name: order.customer_name, order_number: order.order_number,
   });
 }
@@ -643,6 +655,7 @@ route("GET", "/payment-methods", async () => {
     methods: (data || []).map((r) => ({
       id: r.id, name: r.name, code: r.code, type: r.type || "offline", instructions: r.instructions || "",
       account_info: r.account_info || "", qr_url: r.qr_url || fileUrl("payment_methods", r, "qr_code"), icon: r.icon || "",
+      payment_link: r.payment_link || "",
     })),
   });
 });
@@ -948,7 +961,7 @@ route("GET", "/messaging/status", async () => {
 // Recibo por WhatsApp: só para o telefone registado na encomenda e com o texto montado aqui,
 // a partir da encomenda. O texto enviado pelo browser é ignorado, para que ninguém use o número
 // oficial da loja para mandar mensagens escritas por si.
-function buildReceiptText(order: Row, siteName: string) {
+function buildReceiptText(order: Row, siteName: string, paymentLink = "") {
   const lines = [
     `🧾 *Recibo — ${siteName}*`, `Nº: ${order.order_number || ""}`, "",
     `Olá ${order.customer_name || ""}!`, "", "*Livros:*",
@@ -957,6 +970,7 @@ function buildReceiptText(order: Row, siteName: string) {
   if (Number(order.shipping_cost)) lines.push(`Portes: ${fmtMoneyKz(order.shipping_cost)}`);
   lines.push("", `*Total: ${fmtMoneyKz(order.total)}*`);
   if (order.payment_method_name || order.payment_method) lines.push(`Pagamento: ${order.payment_method_name || order.payment_method}`);
+  if (paymentLink) lines.push(`Link de pagamento: ${paymentLink}`);
   lines.push("", "Obrigado pela sua compra! 📚");
   return lines.join("\n");
 }
@@ -976,7 +990,7 @@ route("POST", "/whatsapp/receipt", async ({ body, ip }) => {
   if (!checkRateLimit("whatsapp_receipt_order", order.id, storeRules(settings).receiptPerOrder)) throw bad("O recibo desta encomenda já foi enviado. Aguarde um minuto.");
   const config = await getWhatsAppConfig();
   if (!config) return json({ sent: false, fallback: true, message: "API WhatsApp não configurada — use link manual." });
-  const text = buildReceiptText(order, settings?.site_name || "Livraria Adventista");
+  const text = buildReceiptText(order, settings?.site_name || "Livraria Adventista", await orderPaymentLink(order));
   const result = await sendWhatsAppMessage(phone, text, config, undefined, { context: "receipt", customer_name: order.customer_name, order_number: order.order_number });
   return json({
     sent: !!result.ok,

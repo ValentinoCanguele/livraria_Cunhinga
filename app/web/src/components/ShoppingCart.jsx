@@ -32,7 +32,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
   const { settings } = useSiteSettings();
   const { integrations } = useIntegrations();
   const waApiActive = !!(integrations?.whatsapp_business?.enabled && integrations?.whatsapp_business?.config?.configured);
-  const { cartItems, removeFromCart, updateQuantity, getCartTotal, getCartTotalCents, clearCart } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, getCartTotal, getCartTotalCents, clearCart, refreshCart } = useCart();
 
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [physicalStores, setPhysicalStores] = useState([]);
@@ -110,6 +110,18 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
     if (!isCartOpen) setStep('cart');
   }, [isCartOpen]);
 
+  // Ao abrir o carrinho, confirma preços, promoções, stock e visibilidade com a base de dados.
+  useEffect(() => {
+    if (!isCartOpen) return;
+    refreshCart().then((changes) => {
+      if (changes.length) {
+        toast({ title: 'O carrinho foi actualizado', description: changes.slice(0, 3).join(' ') + (changes.length > 3 ? ` (+${changes.length - 3})` : '') });
+      }
+    }).catch(() => {});
+    // Só quando o carrinho abre.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCartOpen]);
+
   const shippingCents = calcShippingCents(form.shippingMethod, subtotalCents, settings);
   const totalCents = subtotalCents + shippingCents;
   const itemCount = cartItems.reduce((s, i) => s + i.quantity, 0);
@@ -167,6 +179,17 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
         variant: 'destructive',
         title: 'Assinatura obrigatória',
         description: 'Assine no quadro para confirmar a compra.',
+      });
+      return;
+    }
+
+    // Última confirmação: se preço, stock ou disponibilidade mudaram, o cliente revê antes de pagar.
+    const cartChanges = await refreshCart().catch(() => []);
+    if (cartChanges.length) {
+      toast({
+        variant: 'destructive',
+        title: 'O carrinho mudou — reveja antes de confirmar',
+        description: cartChanges.slice(0, 3).join(' '),
       });
       return;
     }
@@ -264,7 +287,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
     } finally {
       setCheckingOut(false);
     }
-  }, [cartItems, clearCart, deliveryAddress, form, maintenanceMode, orderItemsForReceipt, paymentMethods, physicalStores.length, settings, shippingCents, subtotalCents, setIsCartOpen, toast, updateProfile, user?.id, waApiActive]);
+  }, [cartItems, clearCart, refreshCart, deliveryAddress, form, maintenanceMode, orderItemsForReceipt, paymentMethods, physicalStores.length, settings, shippingCents, subtotalCents, setIsCartOpen, toast, updateProfile, user?.id, waApiActive]);
 
   const maxQty = (item) => (item.variant.manage_inventory ? item.variant.inventory_quantity : 99);
 

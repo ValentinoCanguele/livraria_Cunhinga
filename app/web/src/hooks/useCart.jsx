@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { formatCurrency } from '@/api/EcommerceApi';
+import { supabase } from '@/lib/supabaseClient';
+import { effectivePrice, isSaleActive } from '@/lib/pricing';
 import { toast } from 'sonner';
+
+const bookIdOf = (variantId) => String(variantId || '').replace(/-(default|v\d+)$/, '');
 
 const CartContext = createContext();
 const CART_STORAGE_KEY = 'e-commerce-cart';
@@ -89,6 +93,49 @@ export const CartProvider = ({ children }) => {
     );
   }, []);
 
+  /**
+   * Confirma o carrinho com a base de dados: livros ocultos, apagados ou esgotados saem;
+   * preço, promoção e stock são actualizados; a quantidade não passa do stock.
+   * Devolve a lista de mudanças (para avisar o cliente). Só a edição standard tem preço na tabela;
+   * as edições extra mantêm o preço próprio mas respeitam o stock e a visibilidade do livro.
+   */
+  const refreshCart = useCallback(async () => {
+    const ids = [...new Set(cartItems.map((i) => bookIdOf(i.variant.id)).filter(Boolean))];
+    if (!ids.length) return [];
+    const { data, error } = await supabase
+      .from('stock_books')
+      .select('id, title, price, stock, active, sale_price, sale_starts_at, sale_ends_at')
+      .in('id', ids);
+    if (error) return [];
+    const byId = Object.fromEntries((data || []).filter((b) => b.active !== false).map((b) => [b.id, b]));
+    const changes = [];
+    const next = [];
+    for (const item of cartItems) {
+      const book = byId[bookIdOf(item.variant.id)];
+      const title = item.product.title;
+      if (!book) { changes.push(`"${title}" já não está disponível e saiu do carrinho.`); continue; }
+      const stock = Math.max(0, Number(book.stock) || 0);
+      if (stock === 0) { changes.push(`"${title}" esgotou e saiu do carrinho.`); continue; }
+      const variant = { ...item.variant, inventory_quantity: stock };
+      if (item.variant.id.endsWith('-default')) {
+        const priceInCents = Math.round((Number(book.price) || 0) * 100);
+        const saleInCents = isSaleActive(book) ? Math.round(effectivePrice(book) * 100) : null;
+        const before = item.variant.sale_price_in_cents ?? item.variant.price_in_cents;
+        const after = saleInCents ?? priceInCents;
+        variant.price_in_cents = priceInCents;
+        variant.price_formatted = formatCurrency(priceInCents);
+        variant.sale_price_in_cents = saleInCents;
+        variant.sale_price_formatted = saleInCents != null ? formatCurrency(saleInCents) : null;
+        if (before !== after) changes.push(`O preço de "${title}" mudou para ${formatCurrency(after)}.`);
+      }
+      const quantity = Math.min(item.quantity, stock);
+      if (quantity < item.quantity) changes.push(`Só há ${stock} unidade(s) de "${title}"; a quantidade foi ajustada.`);
+      next.push({ ...item, variant, quantity });
+    }
+    if (changes.length) setCartItems(next);
+    return changes;
+  }, [cartItems]);
+
   const clearCart = useCallback(() => {
     setCartItems([]);
     toast.success('Carrinho limpo com sucesso.');
@@ -122,6 +169,7 @@ export const CartProvider = ({ children }) => {
     removeFromCart,
     updateQuantity,
     clearCart,
+    refreshCart,
     getCartTotal,
     getCartTotalCents,
     getCartCount,
@@ -135,6 +183,7 @@ export const CartProvider = ({ children }) => {
     removeFromCart,
     updateQuantity,
     clearCart,
+    refreshCart,
     getCartTotal,
     getCartTotalCents,
     getCartCount,

@@ -54,6 +54,7 @@ const AdminPage = () => {
 
   const [orderFilter, setOrderFilter] = useState('all');
   const [orderSearch, setOrderSearch] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [lowStockBooks, setLowStockBooks] = useState([]);
 
@@ -243,15 +244,19 @@ const AdminPage = () => {
 
   const filteredOrders = orders.filter((o) => {
     if (orderFilter !== 'all' && o.status !== orderFilter) return false;
+    if (paymentFilter !== 'all' && (o.payment_status || 'pending') !== paymentFilter) return false;
     if (orderSearch.trim()) {
       const q = orderSearch.toLowerCase();
-      const hay = [o.order_number, o.id, o.customer_name, o.customer_email, o.phone].filter(Boolean).join(' ').toLowerCase();
+      const hay = [o.order_number, o.id, o.customer_name, o.customer_email, o.phone, o.payment_reference].filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
   });
 
   const pendingCount = orders.filter((o) => o.status === 'pending').length;
+  // Pagamentos por P2P/transferência que o cliente diz ter feito e falta confirmar.
+  const awaitingPaymentCount = orders.filter((o) => o.payment_status === 'awaiting_confirmation' && o.status !== 'cancelled').length;
+  const paymentLabelOf = (o) => o.payment_method_name || PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method || '';
   const totalRevenue = orders.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total), 0);
 
   const defaultTab = canManageCatalog ? 'books' : canManageOrders ? 'orders' : canManageSettings ? 'settings' : canManageUsers ? 'users' : 'payments';
@@ -526,7 +531,16 @@ const AdminPage = () => {
                 <TabsContent value="orders">
                   <SalesReportsPanel orders={orders} />
 
-                  <div className="grid sm:grid-cols-3 gap-4 mb-6">
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentFilter(paymentFilter === 'awaiting_confirmation' ? 'all' : 'awaiting_confirmation')}
+                      className={`text-left bg-card border rounded-xl p-4 transition-colors hover:border-orange-400 ${paymentFilter === 'awaiting_confirmation' ? 'border-orange-500 ring-1 ring-orange-500' : ''}`}
+                      title="Mostrar só estas encomendas"
+                    >
+                      <p className="text-sm text-muted-foreground">Pagamentos por confirmar</p>
+                      <p className="text-2xl font-bold text-orange-600">{awaitingPaymentCount}</p>
+                    </button>
                     <div className="bg-card border rounded-xl p-4">
                       <p className="text-sm text-muted-foreground">Total Encomendas</p>
                       <p className="text-2xl font-bold">{orders.length}</p>
@@ -547,9 +561,18 @@ const AdminPage = () => {
                       <Input
                         value={orderSearch}
                         onChange={(e) => setOrderSearch(e.target.value)}
-                        placeholder="Pesquisar cliente, email, nº..."
+                        placeholder="Cliente, email, nº ou referência…"
                         className="w-48 h-9"
                       />
+                      <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                      <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os pagamentos</SelectItem>
+                        {['awaiting_confirmation', 'pending', 'paid', 'failed'].map((ps) => (
+                          <SelectItem key={ps} value={ps}>{getPaymentStatusLabel(ps)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                      </Select>
                       <Select value={orderFilter} onValueChange={setOrderFilter}>
                       <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -642,9 +665,21 @@ const AdminPage = () => {
                                   </span>
                                 </p>
                               )}
-                              {o.payment_method && (
+                              {paymentLabelOf(o) && (
                                 <p className="text-muted-foreground">
-                                  Pagamento: {PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method}
+                                  Pagamento: <strong className="text-foreground">{paymentLabelOf(o)}</strong>
+                                </p>
+                              )}
+                              {o.payment_reference && (
+                                <p className="text-muted-foreground flex items-center gap-2">
+                                  Referência: <code className="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded">{o.payment_reference}</code>
+                                  <button
+                                    type="button"
+                                    className="text-xs text-[#0ea5c9] hover:underline"
+                                    onClick={() => navigator.clipboard?.writeText(o.payment_reference).then(() => toast({ title: 'Referência copiada' }))}
+                                  >
+                                    copiar
+                                  </button>
                                 </p>
                               )}
                               {o.payment_status && (
@@ -661,9 +696,19 @@ const AdminPage = () => {
 
                             <div className="rounded-lg bg-muted/30 p-3 space-y-2">
                               {(o.items || []).map((item, i) => (
-                                <div key={i} className="flex justify-between text-sm">
-                                  <span>{item.quantity}× {item.title}</span>
-                                  <span className="font-medium">Kz {(Number(item.price) * item.quantity).toFixed(2)}</span>
+                                <div key={i} className="flex justify-between gap-3 text-sm">
+                                  <span>
+                                    {item.quantity}× {item.title}
+                                    {item.book_code && <code className="ml-1 text-[10px] text-muted-foreground font-mono">{item.book_code}</code>}
+                                  </span>
+                                  <span className="font-medium text-right whitespace-nowrap">
+                                    Kz {(Number(item.price) * item.quantity).toFixed(2)}
+                                    {Number(item.list_price) > Number(item.price) && (
+                                      <span className="block text-[10px] text-muted-foreground line-through font-normal">
+                                        Kz {(Number(item.list_price) * item.quantity).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </span>
                                 </div>
                               ))}
                             </div>

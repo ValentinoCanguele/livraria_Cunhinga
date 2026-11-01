@@ -522,6 +522,7 @@ route("GET", "/settings", async () => {
     shipping_cost: Number(rec.shipping_cost) || 1500,
     shipping_express_cost: Number(rec.shipping_express_cost) || 0,
     maintenance_mode: !!rec.maintenance_mode,
+    order_number_prefix: storeRules(rec).orderPrefix,
     google_oauth_enabled: !!rec.google_oauth_enabled,
     header_welcome_logged: rec.header_welcome_logged || "Bem-vindo de volta, {nome}",
     header_welcome_guest: rec.header_welcome_guest || "Envio em todo o país · Crie a sua conta para acompanhar encomendas",

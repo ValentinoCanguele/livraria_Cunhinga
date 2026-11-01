@@ -40,3 +40,15 @@ jobs:
 
       - name: Publicar Edge Function "app"
         run: supabase functions deploy app --project-ref "$PROJECT_REF" --no-verify-jwt
+
+      # Funções que já não existem no repositório e devem sair do projecto.
+      # "migrar-dados" serviu só para a importação do PocketBase (concluída em 2026-11-01).
+      - name: Apagar Edge Functions retiradas
+        run: |
+          for fn in migrar-dados; do
+            if supabase functions list --project-ref "$PROJECT_REF" | grep -qw "$fn"; then
+              supabase functions delete "$fn" --project-ref "$PROJECT_REF"
+            else
+              echo "$fn já não existe."
+            fi
+          done

@@ -189,3 +189,8 @@ Ainda não publicada; vai no deploy depois do merge.
   - sem a API do WhatsApp, o envio fica como "Link manual" em vez de "Enviado".
   - Pendente: a Edge Function publicada ainda é a antiga. Até ao deploy, o painel já filtra os "não contactar", mas o servidor ainda marca como "Enviado" os envios que só têm link.
 - **Página pública das lojas:** revista; sem alterações.
+- **Conta do cliente:**
+  - Login: o registo com confirmação de email já não aparece como erro; "Continuar com Google" só aparece com `google_oauth_enabled`; o login deixa de depender do `/health` da Edge Function; o exemplo do email já não é o de um administrador.
+  - Perfil: o novo email só vale depois de confirmado (até lá, ficam o email e as encomendas actuais); "Google Workspace" só para a equipa; "CRM Contactos" com `manage_marketing`/`manage_users`; foto até 2 MB.
+  - Seguimento: passos próprios para levantamento na loja e aviso nas encomendas canceladas. `/track` devolve `shipping_method` e `pickup_store`, o que só tem efeito depois do deploy da Edge Function.
+  - Avaliações: editar a própria avaliação e confirmar antes de eliminar.

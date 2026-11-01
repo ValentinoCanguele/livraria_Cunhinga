@@ -200,8 +200,14 @@ export default function UsersModule() {
   });
 
   const doAccessLink = async (u) => {
-    const res = await run(u, () => sendAccessLink(u.id));
-    if (res) setAccessInfo({ name: u.name, email: u.email, phone: u.phone, link: res.link, emailSent: res.emailSent });
+    const res = await run(u, () => sendAccessLink(u.id, u.email));
+    if (!res) return;
+    if (!res.link) {
+      // Sem link para partilhar: o Supabase Auth enviou o email de recuperação.
+      toast({ title: 'Email enviado', description: `${u.email} recebe um email para definir a palavra-passe.` });
+      return;
+    }
+    setAccessInfo({ name: u.name, email: u.email, phone: u.phone, link: res.link, emailSent: res.emailSent });
   };
 
   const onSaved = async (result, meta) => {

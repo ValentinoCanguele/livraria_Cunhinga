@@ -140,3 +140,18 @@ Ainda não publicada; vai no deploy depois do merge.
   - `customer_email` fica sempre em minúsculas.
 - O site usa só as marcas `stock_low` e `stock_alert` da base de dados (antes misturava "< 5" e "<= 5"). O botão "Marcar resolvido", que não resolvia nada, passou a "Repor stock" e abre o livro.
 
+
+## Livros, imagens e encomendas — correcções (2026-11-01, sessão local)
+
+- **Guardar livro voltou a funcionar:** o formulário enviava `compras`, `lido`, `baixados` e `vendidos`, que não existem em `stock_books`. A aba Métricas mostra agora `sales_count` e `views_count`. Ao mexer em formulários, valida que todas as chaves existem: `GET /rest/v1/<tabela>?select=<chaves>&limit=1` tem de devolver 200.
+- **Upload de imagens do computador:** em livros, slider e configurações a imagem perdia-se ao guardar (ficava um `blob:` que era limpo). O `ImageField` tem agora `uploadFolder`, que envia logo para `media/<pasta>/uploads/` e devolve o URL público. Guardar fica bloqueado enquanto há envios (`isUploadPending` em `lib/mediaUpload.js`).
+- **Encomendas:** cancelar devolvia o stock em dobro (frontend + trigger). Agora só o trigger `orders_before_update` o faz.
+- **Visualizações:** a página do livro chama `/catalog/view` (uma vez por sessão); antes nunca era chamada.
+- **Livros:** duplicar, pesquisa e filtros, destaque num clique, descrição com editor rico, páginas de amostra como lista de imagens, preço maior que zero obrigatório, aviso antes de eliminar um livro que já aparece em encomendas.
+- **Integrações:** o formulário SMTP de `app_integrations` foi trocado por um aviso, porque o servidor usa `site_settings.smtp_*`.
+- **Pendente (precisa da base de dados):**
+  - livros ocultos: coluna `active`, RLS pública só para os activos, e o checkout tem de recusar livros ocultos;
+  - promoções: `sale_price` com datas, e `place_order` tem de cobrar o preço efectivo;
+  - confirmar que o utilizador "Rodrigues" é `admin`;
+  - publicar a Edge Function. Na produção, `/admin/users` ainda responde "Rota não encontrada".
+  - O plano detalhado está em `docs/PROMPT_REFINAMENTO.md`.

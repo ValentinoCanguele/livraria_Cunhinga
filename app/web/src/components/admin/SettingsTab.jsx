@@ -62,6 +62,8 @@ const empty = {
   checkout_rate_per_minute: 15,
   track_rate_per_minute: 20,
   receipt_per_order_per_minute: 3,
+  low_stock_threshold: 5,
+  book_code_prefix: 'LIV-',
   ui_glass_enabled: true,
   ui_glass_opacity: 0.72,
   shop_bg_mode: 'gradient',
@@ -190,6 +192,8 @@ export default function SettingsTab() {
           checkout_rate_per_minute: r.checkout_rate_per_minute ?? empty.checkout_rate_per_minute,
           track_rate_per_minute: r.track_rate_per_minute ?? empty.track_rate_per_minute,
           receipt_per_order_per_minute: r.receipt_per_order_per_minute ?? empty.receipt_per_order_per_minute,
+          low_stock_threshold: r.low_stock_threshold ?? empty.low_stock_threshold,
+          book_code_prefix: r.book_code_prefix ?? empty.book_code_prefix,
           ui_glass_enabled: r.ui_glass_enabled !== false,
           ui_glass_opacity: r.ui_glass_opacity ?? empty.ui_glass_opacity,
           shop_bg_mode: r.shop_bg_mode || empty.shop_bg_mode,
@@ -263,6 +267,8 @@ export default function SettingsTab() {
         checkout_rate_per_minute: clampInt(form.checkout_rate_per_minute, 1, 60, 15),
         track_rate_per_minute: clampInt(form.track_rate_per_minute, 1, 120, 20),
         receipt_per_order_per_minute: clampInt(form.receipt_per_order_per_minute, 1, 10, 3),
+        low_stock_threshold: clampInt(form.low_stock_threshold, 0, 1000, 5),
+        book_code_prefix: String(form.book_code_prefix || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 8) || 'LIV-',
         shop_per_page: Number(form.shop_per_page) || 24,
         shop_grid_columns: Number(form.shop_grid_columns) || 4,
         ui_glass_opacity: Number(form.ui_glass_opacity) || 0.72,
@@ -591,6 +597,27 @@ export default function SettingsTab() {
             <p className="text-xs text-muted-foreground">
               Até 8 caracteres (letras, números e hífen). Exemplo de número: <span className="font-mono">{form.order_number_prefix || ''}K3F9QA7XP</span>. Só afecta as encomendas novas.
             </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Stock baixo: até quantas unidades</Label>
+              <Input type="number" min={0} max={1000} value={form.low_stock_threshold} onChange={(e) => set('low_stock_threshold', e.target.value)} />
+              <p className="text-xs text-muted-foreground">
+                Livros com {Number(form.low_stock_threshold) || 0} ou menos unidades ficam marcados como "Últimas unidades" e aparecem no alerta do painel. Ao guardar, todos os livros são recalculados.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Prefixo do código de livro (SKU)</Label>
+              <Input
+                value={form.book_code_prefix}
+                onChange={(e) => set('book_code_prefix', e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 8))}
+                placeholder="LIV-"
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground">
+                Usado quando um livro é criado sem código: <span className="font-mono">{form.book_code_prefix || 'LIV-'}101</span>, <span className="font-mono">{form.book_code_prefix || 'LIV-'}102</span>… Os códigos não se podem repetir.
+              </p>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Máximo de caracteres nas notas da encomenda</Label>

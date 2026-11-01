@@ -24,7 +24,8 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
   const variant = product.variants?.[0];
   const inStock = product.purchasable && (variant?.inventory_quantity ?? 0) > 0;
   const qty = variant?.inventory_quantity ?? 0;
-  const isLowStock = inStock && (product.stock_low || (qty > 0 && qty < 5));
+  // A marca vem da base de dados, com o limite definido em Configurações → Regras da loja.
+  const isLowStock = inStock && !!product.stock_low;
   const price = variant?.sale_price_formatted || variant?.price_formatted;
   const originalPrice = variant?.sale_price_formatted ? variant?.price_formatted : null;
   const waPhone = settings.whatsapp || settings.contact_phone;

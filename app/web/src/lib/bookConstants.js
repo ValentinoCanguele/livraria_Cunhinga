@@ -43,11 +43,6 @@ export const emptyBookForm = {
   versions: [],
 };
 
-export function previewBookCode() {
-  const seq = Date.now().toString(36).toUpperCase().slice(-5);
-  return `LA-${seq}`;
-}
-
 export function bookToForm(record) {
   const cover = record.cover || (record.cover_image ? pb.files.getURL(record, record.cover_image) : '');
   return {

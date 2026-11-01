@@ -127,4 +127,12 @@ Ainda não publicada; vai no deploy depois do merge.
   Cada campo tem um limite seguro na base de dados, no painel e na Edge Function (`storeRules`).
 - Métodos de pagamento no checkout: só os activos em Pagamentos. Se não houver nenhum activo, aceita "entrega".
 - Stock em 2026-11-01: 84 dos 102 livros com 1 a 4 unidades e 12 esgotados.
+- Migração `20261101180003_stock_precos_totais`:
+  - limite de stock baixo (`low_stock_threshold`) e prefixo de código (`book_code_prefix`) configuráveis em Regras da loja;
+  - códigos de livro sequenciais (`private.book_code_seq`: o próximo é LIV-101);
+  - `stock_movements`, com o histórico de cada mudança de stock (inicial, venda com o nº da encomenda, cancelamento, ajuste com o autor). Só leitura para `manage_catalog`; aparece em Livro → Métricas;
+  - o total da encomenda é recalculado quando mudam os artigos ou os portes;
+  - o cancelamento repõe o stock e desconta `sales_count`;
+  - `customer_email` fica sempre em minúsculas.
+- O site usa só as marcas `stock_low` e `stock_alert` da base de dados (antes misturava "< 5" e "<= 5"). O botão "Marcar resolvido", que não resolvia nada, passou a "Repor stock" e abre o livro.
 

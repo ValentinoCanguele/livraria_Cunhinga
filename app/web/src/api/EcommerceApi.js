@@ -51,7 +51,7 @@ function bookToProduct(book, collectionsMap = {}) {
     price_in_cents: priceInCents,
     type: { value: book.genre || 'Geral' },
     purchasable: stock > 0,
-    ribbon_text: book.urgency_text || (book.featured ? 'Destaque' : stock <= 5 && stock > 0 ? 'Últimas unidades' : null),
+    ribbon_text: book.urgency_text || (book.featured ? 'Destaque' : book.stock_low && stock > 0 ? 'Últimas unidades' : null),
     variants: [variant],
     options: [],
     collections: collectionId && collectionsMap[collectionId]
@@ -81,7 +81,7 @@ function bookToProduct(book, collectionsMap = {}) {
     preview_enabled: !!book.preview_enabled,
     sales_count: Number(book.sales_count) || 0,
     views_count: Number(book.views_count) || 0,
-    stock_low: !!book.stock_low || (stock > 0 && stock < 5),
+    stock_low: !!book.stock_low,
     stock_alert: !!book.stock_alert,
   };
 }
@@ -373,17 +373,13 @@ export async function getRelatedProducts(author, excludeId, limit = 4, genre = n
 export async function getLowStockBooks() {
   try {
     const records = await pb.collection('stock_books').getFullList({
-      filter: 'stock_alert = true || stock_low = true || stock <= 5',
+      filter: 'stock_alert = true || stock_low = true',
       sort: 'stock',
     });
     return records;
   } catch {
     return [];
   }
-}
-
-export async function clearStockAlert(bookId) {
-  await pb.collection('stock_books').update(bookId, { stock_alert: false, stock_low: false });
 }
 
 export async function searchProducts(query, limit = 50) {

@@ -10,11 +10,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BOOK_GENRES, BOOK_LANGUAGES, emptyBookForm, previewBookCode, bookToForm } from '@/lib/bookConstants';
+import { BOOK_GENRES, BOOK_LANGUAGES, emptyBookForm, bookToForm } from '@/lib/bookConstants';
 import pb from '@/lib/dataClient';
 import { Megaphone, User, BookMarked, Layers, TrendingUp } from 'lucide-react';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import ImageField from '@/components/admin/ImageField';
+import StockHistory from '@/components/admin/StockHistory';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { isUploadPending } from '@/lib/mediaUpload';
 
@@ -23,7 +24,6 @@ const PLACEHOLDER_COVER = 'https://images.unsplash.com/photo-1544947950-fa07a98d
 export default function BookFormModal({ open, onClose, onSave, editing, template, saving }) {
   const [form, setForm] = useState(emptyBookForm);
   const [copied, setCopied] = useState(false);
-  const [autoCode] = useState(() => previewBookCode());
   const [collections, setCollections] = useState([]);
   const { driveImageConfig } = useIntegrations();
 
@@ -34,10 +34,11 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
         .catch(() => setCollections([]));
       if (editing) setForm(bookToForm(editing));
       // Duplicar: copia tudo menos os códigos únicos; o ID e as métricas são novos.
-      else if (template) setForm({ ...bookToForm(template), title: `${template.title} (cópia)`, book_code: autoCode, sku: '' });
-      else setForm({ ...emptyBookForm, book_code: autoCode });
+      // Código vazio: a base de dados gera o seguinte da numeração (ex.: LIV-101).
+      else if (template) setForm({ ...bookToForm(template), title: `${template.title} (cópia)`, book_code: '', sku: '' });
+      else setForm({ ...emptyBookForm, book_code: '' });
     }
-  }, [open, editing, template, autoCode]);
+  }, [open, editing, template]);
 
   if (!open) return null;
 
@@ -67,8 +68,8 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
       pages: Number(form.pages) || 0,
       year: Number(form.year) || new Date().getFullYear(),
       featured: !!form.featured,
-      book_code: form.book_code || autoCode,
-      sku: form.sku || form.book_code || autoCode,
+      book_code: (form.book_code || '').trim(),
+      sku: (form.sku || form.book_code || '').trim(),
       benefit_bullets: Array.isArray(form.benefit_bullets)
         ? form.benefit_bullets
         : (form.benefit_bullets || '').split('\n').map((s) => s.trim()).filter(Boolean),
@@ -79,7 +80,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
   };
 
   const copyId = () => {
-    const id = editing?.id || form.book_code || autoCode;
+    const id = editing?.id || form.book_code || '';
     navigator.clipboard.writeText(id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -236,15 +237,15 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                     Cada livro recebe um código único da Livraria Adventista. O ID do sistema é gerado automaticamente ao guardar.
                   </div>
                   <div className="space-y-2">
-                    <Label>Código do Livro (LA-XXXXX)</Label>
+                    <Label>Código do Livro (SKU)</Label>
                     <Input
                       value={form.book_code}
                       onChange={(e) => set('book_code', e.target.value.toUpperCase())}
-                      placeholder={autoCode}
+                      placeholder="Automático"
                       className="font-mono"
                     />
                     {!editing && (
-                      <p className="text-xs text-muted-foreground">Deixe vazio para gerar automaticamente: <code className="text-[#0ea5c9]">{autoCode}</code></p>
+                      <p className="text-xs text-muted-foreground">Deixe vazio para gerar o próximo código da numeração (prefixo em Configurações → Regras da loja). Os códigos não se podem repetir.</p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -420,6 +421,9 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                       <div className="rounded-xl border p-4">
                         <p className="text-xs text-muted-foreground">Visualizações</p>
                         <p className="text-2xl font-bold">{Number(editing.views_count) || 0}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <StockHistory bookId={editing.id} />
                       </div>
                     </div>
                   ) : (

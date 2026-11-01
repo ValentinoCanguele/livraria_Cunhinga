@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import SalesReportsPanel from '@/components/admin/SalesReportsPanel';
 import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_METHODS, ORDER_STATUS, getPaymentStatusLabel, getDeliveryStatusLabel, getDeliveryStatusColor } from '@/lib/orderUtils';
 import { displayAngolaPhone } from '@/lib/angolaPhone';
-import { getLowStockBooks, clearStockAlert } from '@/api/EcommerceApi';
+import { getLowStockBooks } from '@/api/EcommerceApi';
 
 const AdminPage = () => {
   const { user, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout } = useAuth();
@@ -164,7 +164,7 @@ const AdminPage = () => {
 
   const filteredBooks = books.filter((b) => {
     if (bookFilter === 'featured' && !b.featured) return false;
-    if (bookFilter === 'low_stock' && !(Number(b.stock) <= 5 || b.stock_alert || b.stock_low)) return false;
+    if (bookFilter === 'low_stock' && !(b.stock_alert || b.stock_low)) return false;
     if (bookFilter === 'no_cover' && (b.cover || b.cover_image)) return false;
     const q = bookSearch.trim().toLowerCase();
     if (!q) return true;
@@ -209,16 +209,6 @@ const AdminPage = () => {
       if (estimatedDelivery !== undefined) data.estimated_delivery = estimatedDelivery || '';
       await pb.collection('orders').update(order.id, data);
       toast({ title: 'Tracking actualizado' });
-      loadAll();
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
-    }
-  };
-
-  const handleClearStockAlert = async (book) => {
-    try {
-      await clearStockAlert(book.id);
-      toast({ title: 'Alerta resolvido', description: `"${book.title}" — reabasteça o stock quando possível.` });
       loadAll();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
@@ -329,8 +319,8 @@ const AdminPage = () => {
                           {' '}{b.title} — <strong className={Number(b.stock) <= 0 ? 'text-red-600' : 'text-amber-700'}>{b.stock} un.</strong>
                           {b.stock_alert && <span className="ml-1 text-xs text-red-600">(esgotado)</span>}
                         </span>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleClearStockAlert(b)}>
-                          Marcar resolvido
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEditBook(b)}>
+                          Repor stock
                         </Button>
                       </li>
                     ))}

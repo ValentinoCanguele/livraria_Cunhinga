@@ -19,7 +19,7 @@ import StockHistory from '@/components/admin/StockHistory';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { isUploadPending } from '@/lib/mediaUpload';
 
-const PLACEHOLDER_COVER = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&q=80';
+const PLACEHOLDER_COVER = '/images/site/capa-por-definir.webp';
 
 export default function BookFormModal({ open, onClose, onSave, editing, template, saving }) {
   const [form, setForm] = useState(emptyBookForm);

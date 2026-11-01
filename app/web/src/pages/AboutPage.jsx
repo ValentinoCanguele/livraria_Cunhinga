@@ -30,7 +30,7 @@ const AboutPage = () => {
       <main>
         <section className="relative h-[60vh] min-h-[400px] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0">
-            <img src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1200&q=80" alt="Livraria" className="w-full h-full object-cover" />
+            <img src="/images/site/sobre-topo.webp" alt="Capas de livros do catálogo da livraria" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#0c4a6e]/80 to-[#0ea5c9]/40" />
           </div>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-10 container-custom text-center text-white">
@@ -57,7 +57,7 @@ const AboutPage = () => {
                 </p>
               </motion.div>
               <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="relative h-[500px] rounded-2xl overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1524995997942-a1fc3e46a42d?w=800&q=80" alt="Livros" className="w-full h-full object-cover" />
+                <img src="/images/site/sobre-livros.webp" alt="Livros do catálogo da livraria" loading="lazy" className="w-full h-full object-cover" />
               </motion.div>
             </div>
           </div>

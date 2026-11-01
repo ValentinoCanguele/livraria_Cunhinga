@@ -7,12 +7,13 @@ import { getHeroSlides } from '@/api/EcommerceApi';
 import { sortSlides, getTransition, getSlideDuration } from '@/lib/slideTransitions';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 
+// Imagens feitas com as capas reais do catálogo (public/images/site); usadas só se não houver slides na base de dados.
 const FALLBACK_SLIDES = [
   {
     id: '1',
     title: 'Catálogo Oficial da Livraria',
     subtitle: 'Mais de 100 títulos adventistas — teologia, família, saúde e muito mais.',
-    image: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80',
+    image: '/images/site/slide-catalogo.webp',
     cta_text: 'Ver Catálogo Geral',
     cta_link: '/shop?category=Cat%C3%A1logo%20Geral',
     template: 'classic',
@@ -24,7 +25,7 @@ const FALLBACK_SLIDES = [
     id: '2',
     title: 'Obras de Ellen G. White',
     subtitle: 'Clássicos da literatura adventista disponíveis na nossa loja.',
-    image: 'https://images.unsplash.com/photo-1456513088650-9b9390942247?w=1920&q=80',
+    image: '/images/site/slide-ellen-white.webp',
     cta_text: 'Pesquisar Ellen G. White',
     cta_link: '/shop?search=Ellen',
     template: 'classic',
@@ -35,7 +36,7 @@ const FALLBACK_SLIDES = [
     id: '3',
     title: 'Colportagem',
     subtitle: 'Títulos para evangelização e saúde com condições especiais.',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80',
+    image: '/images/site/slide-colportagem.webp',
     cta_text: 'Ver Colportagem',
     cta_link: '/shop?category=Colportagem',
     template: 'minimal',

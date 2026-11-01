@@ -38,7 +38,7 @@ const LoginPage = () => {
   }, []);
 
   const bgImage = withCacheBust(
-    settings.login_bg_url || 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1200&q=80',
+    settings.login_bg_url || '/images/site/login-fundo.webp',
     settings.assets_version,
   );
 

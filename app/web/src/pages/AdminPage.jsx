@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, ExternalLink, Store } from 'lucide-react';
+import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, ExternalLink, Store, Search, Star } from 'lucide-react';
 import CollectionsTab from '@/components/admin/CollectionsTab';
 import SlidesTab from '@/components/admin/SlidesTab';
 import { sanitizeBookPayload } from '@/lib/bookSave';
@@ -43,6 +43,8 @@ const AdminPage = () => {
   const [showBookForm, setShowBookForm] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [bookSearch, setBookSearch] = useState('');
+  const [bookFilter, setBookFilter] = useState('all');
 
   const [orderFilter, setOrderFilter] = useState('all');
   const [orderSearch, setOrderSearch] = useState('');
@@ -114,11 +116,36 @@ const AdminPage = () => {
   };
 
   const handleDeleteBook = async (b) => {
-    if (!confirm(`Eliminar "${b.title}"?`)) return;
-    await pb.collection('stock_books').delete(b.id);
-    toast({ title: 'Livro eliminado' });
-    loadAll();
+    if (!confirm(`Eliminar "${b.title}"? Esta acção não pode ser desfeita.`)) return;
+    try {
+      await pb.collection('stock_books').delete(b.id);
+      toast({ title: 'Livro eliminado' });
+      loadAll();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao eliminar', description: pbErrorMessage(err) });
+    }
   };
+
+  const toggleFeatured = async (b) => {
+    const featured = !b.featured;
+    setBooks((prev) => prev.map((x) => (x.id === b.id ? { ...x, featured } : x)));
+    try {
+      await pb.collection('stock_books').update(b.id, { featured });
+      toast({ title: featured ? 'Livro destacado na homepage' : 'Destaque removido' });
+    } catch (err) {
+      setBooks((prev) => prev.map((x) => (x.id === b.id ? { ...x, featured: !featured } : x)));
+      toast({ variant: 'destructive', title: 'Erro', description: pbErrorMessage(err) });
+    }
+  };
+
+  const filteredBooks = books.filter((b) => {
+    if (bookFilter === 'featured' && !b.featured) return false;
+    if (bookFilter === 'low_stock' && !(Number(b.stock) <= 5 || b.stock_alert || b.stock_low)) return false;
+    if (bookFilter === 'no_cover' && (b.cover || b.cover_image)) return false;
+    const q = bookSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [b.title, b.author, b.book_code, b.sku, b.isbn, b.genre].filter(Boolean).join(' ').toLowerCase().includes(q);
+  });
 
   const handleOrderStatus = async (order, newStatus) => {
     try {
@@ -337,11 +364,31 @@ const AdminPage = () => {
                   <div className="flex justify-between mb-6">
                     <div>
                       <h2 className="text-2xl font-bold">Catálogo</h2>
-                      <p className="text-sm text-muted-foreground mt-1">{books.length} livros · cada um com ID e código único</p>
+                      <p className="text-sm text-muted-foreground mt-1">{books.length} livros · {books.filter((b) => b.featured).length} em destaque</p>
                     </div>
                     <Button className="btn-primary" onClick={() => { setEditingBook(null); setShowBookForm(true); }} disabled={!canManageCatalog}>
                       <Plus className="h-4 w-4 mr-2" /> Adicionar
                     </Button>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={bookSearch}
+                        onChange={(e) => setBookSearch(e.target.value)}
+                        placeholder="Pesquisar por título, autor, código, SKU ou ISBN..."
+                        className="pl-9"
+                      />
+                    </div>
+                    <Select value={bookFilter} onValueChange={setBookFilter}>
+                      <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os livros</SelectItem>
+                        <SelectItem value="featured">Em destaque</SelectItem>
+                        <SelectItem value="low_stock">Stock baixo ou esgotado</SelectItem>
+                        <SelectItem value="no_cover">Sem capa</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="bg-card border rounded-xl overflow-x-auto">
                     <table className="w-full text-sm">
@@ -368,7 +415,12 @@ const AdminPage = () => {
                             </td>
                           </tr>
                         )}
-                        {books.map((b) => (
+                        {books.length > 0 && filteredBooks.length === 0 && (
+                          <tr>
+                            <td colSpan={9} className="p-10 text-center text-muted-foreground">Nenhum livro corresponde à pesquisa.</td>
+                          </tr>
+                        )}
+                        {filteredBooks.map((b) => (
                           <tr key={b.id} className="hover:bg-muted/30">
                             <td className="p-4">
                               <div className="h-12 w-9 rounded overflow-hidden bg-muted border shrink-0">
@@ -398,7 +450,16 @@ const AdminPage = () => {
                                 </span>
                               )}
                             </td>
-                            <td className="p-4 hidden sm:table-cell">{b.featured ? '★' : '—'}</td>
+                            <td className="p-4 hidden sm:table-cell">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => toggleFeatured(b)}
+                                title={b.featured ? 'Remover destaque' : 'Destacar na homepage'}
+                              >
+                                <Star className={`h-4 w-4 ${b.featured ? 'fill-amber-400 text-amber-500' : 'text-muted-foreground'}`} />
+                              </Button>
+                            </td>
                             <td className="p-4 text-right whitespace-nowrap">
                               <Button variant="ghost" size="icon" onClick={() => openEditBook(b)} disabled={!canManageCatalog}><Pencil className="h-4 w-4" /></Button>
                               <Button variant="ghost" size="icon" onClick={() => handleDeleteBook(b)} disabled={!canManageCatalog}><Trash2 className="h-4 w-4 text-destructive" /></Button>

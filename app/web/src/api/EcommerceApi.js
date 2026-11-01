@@ -79,10 +79,8 @@ function bookToProduct(book, collectionsMap = {}) {
     sample_pages: book.sample_pages || [],
     versions: book.versions || [],
     preview_enabled: !!book.preview_enabled,
-    compras: Number(book.compras) || 0,
-    lido: Number(book.lido) || 0,
-    baixados: Number(book.baixados) || 0,
-    vendidos: Number(book.vendidos) || 0,
+    sales_count: Number(book.sales_count) || 0,
+    views_count: Number(book.views_count) || 0,
     stock_low: !!book.stock_low || (stock > 0 && stock < 5),
     stock_alert: !!book.stock_alert,
   };

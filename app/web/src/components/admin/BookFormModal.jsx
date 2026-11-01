@@ -56,10 +56,6 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
       sample_pages: Array.isArray(form.sample_pages) ? form.sample_pages : [],
       versions: Array.isArray(form.versions) ? form.versions : [],
       preview_enabled: !!form.preview_enabled,
-      compras: Number(form.compras) || 0,
-      lido: Number(form.lido) || 0,
-      baixados: Number(form.baixados) || 0,
-      vendidos: Number(form.vendidos) || 0,
     });
   };
 
@@ -218,7 +214,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
 
                 <TabsContent value="codes" className="space-y-4 mt-0">
                   <div className="rounded-xl bg-muted/50 border p-4 text-sm text-muted-foreground mb-2">
-                    Cada livro recebe um código único da Livraria Adventista. O ID do sistema é gerado automaticamente pelo PocketBase após guardar.
+                    Cada livro recebe um código único da Livraria Adventista. O ID do sistema é gerado automaticamente ao guardar.
                   </div>
                   <div className="space-y-2">
                     <Label>Código do Livro (LA-XXXXX)</Label>
@@ -377,55 +373,23 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
 
                 <TabsContent value="stats" className="space-y-4 mt-0">
                   <div className="rounded-xl bg-gradient-to-r from-[#0ea5c9]/10 to-[#0ea5c9]/5 border border-[#0ea5c9]/20 p-4 text-sm text-foreground">
-                    <h4 className="font-semibold text-[#0ea5c9] mb-1">Métricas de Popularidade</h4>
-                    <p className="text-muted-foreground">Estes valores são usados para classificar e promover livros na homepage (ex: carrossel de destaques ou fitas de conversão).</p>
+                    <h4 className="font-semibold text-[#0ea5c9] mb-1">Métricas reais</h4>
+                    <p className="text-muted-foreground">Contadas automaticamente: vendas quando uma encomenda é registada e visualizações quando alguém abre a página do livro.</p>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Número de Compras</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={form.compras}
-                        onChange={(e) => set('compras', e.target.value)}
-                        placeholder="Ex: 142"
-                      />
+                  {editing ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-xl border p-4">
+                        <p className="text-xs text-muted-foreground">Unidades vendidas</p>
+                        <p className="text-2xl font-bold">{Number(editing.sales_count) || 0}</p>
+                      </div>
+                      <div className="rounded-xl border p-4">
+                        <p className="text-xs text-muted-foreground">Visualizações</p>
+                        <p className="text-2xl font-bold">{Number(editing.views_count) || 0}</p>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Número de Leitores (Lidos)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={form.lido}
-                        onChange={(e) => set('lido', e.target.value)}
-                        placeholder="Ex: 389"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Downloads Efetuados</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={form.baixados}
-                        onChange={(e) => set('baixados', e.target.value)}
-                        placeholder="Ex: 85"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Quantidade Vendida</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={form.vendidos}
-                        onChange={(e) => set('vendidos', e.target.value)}
-                        placeholder="Ex: 120"
-                      />
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">As métricas aparecem depois de publicar o livro.</p>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>

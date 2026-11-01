@@ -248,12 +248,13 @@ export default function MegaMenu() {
         <PanelLayout
           heading="Lojas e apoio"
           lead="Visite-nos ou fale connosco"
-          footerLink={<SeeAll to="/contact" label="Contactar" onNavigate={close} />}
+          footerLink={<SeeAll to="/lojas" label="Ver todas as lojas" onNavigate={close} />}
           aside={(
             <ShortcutList
               title="Informação"
               onNavigate={close}
               items={[
+                { to: '/lojas', label: 'Lojas físicas', description: 'Moradas, horários e mapa', icon: MapPin },
                 { to: '/about', label: 'Sobre nós', icon: Info },
                 { to: '/faq', label: 'Perguntas frequentes', icon: HelpCircle },
                 { to: '/shipping-returns', label: 'Envios e devoluções', icon: RotateCcw },
@@ -266,7 +267,7 @@ export default function MegaMenu() {
           {data.stores.length ? (
             <div className="grid grid-cols-3 gap-4">
               {data.stores.slice(0, 3).map((s) => (
-                <ImageCard key={s.id} to="/contact" image={s.image_url} title={s.name} subtitle={[s.address, s.province].filter(Boolean).join(' · ')} onNavigate={close} />
+                <ImageCard key={s.id} to={`/lojas#${s.id}`} image={s.image_url} title={s.name} subtitle={[s.address, s.province].filter(Boolean).join(' · ')} onNavigate={close} />
               ))}
               {data.stores.length < 3 && (
                 <Link

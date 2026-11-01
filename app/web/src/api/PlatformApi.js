@@ -57,12 +57,25 @@ export async function getSiteSettings() {
   }
 }
 
+/** Lojas activas (a RLS só mostra lojas activas ao público). */
 export async function getPhysicalStores() {
   try {
-    const res = await fetch(`${APP_API_URL}/stores`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.stores || [];
+    const records = await pb.collection('physical_stores').getFullList({ filter: 'active = true', sort: 'sort_order,name' });
+    return records.map((r) => ({
+      id: r.id,
+      name: r.name,
+      province: r.province,
+      address: r.address,
+      phone: r.phone || '',
+      email: r.email || '',
+      whatsapp: r.whatsapp || '',
+      hours: r.hours || '',
+      image_url: r.image_url || (r.image ? pb.files.getURL(r, r.image) : ''),
+      latitude: r.latitude,
+      longitude: r.longitude,
+      maps_url: r.maps_url || '',
+      pickup_enabled: r.pickup_enabled !== false,
+    }));
   } catch {
     return [];
   }

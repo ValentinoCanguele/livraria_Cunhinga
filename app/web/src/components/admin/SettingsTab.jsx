@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell, Sparkles, RotateCcw, Image as ImageIcon, Phone, MapPin, Brush } from 'lucide-react';
+import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell, Sparkles, RotateCcw, Image as ImageIcon, Phone, Brush } from 'lucide-react';
 import pb from '@/lib/dataClient';
 import { useToast } from '@/hooks/use-toast';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ImageField, { uploadImageToRecord, removeImageFromRecord, syncUploadedImageUrl } from '@/components/admin/ImageField';
 import { sanitizeImageUrlForSave } from '@/lib/imageUrl';
 import { pbErrorMessage } from '@/lib/mediaSave';
-import StoresTab from '@/components/admin/StoresTab';
 import PhoneInput from '@/components/PhoneInput';
 import { formatAngolaPhone } from '@/lib/angolaPhone';
 
@@ -93,7 +92,6 @@ const SETTINGS_SECTIONS = [
   { label: 'Loja', items: [
     { value: 'shop', label: 'Catálogo e loja', icon: Store },
     { value: 'shipping', label: 'Envio', icon: Truck },
-    { value: 'stores', label: 'Lojas físicas', icon: MapPin },
   ] },
   { label: 'Comunicação', items: [
     { value: 'contact', label: 'Contacto', icon: Phone },
@@ -742,9 +740,6 @@ export default function SettingsTab() {
           </div>
         </TabsContent>
 
-        <TabsContent value="stores">
-          <StoresTab />
-        </TabsContent>
         </div>
       </Tabs>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, ExternalLink } from 'lucide-react';
+import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, ExternalLink, Store } from 'lucide-react';
 import CollectionsTab from '@/components/admin/CollectionsTab';
 import SlidesTab from '@/components/admin/SlidesTab';
 import { sanitizeBookPayload } from '@/lib/bookSave';
@@ -13,6 +13,7 @@ import UsersTab from '@/components/admin/UsersTab';
 import CRMContactsTab from '@/components/admin/CRMContactsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
 import AppsTab from '@/components/admin/AppsTab';
+import StoresTab from '@/components/admin/StoresTab';
 import ContactsManager from '@/components/ContactsManager';
 import { pageTitle } from '@/lib/brand';
 import pb from '@/lib/dataClient';
@@ -215,6 +216,7 @@ const AdminPage = () => {
     { label: 'Vendas', tabs: [
       canManageOrders && { value: 'orders', label: `Encomendas (${orders.length})`, icon: ShoppingBag },
       canManagePayments && { value: 'payments', label: 'Pagamentos', icon: CreditCard },
+      canManageSettings && { value: 'stores', label: 'Lojas', icon: Store },
     ] },
     { label: 'Clientes', tabs: [
       canManageUsers && { value: 'users', label: 'Utilizadores', icon: Users },
@@ -320,6 +322,7 @@ const AdminPage = () => {
             {canManageUsers && <TabsContent value="users"><UsersTab /></TabsContent>}
             {canManageUsers && <TabsContent value="crm"><CRMContactsTab /></TabsContent>}
             {canManagePayments && <TabsContent value="payments"><PaymentsTab /></TabsContent>}
+            {canManageSettings && <TabsContent value="stores"><StoresTab /></TabsContent>}
             {canManageMarketing && <TabsContent value="contacts"><ContactsManager /></TabsContent>}
             {isAdmin && <TabsContent value="apps"><AppsTab /></TabsContent>}
             {canManageCatalog && (

@@ -81,7 +81,8 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
           setForm((f) => ({ ...f, paymentMethod: methods[0].code }));
         }
       });
-      getPhysicalStores().then(setPhysicalStores);
+      // Só as lojas que aceitam levantamento aparecem no checkout.
+      getPhysicalStores().then((list) => setPhysicalStores(list.filter((st) => st.pickup_enabled)));
     }
   }, [isCartOpen]);
 

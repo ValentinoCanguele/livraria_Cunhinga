@@ -16,6 +16,7 @@ import ShopPage from '@/pages/ShopPage.jsx';
 const CategoryPage = lazy(() => import('@/pages/CategoryPage.jsx'));
 const ProductDetailPage = lazy(() => import('@/pages/ProductDetailPage.jsx'));
 const AboutPage = lazy(() => import('@/pages/AboutPage.jsx'));
+const StoresPage = lazy(() => import('@/pages/StoresPage.jsx'));
 const ContactPage = lazy(() => import('@/pages/ContactPage.jsx'));
 const FAQPage = lazy(() => import('@/pages/FAQPage.jsx'));
 const ShippingReturnsPage = lazy(() => import('@/pages/ShippingReturnsPage.jsx'));
@@ -58,6 +59,7 @@ function App() {
             <Route path="/shop/:category" element={<CategoryPage />} />
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/lojas" element={<StoresPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/shipping-returns" element={<ShippingReturnsPage />} />

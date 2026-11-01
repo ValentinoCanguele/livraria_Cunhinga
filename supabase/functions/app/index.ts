@@ -762,12 +762,14 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
   const items: Row[] = data.items || [];
   if (!items.length) throw bad("Carrinho vazio.");
 
-  const email = String(data.customerEmail || "").trim();
-  const name = String(data.customerName || "").trim();
-  const phone = String(data.phone || "").trim();
-  const address = String(data.address || "").trim();
-  const shippingMethod = data.shippingMethod || "delivery";
-  const pickupStore = String(data.pickupStore || "").trim();
+  // Textos com tamanho máximo, para ninguém encher a base de dados.
+  const clip = (value: unknown, max: number) => String(value ?? "").trim().slice(0, max);
+  const email = clip(data.customerEmail, 254);
+  const name = clip(data.customerName, 120);
+  const phone = clip(data.phone, 40);
+  const address = clip(data.address, 500);
+  const shippingMethod = ["delivery", "express", "pickup"].includes(data.shippingMethod) ? data.shippingMethod : "delivery";
+  const pickupStore = clip(data.pickupStore, 120);
 
   if (!email) throw bad("Email obrigatório.");
   if (!name) throw bad("Nome obrigatório.");
@@ -797,14 +799,20 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
     return { book_id: bookId, quantity: Math.min(Math.max(Number(item.quantity) || 1, 1), 99) };
   });
 
-  const paymentCode = data.paymentMethodCode || data.paymentMethod || "entrega";
+  const paymentCode = clip(data.paymentMethodCode || data.paymentMethod || "entrega", 60);
+  // Só métodos de pagamento activos (entrega e transferência existem sempre).
+  const { data: paymentRows } = await db.from("payment_methods").select("name").eq("code", paymentCode).eq("enabled", true).limit(1);
+  const paymentMethodRow = paymentRows?.[0];
+  if (!paymentMethodRow && paymentCode !== "entrega" && paymentCode !== "transferencia") throw bad("Método de pagamento indisponível.");
   const isP2P = paymentCode !== "entrega" && paymentCode !== "transferencia";
-  const saleChannel = data.saleChannel || data.orderType || "web_purchase";
+  const saleChannel = clip(data.saleChannel || data.orderType || "web_purchase", 40);
   const isWhatsApp = saleChannel === "whatsapp";
-  const deliveryAddress = shippingMethod === "pickup" ? `Levantamento: ${pickupStore || "Loja física"}` : (data.deliveryAddressFull || address);
-  const deliveryCity = shippingMethod === "pickup" ? (pickupStore || "Loja física") : (data.deliveryMunicipality || data.city || "Luanda");
-  const timelineLocation = shippingMethod === "pickup" ? (pickupStore || "Loja física") : (data.deliveryMunicipality || data.deliveryProvince || "Angola");
-  const orderNum = "ENC-" + Date.now().toString(36).toUpperCase().slice(-6);
+  const deliveryAddress = shippingMethod === "pickup" ? `Levantamento: ${pickupStore || "Loja física"}` : (clip(data.deliveryAddressFull, 600) || address);
+  const deliveryCity = shippingMethod === "pickup" ? (pickupStore || "Loja física") : (clip(data.deliveryMunicipality || data.city, 120) || "Luanda");
+  const timelineLocation = shippingMethod === "pickup" ? (pickupStore || "Loja física") : (clip(data.deliveryMunicipality || data.deliveryProvince, 120) || "Angola");
+  // Hora + 3 caracteres aleatórios: evita números repetidos em compras simultâneas e números fáceis de adivinhar.
+  const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(3)), (b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
+  const orderNum = "ENC-" + Date.now().toString(36).toUpperCase().slice(-6) + randomPart;
 
   const order: Row = {
     order_number: orderNum,
@@ -818,7 +826,8 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
     shipping_method: shippingMethod,
     pickup_store: pickupStore,
     payment_method_code: paymentCode,
-    payment_reference: data.paymentReference || "",
+    payment_method_name: paymentMethodRow?.name || "",
+    payment_reference: clip(data.paymentReference, 120),
     payment_status: isP2P ? "awaiting_confirmation" : "pending",
     delivery_status: "received",
     delivery_timeline: [timelineEvent(
@@ -832,20 +841,20 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
     order_type: isWhatsApp ? "whatsapp_order" : "online_purchase",
   };
   if (paymentCode === "entrega" || paymentCode === "transferencia") order.payment_method = paymentCode;
-  if (data.notes) order.notes = data.notes;
+  if (data.notes) order.notes = clip(data.notes, 2000);
   if (shippingMethod !== "pickup") {
     Object.assign(order, {
-      delivery_province_id: data.deliveryProvinceId || "",
-      delivery_province: data.deliveryProvince || "",
-      delivery_municipality_id: data.deliveryMunicipalityId || "",
-      delivery_municipality: data.deliveryMunicipality || "",
-      delivery_locality_id: data.deliveryLocalityId || "",
-      delivery_locality: data.deliveryLocality || "",
-      delivery_street: String(data.deliveryStreet || "").trim(),
-      delivery_reference: String(data.deliveryReference || "").trim(),
-      delivery_address_full: data.deliveryAddressFull || deliveryAddress,
-      delivery_relative_name: String(data.deliveryRelativeName || "").trim(),
-      delivery_relative_phone: String(data.deliveryRelativePhone || "").trim(),
+      delivery_province_id: clip(data.deliveryProvinceId, 40),
+      delivery_province: clip(data.deliveryProvince, 120),
+      delivery_municipality_id: clip(data.deliveryMunicipalityId, 40),
+      delivery_municipality: clip(data.deliveryMunicipality, 120),
+      delivery_locality_id: clip(data.deliveryLocalityId, 40),
+      delivery_locality: clip(data.deliveryLocality, 120),
+      delivery_street: clip(data.deliveryStreet, 300),
+      delivery_reference: clip(data.deliveryReference, 300),
+      delivery_address_full: clip(data.deliveryAddressFull, 600) || deliveryAddress,
+      delivery_relative_name: clip(data.deliveryRelativeName, 120),
+      delivery_relative_phone: clip(data.deliveryRelativePhone, 40),
     });
   }
 

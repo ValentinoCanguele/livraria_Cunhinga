@@ -1,6 +1,6 @@
 import pb from '@/lib/dataClient';
 import { resolveShopBgMode } from '@/lib/shopTheme';
-import { APP_API_URL } from '@/lib/supabaseClient';
+import { APP_API_URL, supabase } from '@/lib/supabaseClient';
 
 const DEFAULT_SETTINGS = {
   site_name: 'Livraria Adventista',
@@ -96,7 +96,16 @@ export async function getPaymentMethods() {
   try {
     const res = await fetch(`${APP_API_URL}/payment-methods`);
     if (!res.ok) return { methods: [] };
-    return await res.json();
+    const data = await res.json();
+    const methods = data.methods || [];
+    // O link de pagamento lê-se também directamente da base de dados (os métodos activos são
+    // de leitura pública), para funcionar mesmo com uma Edge Function publicada mais antiga.
+    if (methods.length && methods.some((m) => m.payment_link === undefined)) {
+      const { data: links } = await supabase.from('payment_methods').select('code, payment_link').eq('enabled', true);
+      const byCode = Object.fromEntries((links || []).map((l) => [l.code, l.payment_link || '']));
+      methods.forEach((m) => { if (m.payment_link === undefined) m.payment_link = byCode[m.code] || ''; });
+    }
+    return { ...data, methods };
   } catch {
     return { methods: [] };
   }

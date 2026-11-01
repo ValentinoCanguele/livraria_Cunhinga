@@ -23,23 +23,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import ContactsManager from '@/components/ContactsManager';
-import { useAuth } from '@/hooks/useAuth';
-import { db } from '@/lib/firebaseClient';
-import { doc, getDoc } from 'firebase/firestore';
 
 const GoogleWorkspaceHub = () => {
   const { toast } = useToast();
-  const { user: mainUser } = useAuth();
   const [googleUser, setGoogleUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   
   // Tab states: 'drive', 'calendar', 'gmail', 'contacts'
   const [subTab, setSubTab] = useState('drive');
-
-  // Archive & Database copy states
-  const [isArchivedMode, setIsArchivedMode] = useState(false);
-  const [archiveTimestamp, setArchiveTimestamp] = useState(null);
 
   // Loading states
   const [loadingData, setLoadingData] = useState(false);
@@ -79,79 +71,29 @@ const GoogleWorkspaceHub = () => {
     };
   }, []);
 
-  // Fetch data depending on active sub-tab (with local firestore copy fallback)
+  // Dados do separador activo, lidos directamente das APIs do Google
   const fetchData = async (currentSubTab = subTab) => {
     setLoadingData(true);
-    let success = false;
-
-    if (token) {
-      try {
-        if (currentSubTab === 'drive') {
-          const files = await listDriveFiles(token);
-          setDriveFiles(files);
-        } else if (currentSubTab === 'calendar') {
-          const events = await listCalendarEvents(token);
-          setCalendarEvents(events);
-        } else if (currentSubTab === 'gmail') {
-          const emails = await listGmailMessages(token);
-          setGmailMessages(emails);
-        } else if (currentSubTab === 'contacts') {
-          const conList = await listGoogleContacts(token);
-          setContacts(conList);
-        }
-        setIsArchivedMode(false);
-        success = true;
-        
-        // Asynchronously update/sync backup copy to Firestore
-        if (mainUser?.uid) {
-          const { syncGoogleWorkspaceToFirestore } = await import('@/lib/googleAuth');
-          syncGoogleWorkspaceToFirestore(mainUser.uid, token).catch(console.error);
-        }
-      } catch (err) {
-        console.warn(`Direct fetch for ${currentSubTab} failed, checking archived backup:`, err);
-      }
-    }
-
-    // Fallback: Retrieve archived data copy from Firestore if direct fetch failed or token is missing
-    if (!success && mainUser?.uid) {
-      try {
-        const docRef = doc(db, 'users', mainUser.uid, 'googleData', currentSubTab);
-        const snapshot = await getDoc(docRef);
-        if (snapshot.exists()) {
-          const archive = snapshot.data();
-          if (currentSubTab === 'drive') setDriveFiles(archive.data || []);
-          else if (currentSubTab === 'calendar') setCalendarEvents(archive.data || []);
-          else if (currentSubTab === 'gmail') setGmailMessages(archive.data || []);
-          else if (currentSubTab === 'contacts') setContacts(archive.data || []);
-          
-          setIsArchivedMode(true);
-          setArchiveTimestamp(archive.lastSynced || null);
-        } else {
-          // Clear current lists if no token and no database archive copy exists
-          if (currentSubTab === 'drive') setDriveFiles([]);
-          else if (currentSubTab === 'calendar') setCalendarEvents([]);
-          else if (currentSubTab === 'gmail') setGmailMessages([]);
-          else if (currentSubTab === 'contacts') setContacts([]);
-          setIsArchivedMode(false);
-        }
-      } catch (dbErr) {
-        console.error('Failed to load Google Workspace Firestore archive:', dbErr);
-      }
-    } else if (!success) {
-      // Clear all
+    try {
+      if (!token) throw new Error('Sem sessão Google');
+      if (currentSubTab === 'drive') setDriveFiles(await listDriveFiles(token));
+      else if (currentSubTab === 'calendar') setCalendarEvents(await listCalendarEvents(token));
+      else if (currentSubTab === 'gmail') setGmailMessages(await listGmailMessages(token));
+      else if (currentSubTab === 'contacts') setContacts(await listGoogleContacts(token));
+    } catch (err) {
+      if (token) console.warn(`Não foi possível carregar ${currentSubTab}:`, err);
       if (currentSubTab === 'drive') setDriveFiles([]);
       else if (currentSubTab === 'calendar') setCalendarEvents([]);
       else if (currentSubTab === 'gmail') setGmailMessages([]);
       else if (currentSubTab === 'contacts') setContacts([]);
-      setIsArchivedMode(false);
+    } finally {
+      setLoadingData(false);
     }
-
-    setLoadingData(false);
   };
 
   useEffect(() => {
     fetchData(subTab);
-  }, [token, subTab, mainUser]);
+  }, [token, subTab]);
 
   const handleConnect = async () => {
     setActionLoading(true);
@@ -479,20 +421,6 @@ const GoogleWorkspaceHub = () => {
           </div>
         ) : (
           <>
-            {isArchivedMode && (
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-amber-600 text-xs font-semibold mb-5 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4.5 w-4.5 shrink-0" />
-                  <span>Modo de Cópia de Segurança (Dados Arquivados no Sistema)</span>
-                </div>
-                {archiveTimestamp && (
-                  <span className="text-[10px] text-amber-600/80 font-normal">
-                    Último Backup: {new Date(archiveTimestamp).toLocaleString('pt-AO')}
-                  </span>
-                )}
-              </div>
-            )}
-
             {/* Google Drive Sub-tab */}
             {subTab === 'drive' && (
               <div className="space-y-6">

@@ -1,7 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth as mainAuth, db } from './firebaseClient';
+import { auth as mainAuth } from './firebaseClient';
 
 const firebaseConfig = {
   projectId: "skilful-form-c5jvd",
@@ -98,83 +97,6 @@ export const logoutGoogleWorkspace = async () => {
   await signOut(mainAuth);
   await googleAuth.signOut();
   setCachedGoogleToken(null);
-};
-
-// ==========================================
-// FIRESTORE SYNCHRONIZATION (ARCHIVE COPY)
-// ==========================================
-export const syncGoogleWorkspaceToFirestore = async (userId, token) => {
-  if (!userId || !token) return null;
-  const timestamp = new Date().toISOString();
-  const status = {
-    contacts: false,
-    calendar: false,
-    gmail: false,
-    drive: false,
-    timestamp
-  };
-
-  try {
-    // 1. Sync Contacts (with backup info)
-    try {
-      const contacts = await listGoogleContacts(token);
-      await setDoc(doc(db, 'users', userId, 'googleData', 'contacts'), {
-        data: contacts || [],
-        lastSynced: timestamp
-      });
-      status.contacts = true;
-    } catch (e) {
-      console.error('Failed to sync contacts:', e);
-    }
-
-    // 2. Sync Calendar
-    try {
-      const events = await listCalendarEvents(token);
-      await setDoc(doc(db, 'users', userId, 'googleData', 'calendar'), {
-        data: events || [],
-        lastSynced: timestamp
-      });
-      status.calendar = true;
-    } catch (e) {
-      console.error('Failed to sync calendar:', e);
-    }
-
-    // 3. Sync Gmail Inbox
-    try {
-      const gmail = await listGmailMessages(token);
-      await setDoc(doc(db, 'users', userId, 'googleData', 'gmail'), {
-        data: gmail || [],
-        lastSynced: timestamp
-      });
-      status.gmail = true;
-    } catch (e) {
-      console.error('Failed to sync gmail messages:', e);
-    }
-
-    // 4. Sync Drive Files
-    try {
-      const drive = await listDriveFiles(token);
-      await setDoc(doc(db, 'users', userId, 'googleData', 'drive'), {
-        data: drive || [],
-        lastSynced: timestamp
-      });
-      status.drive = true;
-    } catch (e) {
-      console.error('Failed to sync drive files:', e);
-    }
-
-    // Save master summary record of workspace sync
-    await setDoc(doc(db, 'users', userId, 'googleData', 'summary'), {
-      status,
-      lastSynced: timestamp
-    });
-
-    console.log('Google Workspace database backup/sync successful for user:', userId, status);
-    return status;
-  } catch (err) {
-    console.error('Critical failure in syncGoogleWorkspaceToFirestore:', err);
-    throw err;
-  }
 };
 
 // ==========================================

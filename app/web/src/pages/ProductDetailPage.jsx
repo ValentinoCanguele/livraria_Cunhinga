@@ -795,6 +795,7 @@ function ProductDetailPage() {
                             onChange={(e) => setReviewComment(e.target.value)}
                             placeholder="Partilhe a sua opinião sobre este livro..."
                             rows={4}
+                            maxLength={1000}
                             className="w-full text-sm p-3 rounded-xl border border-input focus:outline-none focus:ring-2 focus:ring-[#0ea5c9] bg-background"
                             required
                           />
@@ -852,10 +853,7 @@ function ProductDetailPage() {
                               <div>
                                 <h5 className="font-bold text-sm leading-tight">{r.userName}</h5>
                                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  {r.createdAt?.seconds 
-                                    ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('pt-AO', { day: 'numeric', month: 'short', year: 'numeric' }) 
-                                    : new Date().toLocaleDateString('pt-AO', { day: 'numeric', month: 'short', year: 'numeric' })
-                                  }
+                                  {new Date(r.createdAt || Date.now()).toLocaleDateString('pt-AO', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </p>
                               </div>
                             </div>

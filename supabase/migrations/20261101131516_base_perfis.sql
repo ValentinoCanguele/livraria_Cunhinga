@@ -107,4 +107,3 @@ $$;
 create trigger profiles_protect_privileges
   before insert or update on public.profiles
   for each row execute function public.protect_profile_privileges();
-

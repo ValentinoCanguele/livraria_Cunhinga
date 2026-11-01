@@ -24,11 +24,17 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
 
 - **Migrações alinhadas com a base de dados:**
   - Cada ficheiro em `supabase/migrations/` tem a mesma versão e o mesmo SQL que `supabase_migrations.schema_migrations` no projecto (verificado por md5).
-  - Já estão aplicadas: `base_perfis`, `tabelas`, `regras_rls_storage`, `funcoes_privadas`, `painel_vendas`, `lojas_levantamento_whatsapp`, `notification_logs`, `admins_pre_autorizados` (20261101163522) e `modulo_utilizadores` (20261101164811).
+  - Já estão aplicadas: `base_perfis`, `tabelas`, `regras_rls_storage`, `funcoes_privadas`, `painel_vendas`, `lojas_levantamento_whatsapp`, `notification_logs`, `admins_pre_autorizados` (20261101163522), `modulo_utilizadores` (20261101164811) e `desejos_avaliacoes` (20261101165942).
 - **Edge Function `app`** (`supabase/functions/app/index.ts`):
   - A versão no repositório é **mais recente** do que a publicada. Tem as rotas `/admin/users*`, `requirePermission()` e não guarda no registo os emails com links de acesso.
   - É publicada pelo `deploy-supabase.yml` depois do merge. A função publicada continua a funcionar com as migrações novas, porque usa a service role.
 - **Registo de comunicações:** o painel Integrações → Logs lê `notification_logs`, onde a Edge Function grava os envios reais. Os registos simulados no Firestore foram removidos.
+- **Lista de desejos e avaliações no Supabase** (tabelas `wishlists` e `book_reviews`, migração `desejos_avaliacoes`):
+  - Estavam no Firestore, que deixou de reconhecer a sessão quando o login passou para o Supabase; quem tinha sessão não conseguia guardar nada.
+  - Sem sessão, a lista de desejos fica no browser e passa para a conta ao iniciar sessão.
+  - O nome, a foto e a "compra verificada" de cada avaliação são definidos por um trigger na base de dados.
+  - Os dados antigos no Firestore não foram copiados.
+- **Firestore desligado:** removidos o separador "Contactos (CRM)" antigo (lia utilizadores do Firestore), a "Coleção da Comunidade" e a cópia de arquivo do Google Workspace (guardava Gmail, Drive, etc. no Firestore). `firestore.rules` fecha tudo. O Firebase fica só para o login das ferramentas do Google Workspace.
 - **Login Google pelo Supabase Auth**, em vez do Firebase:
   - O carrinho já não copia encomendas para o Firestore.
   - "Encomendas" no perfil lê só do Supabase.
@@ -70,6 +76,6 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
    - um gestor com permissões parciais.
 3. Limpezas pendentes:
    - a Edge Function `migrar-dados` está publicada no Supabase mas não está no repositório (provavelmente de uso único). Apagá-la só com autorização do dono;
-   - ~~ramos Firebase "só para utilizadores Google" em `ContactsManager.jsx` e `GoogleWorkspaceHub.jsx`~~ removidos;
-   - ~~regras de `orders` e `notification_logs` em `firestore.rules`~~ já não existem no ficheiro.
+   - testar as regras de `wishlists` e `book_reviews` na base de dados (o teste ficou à espera de confirmação e não correu);
+   - publicar `firestore.rules` no Firebase, se alguma vez lá foram publicadas regras abertas.
 4. As políticas de CRM (`contacts`, `contact_*`) e de Storage ainda usam `is_staff()` em vez de uma permissão específica. Decidir se passam a exigir `manage_users` ou `manage_marketing`.

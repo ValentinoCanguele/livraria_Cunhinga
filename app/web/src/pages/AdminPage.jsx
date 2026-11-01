@@ -10,7 +10,6 @@ import BrandLogo from '@/components/BrandLogo';
 import BookFormModal from '@/components/admin/BookFormModal';
 import SettingsTab from '@/components/admin/SettingsTab';
 import UsersTab from '@/components/admin/UsersTab';
-import CRMContactsTab from '@/components/admin/CRMContactsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
 import AppsTab from '@/components/admin/AppsTab';
 import StoresTab from '@/components/admin/StoresTab';
@@ -220,7 +219,6 @@ const AdminPage = () => {
     ] },
     { label: 'Clientes', tabs: [
       canManageUsers && { value: 'users', label: 'Utilizadores e Clientes', icon: Users },
-      canManageUsers && { value: 'crm', label: 'Contactos (CRM)', icon: Users },
       canManageMarketing && { value: 'contacts', label: 'Contactos e campanhas', icon: Megaphone },
     ] },
     { label: 'Sistema', tabs: [
@@ -320,7 +318,6 @@ const AdminPage = () => {
 
             {canManageSettings && <TabsContent value="settings"><SettingsTab /></TabsContent>}
             {canManageUsers && <TabsContent value="users"><UsersTab /></TabsContent>}
-            {canManageUsers && <TabsContent value="crm"><CRMContactsTab /></TabsContent>}
             {canManagePayments && <TabsContent value="payments"><PaymentsTab /></TabsContent>}
             {canManageSettings && <TabsContent value="stores"><StoresTab /></TabsContent>}
             {canManageMarketing && <TabsContent value="contacts"><ContactsManager /></TabsContent>}

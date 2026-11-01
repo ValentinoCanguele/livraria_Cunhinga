@@ -370,4 +370,3 @@ create table public.push_subscriptions (
   created timestamptz not null default now(),
   updated timestamptz not null default now()
 );
-

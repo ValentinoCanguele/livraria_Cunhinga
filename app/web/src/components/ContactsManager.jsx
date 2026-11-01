@@ -45,9 +45,9 @@ Equipa Livraria Adventista`;
 
 const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
   const { toast } = useToast();
-  const { user, isAdmin, hasPermission } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
   const token = googleToken || getCachedGoogleToken();
-  const canUseCrm = isCrmReady() && (isAdmin || hasPermission('manage_marketing') || user?.role === 'manager');
+  const canUseCrm = isCrmReady() && (isAdmin || hasPermission('manage_marketing') || hasPermission('manage_users'));
 
   const [activeTab, setActiveTab] = useState('contacts');
   const [loading, setLoading] = useState(true);

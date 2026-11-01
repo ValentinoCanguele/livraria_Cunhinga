@@ -1,125 +1,77 @@
-# Arquitectura — PocketBase + Firebase
+# Arquitectura — Supabase + Cloudflare Pages
 
-A livraria usa **dois backends complementares**, não concorrentes. Esta é a abordagem recomendada e já está parcialmente implementada.
+A loja tem um único backend, o **Supabase**. O frontend é uma aplicação React estática publicada no **Cloudflare Pages**.
+O PocketBase (backend original) foi retirado depois da migração. O Firebase fica só para as ferramentas do Google Workspace no painel.
 
 ## Visão geral
 
 ```mermaid
 flowchart TB
-  subgraph Frontend["React (Vite)"]
-    UI[Loja / Admin / Perfil]
+  subgraph CF["Cloudflare Pages"]
+    UI[React + Vite: loja, perfil, admin]
   end
 
-  subgraph PB["PocketBase — núcleo de negócio"]
-    Orders[Encomendas & Checkout]
-    Stock[Stock & Catálogo]
-    CRM[CRM Contactos]
-    Msg[Email / WhatsApp / Push]
-    Admin[Definições & Permissões]
+  subgraph SB["Supabase"]
+    Auth[Auth: email e Google]
+    REST[PostgREST + RLS]
+    Fn[Edge Function app]
+    DB[(Postgres)]
+    Media[Storage: bucket media]
   end
 
-  subgraph FB["Firebase — experiência do utilizador"]
-    Auth[Login Google]
-    Wish[Wishlist em tempo real]
-    Rev[Avaliações em tempo real]
-  end
+  Google[Google Workspace: Drive, Calendar, Gmail, Contactos]
 
-  UI --> PB
-  UI --> FB
+  UI --> Auth
+  UI --> REST --> DB
+  UI --> Fn --> DB
+  UI --> Media
+  UI -. só no painel .-> Google
 ```
 
----
+## Quem faz o quê
 
-## Quem faz o quê?
+| Dados / função | Onde | Notas |
+|----------------|------|-------|
+| Livros, colecções, slides, lojas, métodos de pagamento | Postgres (PostgREST) | Leitura pública do que está activo; escrita conforme a permissão |
+| Checkout, rastreio, confirmação de entrega | Edge Function `app` | Transacção em `place_order` (stock, preços e totais no servidor) |
+| Email (SMTP/SendGrid) e WhatsApp Business API | Edge Function `app` | Segredos só no servidor; cada envio fica em `notification_logs` |
+| CRM: contactos, grupos, campanhas | Postgres + Edge Function `/contacts/*` | Permissão `manage_users` ou `manage_marketing`, ou dono do contacto |
+| Utilizadores e clientes | Edge Function `/admin/users*` + `admin_users_list` | Ver "Permissões" abaixo |
+| Lista de desejos e avaliações | Postgres (`wishlists`, `book_reviews`) | "Compra verificada" definida por trigger |
+| Imagens (capas, logótipo, avatares) | Storage, bucket `media` | `<tabela>/<id>/<ficheiro>` |
+| Login | Supabase Auth | Email e palavra-passe, ou Google |
+| Google Workspace no painel | Firebase Auth (popup) + APIs Google | Só para obter o token de acesso às APIs Google |
 
-| Dados / função | Onde | Porquê |
-|----------------|------|--------|
-| Livros, stock, encomendas | **PocketBase** | Relacional, admin, hooks servidor, Angola |
-| Checkout, assinatura, rastreio | **PocketBase** | Lógica de negócio no servidor |
-| CRM, campanhas, WhatsApp API | **PocketBase** | Segredos no servidor, não no cliente |
-| Email SMTP / SendGrid | **PocketBase** | Envio seguro server-side |
-| Login Google (rápido) | **Firebase Auth** | OAuth simples, avatar Google |
-| Lista de desejos | **Firestore** | Sync em tempo real por utilizador |
-| Avaliações de livros | **Firestore** | Leitura/escrita em tempo real |
-| Push PWA (futuro FCM) | **PocketBase + SW** | VAPID local; FCM opcional via Firebase |
+O frontend usa `app/web/src/lib/dataClient.js`, uma camada com a API ao estilo `pb.collection(...)` (herdada do PocketBase) implementada sobre o Supabase.
 
----
+## Permissões
 
-## Abordagem actual vs alternativas
+| Papel | O que pode |
+|-------|------------|
+| `admin` | Tudo, incluindo a equipa, papéis, permissões, integrações e o registo de comunicações |
+| `manager` | Só as áreas activas em `profiles.permissions` |
+| `member` | Cliente: as suas encomendas, lista de desejos, avaliações e perfil |
 
-### ✅ Recomendado: híbrido (o que temos)
+Permissões dos gestores: `manage_catalog`, `manage_orders`, `manage_settings`, `manage_users`, `manage_payments`, `manage_marketing`.
 
-**PocketBase** = sistema de loja (fonte de verdade comercial)  
-**Firebase** = dados pessoais em tempo real + login social
+A mesma regra é aplicada em três sítios:
 
-**Vantagens**
-- Não descarta o investimento Firebase já feito
-- Admin e checkout num só sítio (PocketBase)
-- Wishlist/reviews instantâneos sem sobrecarregar o PB
-- Segredos (WhatsApp, SMTP) ficam nos hooks PB
+1. **Base de dados:** `private.has_permission(chave)` nas políticas RLS.
+2. **Edge Function:** `can()` e `requirePermission()`.
+3. **Frontend:** `app/web/src/lib/permissions.js` (só para mostrar ou esconder; a segurança está nos dois primeiros).
 
-**Desvantagens**
-- Dois sistemas para manter (mitigado: papéis bem definidos)
-- Utilizador Firebase não acede ao CRM sem login PB (staff)
+Outras regras:
+- Administradores pré-autorizados: um email em `private.admin_emails` (fora da API e do repositório) passa a admin quando a conta fica confirmada.
+- Na gestão de utilizadores, ninguém se apaga nem se suspende a si próprio, e fica sempre pelo menos um administrador activo.
 
-### Alternativa A — só PocketBase
+## Migrações
 
-Migrar wishlist e reviews para coleções PB.
+As migrações estão em `supabase/migrations/`. Cada ficheiro tem de ter **a mesma versão e o mesmo SQL** que está registado em `supabase_migrations.schema_migrations`; caso contrário, `supabase db push` no deploy falha. Ver as regras em [HANDOFF.md](HANDOFF.md).
 
-- **Pró:** um único backend
-- **Contra:** perde sync Firestore em tempo real; mais trabalho de migração
+## Deploy
 
-### Alternativa B — só Firebase
-
-Catálogo e encomendas no Firestore + Cloud Functions.
-
-- **Pró:** ecossistema Google unificado
-- **Contra:** CRM, hooks Angola, PocketBase admin e custos Firebase maiores; já investiu em PB
-
-### Alternativa C — Firebase como espelho/analytics
-
-PB continua master; Firebase recebe eventos (Analytics, opcional backup).
-
-- **Pró:** relatórios Google Analytics / BigQuery
-- **Contra:** duplicação de dados se não for só leitura
-
----
-
-## Autenticação hoje
-
-| Método | Sistema | Acesso |
-|--------|---------|--------|
-| Email + password | PocketBase | Loja, perfil, admin (conforme role) |
-| Google (Firebase) | Firebase Auth | Loja, wishlist, reviews |
-| Staff CRM | PocketBase obrigatório | Admin, marketing |
-
-**Melhoria futura (opcional):** ligar conta Firebase ↔ PocketBase pelo mesmo email (`pb_uid` no Firestore ou `firebase_uid` em `users`), para um único perfil com ambos os mundos.
-
----
-
-## Regra prática para novas funcionalidades
-
-1. **Dinheiro, stock, legal, staff** → PocketBase  
-2. **Preferências pessoais em tempo real** → Firestore  
-3. **Login social** → Firebase Auth (ou PocketBase OAuth Google como alternativa)  
-4. **Nunca** guardar tokens WhatsApp/SMTP no Firebase cliente
-
----
-
-## Ficheiros relevantes
-
-| Ficheiro | Papel |
-|----------|--------|
-| `app/pocketbase/pb_hooks/main.pb.js` | APIs checkout, CRM, messaging |
-| `app/web/src/lib/firebaseClient.js` | Firestore + Firebase Auth |
-| `app/web/src/hooks/useAuth.jsx` | Ponte PB + Firebase |
-| `app/web/src/hooks/useWishlist.jsx` | Firestore wishlists |
-| `app/web/src/hooks/useReviews.jsx` | Firestore reviews |
-
----
-
-## Conclusão
-
-**Manter o híbrido actual é a melhor opção** para a livraria: PocketBase como motor da loja e Firebase para experiência do leitor (Google, wishlist, reviews). Não é preciso descartar nenhum dos dois — só respeitar a divisão de responsabilidades acima.
-
-Para lançamento, priorize configurar PocketBase (ver [LANCAMENTO.md](./LANCAMENTO.md)); Firebase já funciona para wishlist e login Google.
+| O quê | Como |
+|-------|------|
+| Verificação de cada PR | `.github/workflows/ci.yml`: lint, build e `deno check` |
+| Site | `.github/workflows/deploy-cloudflare.yml` em cada push para `main` |
+| Migrações e Edge Function | `.github/workflows/deploy-supabase.yml` quando `supabase/` muda no `main` |

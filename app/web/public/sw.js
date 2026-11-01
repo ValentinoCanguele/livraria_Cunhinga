@@ -1,4 +1,4 @@
-const CACHE_NAME = 'livraria-v3';
+const CACHE_NAME = 'livraria-v4';
 const PRECACHE = ['/', '/shop', '/manifest.webmanifest', '/icons/icon-192.svg'];
 
 self.addEventListener('install', (event) => {
@@ -50,7 +50,10 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api') && !url.pathname.startsWith('/api/files/')) return;
+  if (url.pathname.startsWith('/api')) return;
+  // API do Supabase (login, dados, Edge Functions, tempo real): sempre pela rede, nunca da cache,
+  // para não mostrar dados antigos nem misturar sessões. As imagens do Storage continuam em cache.
+  if (/\/(auth|rest|functions|realtime)\/v1\//.test(url.pathname)) return;
   if (url.pathname.startsWith('/src/') || url.pathname.startsWith('/@') || url.pathname.includes('/node_modules/')) return;
 
   // Exclude Firebase Auth and Firestore API requests to prevent cache collisions and auth issues
@@ -62,10 +65,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Caching Strategy for Images (both same-origin and external like Unsplash or PocketBase)
-  const isImage = event.request.destination === 'image' || 
+  // 1. Imagens (do site, do Supabase Storage ou externas): cache primeiro, actualizada em segundo plano.
+  const isImage = event.request.destination === 'image' ||
                   /\.(png|jpg|jpeg|gif|webp|svg|ico)$/i.test(url.pathname) ||
-                  url.pathname.includes('/api/files/'); // PocketBase file uploads path
+                  url.pathname.includes('/storage/v1/object/public/');
 
   if (isImage) {
     event.respondWith(
@@ -86,28 +89,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Caching Strategy for Essential App Data / PocketBase API (Network-First)
-  const isPocketBaseApi = url.pathname.includes('/api/collections/') || url.pathname.includes('/api/records/');
-  if (isPocketBaseApi) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) => {
-        return fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse.ok) {
-              cache.put(event.request, networkResponse.clone());
-            }
-            return networkResponse;
-          })
-          .catch(() => {
-            // Fallback to cached API responses if offline
-            return cache.match(event.request);
-          });
-      })
-    );
-    return;
-  }
-
-  // 3. Stale-While-Revalidate for other static assets (HTML, JS, CSS, fonts, etc.)
+  // 2. Stale-While-Revalidate for other static assets (HTML, JS, CSS, fonts, etc.)
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetched = fetch(event.request).then((response) => {

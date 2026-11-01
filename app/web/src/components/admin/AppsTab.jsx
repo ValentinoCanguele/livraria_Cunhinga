@@ -347,7 +347,7 @@ export default function AppsTab() {
 
       setApps(list);
     } catch (err) {
-      console.warn('Failing to load from PocketBase, fallback to static defaults:', err);
+      console.warn('Falha ao carregar as integrações; a mostrar as predefinições:', err);
       setApps(DEFAULT_APPS.map((a) => ({ ...a, enabled: true, id: a.code })));
     } finally {
       setLoading(false);

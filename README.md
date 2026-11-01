@@ -124,14 +124,12 @@ livraria/
 │   │   │   ├── hooks/       # Auth, carrinho, definições
 │   │   │   └── lib/         # Recibos, telefone AO, temas
 │   │   └── public/          # PWA, ícones, service worker
-│   └── pocketbase/          # Backend antigo (só para referência e migração)
 ├── supabase/
 │   ├── migrations/          # Esquema, RLS, triggers, Storage
 │   ├── functions/app/       # API própria (checkout, rastreio, CRM, chat…)
 │   └── config.toml
-├── scripts/
-│   └── migrar-pocketbase-supabase.mjs   # Cópia de dados PocketBase → Supabase
-├── .github/workflows/       # Deploy Cloudflare Pages e Supabase
+├── docs/                    # Arquitectura, lançamento e passagem de trabalho
+├── .github/workflows/       # Verificação de PRs e deploy (Cloudflare Pages e Supabase)
 ├── package.json             # Scripts do monorepo
 └── README.md
 ```
@@ -148,8 +146,8 @@ livraria/
 ### 1. Clonar e instalar
 
 ```bash
-git clone git@github.com:ValentinoCanguele/livraria_IASD.git
-cd livraria_IASD
+git clone https://github.com/ValentinoCanguele/livraria_Cunhinga.git
+cd livraria_Cunhinga
 npm install
 ```
 
@@ -184,16 +182,20 @@ Não é preciso correr nenhum servidor local além do Vite: os dados estão no S
 
 ## Painel administrativo
 
-### Aplicação (`/login`)
+### Acesso (`/login`)
 
-| Campo | Valor |
-|-------|-------|
-| Email | `admin@livraria.ao` |
-| Password | `admin123456` |
+Entra-se com email e palavra-passe ou com Google (Supabase Auth). Os papéis estão na tabela `profiles`:
 
-As contas foram migradas do PocketBase com as mesmas palavras-passe. Os papéis (`admin`, `manager`, `member`) estão na tabela `profiles` e só um administrador os pode alterar.
+| Papel | Acesso |
+|-------|--------|
+| `admin` | Tudo, incluindo a equipa, papéis, permissões e integrações |
+| `manager` | Só as áreas activas nas suas permissões (catálogo, encomendas, configurações, utilizadores e clientes, pagamentos, marketing) |
+| `member` | Cliente: compra e acompanha as suas encomendas |
 
-> Altere estas credenciais antes de qualquer ambiente público.
+As permissões são verificadas também no servidor (políticas RLS com `private.has_permission` e a Edge Function).
+Contas e papéis geram-se em **Admin → Utilizadores e Clientes**. Para dar acesso de administrador a alguém que ainda não tem conta, acrescente o email a `private.admin_emails` no Supabase: a conta fica admin quando for confirmada.
+
+> Nunca escreva credenciais reais neste repositório: é público.
 
 ---
 
@@ -205,8 +207,6 @@ As contas foram migradas do PocketBase com as mesmas palavras-passe. Os papéis 
 | `npm run build` | Build de produção do frontend → `dist/app/web` |
 | `npm run start` | Preview do build de produção |
 | `npm run lint` | ESLint no frontend |
-| `npm run migrate:supabase` | Copia dados do PocketBase local para o Supabase (ver script) |
-| `npm run dev:pocketbase` | Arranca o PocketBase antigo (só para a migração) |
 
 ---
 
@@ -228,11 +228,12 @@ Base: `https://bggqkjjqbjhbjsckzopj.supabase.co/functions/v1/app`
 | `/admin/whatsapp/test` | POST | Teste de envio (staff) |
 | `/chat`, `/chat/config` | POST/GET | Assistente (Gemini/DeepSeek ou FAQ) |
 | `/contacts/*` | — | CRM: sincronização, notificações e campanhas (staff) |
+| `/admin/users*` | GET/POST | Utilizadores e clientes: listar, criar, editar, suspender, link de acesso, apagar (permissão `manage_users`) |
 
-O frontend continua a usar a API do SDK do PocketBase (`pb.collection(...)`), implementada sobre o Supabase em `app/web/src/lib/dataClient.js`.
+O frontend usa uma API ao estilo `pb.collection(...)` (herdada do PocketBase), implementada sobre o Supabase em `app/web/src/lib/dataClient.js`.
 
-> Guia completo de lançamento: [docs/LANCAMENTO.md](docs/LANCAMENTO.md)  
-> O login Google e o Google Workspace continuam no Firebase.
+> Guia de lançamento: [docs/LANCAMENTO.md](docs/LANCAMENTO.md) · Arquitectura: [docs/ARQUITETURA.md](docs/ARQUITETURA.md)  
+> O login (email e Google) é do Supabase Auth. O Firebase fica só para as ferramentas do Google Workspace no painel.
 
 ---
 
@@ -275,7 +276,7 @@ O ficheiro `app/web/public/_redirects` encaminha todas as rotas para `index.html
 
 - Nunca commitar `.env` — use `.env.example` como referência
 - A chave `service_role` só existe dentro das Edge Functions do Supabase
-- Alterar passwords padrão antes de deploy
+- Nunca escrever credenciais reais no repositório (é público)
 - Activar HTTPS em produção
 - Rever as políticas RLS e os avisos em Supabase → Advisors
 

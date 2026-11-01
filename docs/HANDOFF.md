@@ -76,6 +76,14 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
    - um gestor com permissões parciais.
 3. Limpezas pendentes:
    - a Edge Function `migrar-dados` está publicada no Supabase mas não está no repositório (provavelmente de uso único). Apagá-la só com autorização do dono;
-   - testar as regras de `wishlists` e `book_reviews` na base de dados (o teste ficou à espera de confirmação e não correu);
+   - testar as regras de `wishlists` e `book_reviews` na base de dados. O teste está escrito, mas o Supabase pede confirmação para o correr (cria dados fictícios numa transacção anulada no fim) e o pedido ficou sem resposta;
    - publicar `firestore.rules` no Firebase, se alguma vez lá foram publicadas regras abertas.
-4. As políticas de CRM (`contacts`, `contact_*`) e de Storage ainda usam `is_staff()` em vez de uma permissão específica. Decidir se passam a exigir `manage_users` ou `manage_marketing`.
+4. ~~Políticas de CRM com `is_staff()`~~: feito na migração `20261101170640_permissoes_crm_integracoes` (CRM com `manage_users`/`manage_marketing`; integrações e registo de comunicações só admin; ler `site_settings` exige `manage_settings`). O Storage continua com `is_staff()`.
+
+## Limpeza de 2026-11-01
+
+- Removidos do repositório o backend PocketBase (`app/pocketbase`, incluindo 5 cópias de bases de dados de teste), `pb_import` (as 102 capas já estão no Storage) e o script de migração. Continuam no histórico do git.
+- `package.json` da raiz: sem scripts nem dependências do PocketBase; `firebase` passou para `app/web/package.json`; `workspaces` fixo em `app/web`.
+- `vite.config.js`: sem o proxy `/api/pb` nem o chunk do PocketBase.
+- README, `docs/ARQUITETURA.md` e `docs/LANCAMENTO.md` reescritos para Supabase + Cloudflare.
+- **Segurança:** o README publicava `admin@livraria.ao` / `admin123456`, e essa palavra-passe funcionava numa conta `admin` real. A palavra-passe foi trocada por uma aleatória (não guardada) e a conta nunca tinha sido usada. As credenciais saíram da documentação, mas continuam no histórico do `main`, por isso não podem voltar a ser usadas.

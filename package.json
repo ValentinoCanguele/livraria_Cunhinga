@@ -7,19 +7,9 @@
     "dev": "npm run dev --prefix app/web",
     "build": "npm run build --prefix app/web",
     "start": "npm run start --prefix app/web",
-    "lint": "npm run lint --prefix app/web",
-    "dev:pocketbase": "npm run dev --prefix app/pocketbase",
-    "migrate:supabase": "node scripts/migrar-pocketbase-supabase.mjs"
-  },
-  "devDependencies": {
-    "concurrently": "^10.0.3",
-    "imagetracerjs": "^1.2.6",
-    "potrace": "^2.1.8"
+    "lint": "npm run lint --prefix app/web"
   },
   "workspaces": [
-    "app/*"
-  ],
-  "dependencies": {
-    "firebase": "^12.16.0"
-  }
+    "app/web"
+  ]
 }

@@ -12,13 +12,6 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    proxy: {
-      '/api/pb': {
-        target: 'http://127.0.0.1:8090',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/api\/pb/, ''),
-      },
-    },
   },
   preview: {
     allowedHosts: [
@@ -51,9 +44,6 @@ export default defineConfig({
             }
             if (id.includes('@radix-ui')) {
               return 'vendor-radix';
-            }
-            if (id.includes('pocketbase')) {
-              return 'vendor-pocketbase';
             }
             if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
               return 'vendor-react';

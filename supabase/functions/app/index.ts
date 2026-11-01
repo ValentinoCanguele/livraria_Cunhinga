@@ -450,6 +450,12 @@ function calcNextSendAt(frequency: string) {
   return d.toISOString();
 }
 
+// Contactos com esta etiqueta não recebem envios manuais nem campanhas.
+const OPT_OUT_TAG = "nao-contactar";
+const isOptedOut = (contact: Row) => Array.isArray(contact.tags) && contact.tags.includes(OPT_OUT_TAG);
+const MAX_NOTIFY_CONTACTS = 300;
+const clipText = (value: unknown, max: number) => String(value ?? "").trim().slice(0, max);
+
 async function notifyContact(contact: Row, opts: Row) {
   const { channel, subject, body, settings } = opts;
   const notif: Row = {
@@ -469,7 +475,9 @@ async function notifyContact(contact: Row, opts: Row) {
       waUrl = wa.waUrl;
       whatsappApiSent = wa.apiSent;
       if (waUrl) notif.whatsapp_url = waUrl;
-      if (wa.apiSent || waUrl) status = "sent";
+      // Sem a API, só existe um link para envio manual: não conta como enviado.
+      if (wa.apiSent) status = "sent";
+      else if (waUrl) status = "manual";
     }
   }
   if (channel === "email" || channel === "both") {
@@ -1110,22 +1118,26 @@ route("GET", "/contacts/stats", async ({ auth }) => {
 
 route("POST", "/contacts/notify", async ({ auth, body }) => {
   const staff = requireCrm(auth);
-  const contactIds: string[] = body.contact_ids || [];
-  const channel = body.channel || "whatsapp";
-  const subject = body.subject || "Novidades — Livraria Adventista";
-  const text = body.body || "";
+  const contactIds: string[] = Array.isArray(body.contact_ids) ? [...new Set(body.contact_ids.map(String))] : [];
+  const channel = ["whatsapp", "email", "both"].includes(body.channel) ? body.channel : "whatsapp";
+  const subject = clipText(body.subject || "Novidades — Livraria Adventista", 200);
+  const text = clipText(body.body || "", 4000);
   if (!contactIds.length) throw bad("Seleccione pelo menos um contacto.");
+  if (contactIds.length > MAX_NOTIFY_CONTACTS) throw bad(`Envie no máximo ${MAX_NOTIFY_CONTACTS} contactos de cada vez.`);
+  if (text.trim().length < 5) throw bad("Escreva a mensagem a enviar.");
   const settings = await getSettings();
   const { data: contacts } = await db.from("contacts").select("*").in("id", contactIds);
   const results = [];
+  let skipped = 0;
   for (const contact of contacts || []) {
+    if (isOptedOut(contact)) { skipped++; continue; }
     const r = await notifyContact(contact, { channel, subject, body: text, settings, owner: staff.id, groupId: body.group_id || "" });
     results.push({
       contact_id: contact.id, name: contact.name, email: contact.email || "", phone: contact.phone || "",
       whatsapp_url: r.waUrl, whatsapp_api_sent: r.whatsappApiSent, email_sent: r.emailSent, channel, status: r.status,
     });
   }
-  return json({ message: "Notificações processadas.", results, whatsapp_api: !!(await getWhatsAppConfig()) });
+  return json({ message: "Notificações processadas.", results, skipped_opt_out: skipped, whatsapp_api: !!(await getWhatsAppConfig()) });
 });
 
 route("POST", "/contacts/campaigns/run-due", async ({ auth }) => {
@@ -1148,6 +1160,7 @@ route("POST", "/contacts/campaigns/run-due", async ({ auth }) => {
     const subject = camp.subject || "Novidades — Livraria Adventista";
     const { data: contacts } = await db.from("contacts").select("*").in("id", memberIds);
     for (const contact of contacts || []) {
+      if (isOptedOut(contact)) continue;
       const r = await notifyContact(contact, {
         channel, subject, body: text, settings, owner: staff.id, groupId: camp.group, campaignId: camp.id,
       });

@@ -43,6 +43,17 @@ https://livrariaadventista.ao/shop
 Com carinho,
 Equipa Livraria Adventista`;
 
+// Contactos com esta etiqueta não recebem envios (o servidor também os ignora).
+const OPT_OUT_TAG = 'nao-contactar';
+const isOptedOut = (c) => Array.isArray(c?.tags) && c.tags.includes(OPT_OUT_TAG);
+const MAX_NOTIFY_CONTACTS = 300;
+const STATUS_LABELS = {
+  sent: 'Enviado',
+  manual: 'Link manual',
+  failed: 'Falhou',
+  pending: 'Pendente',
+};
+
 const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
   const { toast } = useToast();
   const { isAdmin, hasPermission } = useAuth();
@@ -72,7 +83,8 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
   const [selectedContact, setSelectedContact] = useState(null);
   const [showContactForm, setShowContactForm] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
-  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', notes: '', tags: '' });
+  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', notes: '', tags: '', optOut: false });
+  const [runningCampaigns, setRunningCampaigns] = useState(false);
 
   const [showNotifyDialog, setShowNotifyDialog] = useState(false);
   const [notifyGroupId, setNotifyGroupId] = useState('');
@@ -138,21 +150,32 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
       setMessagingStatus(msgStatus);
       await loadContacts();
 
-      const due = await runDueCampaigns().catch(() => null);
-      if (due?.processed > 0) {
-        toast({
-          title: 'Campanhas automáticas',
-          description: `${due.processed} campanha(s) processada(s), ${due.notifications?.length || 0} notificação(ões) criada(s).`,
-        });
-        const refreshed = await listNotifications({ perPage: 20 }).catch(() => ({ items: [] }));
-        setNotifications(refreshed.items || []);
-      }
     } catch (err) {
       setLoadError(err?.message || 'Erro ao inicializar CRM');
     } finally {
       setLoading(false);
     }
-  }, [canUseCrm, loadContacts, toast]);
+  }, [canUseCrm, loadContacts]);
+
+  // As campanhas só correm quando alguém o pede (antes corriam ao abrir o separador).
+  const dueCampaigns = campaigns.filter((c) => c.is_active && c.group && (!c.next_send_at || new Date(c.next_send_at).getTime() <= Date.now()));
+  const handleRunDueCampaigns = async () => {
+    if (!dueCampaigns.length) return;
+    if (!window.confirm(`Enviar agora ${dueCampaigns.length} campanha(s) pendente(s) aos contactos dos respectivos grupos?`)) return;
+    setRunningCampaigns(true);
+    try {
+      const due = await runDueCampaigns();
+      toast({
+        title: 'Campanhas enviadas',
+        description: `${due?.processed || 0} campanha(s) processada(s), ${due?.notifications?.length || 0} mensagem(ns).`,
+      });
+      await loadAll();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao enviar campanhas', description: err.message });
+    } finally {
+      setRunningCampaigns(false);
+    }
+  };
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -214,7 +237,11 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
         email: contactForm.email.trim(),
         phone: contactForm.phone.trim(),
         notes: contactForm.notes.trim(),
-        tags: contactForm.tags ? contactForm.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        tags: (() => {
+          const tags = (contactForm.tags ? contactForm.tags.split(',').map((t) => t.trim()).filter(Boolean) : [])
+            .filter((t) => t !== OPT_OUT_TAG);
+          return contactForm.optOut ? [...new Set([...tags, OPT_OUT_TAG])] : [...new Set(tags)];
+        })(),
       };
       if (editingContact) {
         await updateContact(editingContact.id, data);
@@ -266,10 +293,25 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
   };
 
   const handleSendNotification = async () => {
+    if ((notifyForm.body || '').trim().length < 5) {
+      toast({ variant: 'destructive', title: 'Escreva a mensagem a enviar.' });
+      return;
+    }
+    if (selectedIds.length > MAX_NOTIFY_CONTACTS) {
+      toast({ variant: 'destructive', title: 'Demasiados destinatários', description: `Envie no máximo ${MAX_NOTIFY_CONTACTS} contactos de cada vez.` });
+      return;
+    }
+    // Também filtrado aqui, para valer enquanto a Edge Function publicada for a antiga.
+    const targets = selectedIds.filter((id) => !isOptedOut(contactsMap[id]));
+    const optedOut = selectedIds.length - targets.length;
+    if (!targets.length) {
+      toast({ variant: 'destructive', title: 'Nenhum destinatário', description: 'Todos os contactos seleccionados estão marcados "não contactar".' });
+      return;
+    }
     setActionLoading(true);
     try {
       const result = await notifyContacts({
-        contactIds: selectedIds,
+        contactIds: targets,
         channel: notifyForm.channel,
         subject: notifyForm.subject,
         body: notifyForm.body,
@@ -293,6 +335,7 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
         `${result.results.length} notificação(ões) processada(s).`,
         waApiCount ? `${waApiCount} WhatsApp enviado(s) automaticamente.` : '',
         emailCount ? `${emailCount} email(s) enviado(s).` : '',
+        (optedOut || result.skipped_opt_out) ? `${optedOut || result.skipped_opt_out} ignorado(s) por "não contactar".` : '',
       ].filter(Boolean);
 
       toast({ title: 'Notificação concluída', description: parts.join(' ') });
@@ -308,6 +351,10 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
   };
 
   const handleQuickWhatsApp = async (contact) => {
+    if (isOptedOut(contact)) {
+      toast({ variant: 'destructive', title: 'Contacto marcado "não contactar"', description: 'Retire a marca no contacto para lhe enviar mensagens.' });
+      return;
+    }
     if (!contact.phone) {
       toast({ variant: 'destructive', title: 'Sem telefone', description: 'Este contacto não tem número de telefone.' });
       return;
@@ -462,7 +509,8 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
       email: c.email || '',
       phone: c.phone || '',
       notes: c.notes || '',
-      tags: (c.tags || []).join(', '),
+      tags: (c.tags || []).filter((t) => t !== OPT_OUT_TAG).join(', '),
+      optOut: isOptedOut(c),
     });
     setShowContactForm(true);
   };
@@ -568,7 +616,7 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
         <Button size="sm" variant="outline" onClick={handleImportSources} disabled={actionLoading}>
           <Download className="h-3.5 w-3.5 mr-1.5" /> Importar Encomendas/Newsletter
         </Button>
-        <Button size="sm" variant="outline" onClick={() => { setEditingContact(null); setContactForm({ name: '', email: '', phone: '', notes: '', tags: '' }); setShowContactForm(true); }}>
+        <Button size="sm" variant="outline" onClick={() => { setEditingContact(null); setContactForm({ name: '', email: '', phone: '', notes: '', tags: '', optOut: false }); setShowContactForm(true); }}>
           <Plus className="h-3.5 w-3.5 mr-1.5" /> Novo Contacto
         </Button>
         {selectedIds.length > 0 && (
@@ -639,6 +687,7 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-semibold truncate">{c.name}</p>
                           {c.is_buyer && <Badge variant="secondary" className="text-[10px] h-4">Comprador</Badge>}
+                          {isOptedOut(c) && <Badge variant="outline" className="text-[10px] h-4 text-destructive border-destructive/40">Não contactar</Badge>}
                         </div>
                         <p className="text-[11px] text-muted-foreground truncate">{c.email || '—'} · {c.phone || '—'}</p>
                       </div>
@@ -791,10 +840,16 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
         {/* CAMPANHAS */}
         <TabsContent value="campaigns" className="mt-4">
           <div className="flex justify-between mb-4">
-            <p className="text-sm text-muted-foreground">Envios automáticos periódicos com novidades da loja.</p>
+            <p className="text-sm text-muted-foreground">Envios periódicos com novidades da loja. Quando chega a data, ficam pendentes até carregar em "Enviar pendentes".</p>
+            <div className="flex gap-2 shrink-0">
+            <Button size="sm" variant="outline" disabled={!dueCampaigns.length || runningCampaigns} onClick={handleRunDueCampaigns}>
+              {runningCampaigns ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1" />}
+              Enviar pendentes ({dueCampaigns.length})
+            </Button>
             <Button size="sm" onClick={() => { setEditingCampaign(null); setCampaignForm({ name: '', group: '', channel: 'whatsapp', frequency: 'weekly', subject: 'Novidades — Livraria Adventista', message_template: DEFAULT_NOTIFY_BODY, include_new_books: true }); setShowCampaignForm(true); }}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Nova Campanha
             </Button>
+            </div>
           </div>
           {campaigns.length === 0 ? (
             <div className="text-center py-16 border rounded-xl bg-muted/10">
@@ -850,7 +905,7 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="outline" className="text-[10px]">{CHANNEL_LABELS[n.channel]}</Badge>
-                    <Badge variant={n.status === 'sent' ? 'default' : 'secondary'} className="text-[10px]">{n.status}</Badge>
+                    <Badge variant={n.status === 'sent' ? 'default' : n.status === 'failed' ? 'destructive' : 'secondary'} className="text-[10px]">{STATUS_LABELS[n.status] || n.status}</Badge>
                     {n.whatsapp_url && (
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => window.open(n.whatsapp_url, '_blank')}>
                         <MessageCircle className="h-3.5 w-3.5" />
@@ -873,6 +928,13 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
             <div><Label className="text-xs">Email</Label><Input type="email" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} className="h-9 text-sm" /></div>
             <div><Label className="text-xs">Telefone</Label><Input value={contactForm.phone} onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })} className="h-9 text-sm" /></div>
             <div><Label className="text-xs">Tags (separadas por vírgula)</Label><Input value={contactForm.tags} onChange={(e) => setContactForm({ ...contactForm, tags: e.target.value })} className="h-9 text-sm" /></div>
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox checked={!!contactForm.optOut} onCheckedChange={(v) => setContactForm({ ...contactForm, optOut: !!v })} className="mt-0.5" />
+              <span>
+                Não contactar
+                <span className="block text-[11px] text-muted-foreground">Pediu para não receber mensagens: fica fora dos envios e das campanhas.</span>
+              </span>
+            </label>
             <div><Label className="text-xs">Notas</Label><Textarea value={contactForm.notes} onChange={(e) => setContactForm({ ...contactForm, notes: e.target.value })} rows={2} className="text-sm" /></div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => setShowContactForm(false)}>Cancelar</Button>

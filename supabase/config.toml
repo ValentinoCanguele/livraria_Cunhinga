@@ -1,0 +1,7 @@
+# Configuração do Supabase CLI para o projecto "Livraria Adventista".
+project_id = "bggqkjjqbjhbjsckzopj"
+
+# A função "app" faz a sua própria autenticação (token do Supabase Auth quando existe),
+# porque também serve rotas públicas (catálogo, checkout, rastreio).
+[functions.app]
+verify_jwt = false

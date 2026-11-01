@@ -26,7 +26,14 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('recharts')) {
+            // clsx é usado pelo cn() em todo o site e pelo recharts; sem bloco próprio o Rollup
+            // metia-o no vendor-recharts e esse bloco era carregado logo na página inicial.
+            if (/node_modules\/(clsx|tailwind-merge)\//.test(id)) {
+              return 'vendor-utils';
+            }
+            // Só o próprio recharts: pacotes aninhados (ex.: recharts/node_modules/react-is) usados
+            // também pelo código inicial obrigavam a carregar o bloco inteiro em todas as páginas.
+            if (/node_modules\/recharts\/(?!node_modules)/.test(id)) {
               return 'vendor-recharts';
             }
             if (id.includes('firebase')) {

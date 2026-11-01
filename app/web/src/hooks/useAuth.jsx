@@ -3,7 +3,6 @@ import pb from '@/lib/dataClient';
 import { canAccessAdmin, hasPermission, getUserPermissions } from '@/lib/permissions';
 import { escapeFilterValue } from '@/lib/sanitizeHtml';
 import { supabase } from '@/lib/supabaseClient';
-import { logoutFirebase } from '@/lib/firebaseClient';
 import { normalizeLoginEmail, parsePbAuthError } from '@/lib/pbAuth';
 
 const AuthContext = createContext(null);
@@ -56,7 +55,8 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       // Termina também a ligação ao Google Workspace, se existir.
       sessionStorage.removeItem('google_access_token');
-      await logoutFirebase().catch(() => {});
+      // Import dinâmico: o Firebase (só Google Workspace) não entra no carregamento inicial do site.
+      await import('@/lib/firebaseClient').then((m) => m.logoutFirebase()).catch(() => {});
     },
     // Redirecciona para a Google; ao voltar, o Supabase cria a sessão e o perfil.
     loginWithGoogle: async (redirectPath = '/profile') => {

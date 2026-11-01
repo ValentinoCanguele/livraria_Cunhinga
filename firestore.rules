@@ -43,6 +43,17 @@ service cloud.firestore {
         && (data.rating is number || data.rating is int) && data.rating >= 1 && data.rating <= 5
         && data.comment is string && data.comment.size() <= 1000
         && data.createdAt == request.time;
+     }
+
+    function isValidBook(data) {
+      return data.keys().hasAll(['title', 'author', 'price', 'cover'])
+        && data.keys().size() <= 6
+        && data.title is string && data.title.size() <= 200
+        && data.author is string && data.author.size() <= 200
+        && (data.price is number || data.price is int) && data.price >= 0
+        && data.cover is string && data.cover.size() <= 1024
+        && (!data.keys().hasAll(['description']) || data.description is string && data.description.size() <= 2000)
+        && (!data.keys().hasAll(['genre']) || data.genre is string && data.genre.size() <= 100);
     }
 
     // 2. Wishlist Security Rules
@@ -84,6 +95,14 @@ service cloud.firestore {
         && isValidReview(incoming());
 
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // 4. Books Security Rules (Firestore-backed catalog)
+    match /books/{bookId} {
+      allow read, list: if true;
+      allow create: if isSignedIn() && isValidBook(incoming());
+      allow update: if isSignedIn() && isValidBook(incoming());
+      allow delete: if isSignedIn();
     }
   }
 }

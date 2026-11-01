@@ -1,11 +1,12 @@
 import React, { Suspense, lazy } from 'react';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider } from '@/hooks/useTheme';
 import { Route, Routes, BrowserRouter as Router } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
 import { AuthProvider } from '@/hooks/useAuth';
 import { SiteSettingsProvider } from '@/hooks/useSiteSettings';
 import { IntegrationsProvider } from '@/hooks/useIntegrations';
 import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import ScrollToTop from '@/components/ScrollToTop.jsx';
 import { Spinner } from '@/components/ui/spinner';
 import HomePage from '@/pages/HomePage.jsx';
@@ -41,6 +42,7 @@ function PageLoader() {
 function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="livraria-theme">
+    <TooltipProvider>
     <SiteSettingsProvider>
     <IntegrationsProvider>
     <AuthProvider>
@@ -85,6 +87,7 @@ function App() {
     </AuthProvider>
     </IntegrationsProvider>
     </SiteSettingsProvider>
+    </TooltipProvider>
     </ThemeProvider>
   );
 }

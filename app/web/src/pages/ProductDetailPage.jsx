@@ -22,6 +22,7 @@ import Header from '@/components/Header.jsx';
 import { pageTitle } from '@/lib/brand';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
+import BookPreviewModal from '@/components/BookPreviewModal';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import SampleReaderModal from '@/components/SampleReaderModal';
 
@@ -57,6 +58,7 @@ function ProductDetailPage() {
   const { id } = useParams();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [sampleReaderOpen, setSampleReaderOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -72,7 +74,7 @@ function ProductDetailPage() {
 
   // Reviews and Google Calendar Events hooks and state
   const { isAuthed, user } = useAuth();
-  const { reviews, loading: loadingReviews, stats, hasPurchased, submitReview, deleteReview, userReview } = useReviews(product?.id);
+  const { reviews, loading: loadingReviews, stats, hasPurchased, submitReview, deleteReview, userReview, submitting } = useReviews(product?.id);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [addingCalendarEvent, setAddingCalendarEvent] = useState(false);
@@ -135,6 +137,19 @@ function ProductDetailPage() {
     }
   };
 
+  const handleWhatsAppLaunchReminder = () => {
+    const phoneNumber = '923000000'; // Brand's official contact number
+    const launchText = `Olá! Quero agendar lembretes para o lançamento do livro "${product.title}" no dia 16 de Julho às 18:00 (Hora de Luanda). Por favor, registem o meu número de WhatsApp! Nome: ${user?.name || 'Cliente'}`;
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    const num = cleanPhone.startsWith('244') ? cleanPhone : `244${cleanPhone}`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(launchText)}`, '_blank', 'noopener,noreferrer');
+    
+    toast({
+      title: 'Pedido Enviado',
+      description: 'Mensagem de agendamento gerada! Envie-a no WhatsApp para confirmar o seu registo de lembrete.',
+    });
+  };
+
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     const success = await submitReview(reviewRating, reviewComment);
@@ -148,10 +163,11 @@ function ProductDetailPage() {
     if (product && selectedVariant) {
       const availableQuantity = selectedVariant.inventory_quantity;
       try {
-        await addToCart(product, selectedVariant, quantity, availableQuantity);
+        await addToCart(product, selectedVariant, quantity, availableQuantity, { silent: true });
         toast({
-          title: 'Adicionado ao carrinho',
-          description: `${quantity}× ${product.title}`,
+          variant: 'cart-success',
+          product,
+          onCartOpen: () => setIsCartOpen(true)
         });
         if (openCart) setIsCartOpen(true);
       } catch (error) {
@@ -487,7 +503,7 @@ function ProductDetailPage() {
                 Comprar Agora
               </Button>
               <Button
-                onClick={() => handleAddToCart(false)}
+                onClick={() => handleAddToCart(true)}
                 size="lg"
                 variant="outline"
                 className="flex-1 text-lg py-6 border-[#0ea5c9] text-[#0ea5c9] hover:bg-[#0ea5c9]/10"
@@ -505,6 +521,14 @@ function ProductDetailPage() {
                 <Heart className={`h-6 w-6 ${isWish ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
               </Button>
             </div>
+            <Button
+              onClick={() => setShowPreview(true)}
+              variant="outline"
+              className="w-full mb-3 border-[#0ea5c9]/40 text-[#0ea5c9] hover:bg-[#0ea5c9]/5 py-6 text-lg rounded-xl"
+            >
+              <BookOpen className="mr-2 h-5 w-5" />
+              Ler Amostra Grátis (Primeiras Páginas)
+            </Button>
             {(settings.whatsapp || settings.contact_phone) && (
               <Button
                 variant="outline"
@@ -544,6 +568,17 @@ function ProductDetailPage() {
                       Adicionar ao Google Calendar
                     </>
                   )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleWhatsAppLaunchReminder}
+                  className="w-full text-xs h-9 bg-background border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500"
+                >
+                  <svg className="mr-2 h-4 w-4 fill-current text-emerald-500" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.859-4.42 9.863-9.864.002-2.634-1.02-5.11-2.881-6.973C16.69 1.904 14.212.861 11.58.861 6.143.861 1.72 5.281 1.716 10.72c-.001 1.67.438 3.3 1.27 4.733l-.988 3.61 3.702-.97.647.386zM17.16 14.93c-.29-.145-1.716-.847-1.982-.944-.265-.097-.459-.145-.652.145-.193.29-.747.944-.915 1.137-.168.193-.336.218-.626.073-1.638-.818-2.735-1.424-3.82-3.284-.287-.492.287-.457.822-1.52.09-.18.045-.337-.023-.482-.068-.145-.652-1.572-.893-2.152-.234-.564-.472-.488-.652-.497-.169-.008-.362-.01-.555-.01s-.506.072-.77.362c-.265.29-1.012.99-1.012 2.415 0 1.424 1.036 2.801 1.18 2.995.145.193 2.038 3.112 4.937 4.364 2.188.944 3.1 1.054 4.225.888.755-.112 2.327-.95 2.658-1.87.33-.92.33-1.71.233-1.87-.097-.16-.36-.255-.65-.4z" />
+                  </svg>
+                  Lembrar-me por WhatsApp
                 </Button>
               </div>
             )}
@@ -856,6 +891,7 @@ function ProductDetailPage() {
         pages={product.sample_pages || []}
         title={product.title}
       />
+      <BookPreviewModal product={product} open={showPreview} onClose={() => setShowPreview(false)} onCartOpen={() => setIsCartOpen(true)} />
 
       <Footer />
     </>

@@ -73,6 +73,38 @@
         }
       },
       "required": ["userId", "userName", "bookId", "rating", "comment", "createdAt"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "Represents a book in the Firestore store catalog",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the book"
+        },
+        "author": {
+          "type": "string",
+          "description": "The author of the book"
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the book in Kwanza (Kz)"
+        },
+        "cover": {
+          "type": "string",
+          "description": "The cover image URL of the book"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the book"
+        },
+        "genre": {
+          "type": "string",
+          "description": "Genre/category of the book"
+        }
+      },
+      "required": ["title", "author", "price", "cover"]
     }
   },
   "firestore": {
@@ -83,6 +115,10 @@
     "/reviews/{reviewId}": {
       "schema": "BookReview",
       "description": "Collection storing book reviews and star ratings"
+    },
+    "/books/{bookId}": {
+      "schema": "Book",
+      "description": "Collection storing books catalog in Firestore"
     }
   }
 }

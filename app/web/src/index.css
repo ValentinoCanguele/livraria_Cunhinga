@@ -6,21 +6,21 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
+    --background: 210 20% 99%;
     --foreground: 215 25% 15%;
     --glass-opacity: 0.72;
     --glass-blur: 20px;
     --glass-enabled: 1;
     --border: 210 18% 88%;
     --input: 210 20% 94%;
-    --ring: 192 91% 42%;
-    --primary: 192 91% 42%;
+    --ring: var(--brand-primary-hsl, 216 55% 24%);
+    --primary: var(--brand-primary-hsl, 216 55% 24%);
     --primary-foreground: 0 0% 100%;
     --secondary: 210 25% 92%;
     --secondary-foreground: 215 25% 15%;
     --muted: 210 20% 94%;
     --muted-foreground: 215 12% 42%;
-    --accent: 0 72% 51%;
+    --accent: var(--brand-accent-hsl, 216 55% 30%);
     --accent-foreground: 0 0% 100%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 10%;
@@ -130,7 +130,7 @@
   }
 
   .btn-primary {
-    @apply bg-[#0ea5c9] text-white hover:bg-[#0891b2] transition-all duration-300 active:scale-[0.98];
+    @apply bg-primary text-white hover:bg-primary/90 transition-all duration-300 active:scale-[0.98];
   }
 
   .btn-secondary {
@@ -162,6 +162,25 @@
     background: linear-gradient(90deg, hsl(var(--foreground) / 0.88), hsl(var(--foreground) / 0.82));
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Beautiful smooth collapse animation for mobile hamburger menu */
+  .mobile-menu-container {
+    max-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    overflow: hidden;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.25s ease, 
+                padding 0.3s ease, 
+                visibility 0.35s;
+  }
+
+  .mobile-menu-container.open {
+    max-height: 90vh;
+    opacity: 1;
+    visibility: visible;
+    padding-bottom: 1.5rem;
   }
 }
 

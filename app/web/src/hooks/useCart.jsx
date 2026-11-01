@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { formatCurrency } from '@/api/EcommerceApi';
+import { toast } from 'sonner';
 
 const CartContext = createContext();
 const CART_STORAGE_KEY = 'e-commerce-cart';
@@ -20,15 +21,28 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const addToCart = useCallback((product, variant, quantity, availableQuantity) => {
+  const addToCart = useCallback((product, variant, quantity, availableQuantity, options = {}) => {
     return new Promise((resolve, reject) => {
+      // Handle polymorphic arguments: e.g. addToCart(product, variant, quantity, { silent: true })
+      let finalAvailable = availableQuantity;
+      let finalOptions = options;
+      if (typeof availableQuantity === 'object' && availableQuantity !== null) {
+        finalOptions = availableQuantity;
+        finalAvailable = undefined;
+      }
+      
+      const silent = !!finalOptions.silent;
+      const effectiveAvailable = finalAvailable !== undefined ? finalAvailable : (variant.inventory_quantity ?? 99);
+
       if (variant.manage_inventory) {
         const existingItem = cartItems.find((item) => item.variant.id === variant.id);
         const currentCartQuantity = existingItem ? existingItem.quantity : 0;
-        if (currentCartQuantity + quantity > availableQuantity) {
-          reject(new Error(
-            `Stock insuficiente para "${product.title}". Apenas ${availableQuantity} unidade${availableQuantity !== 1 ? 's' : ''} disponível${availableQuantity !== 1 ? 'eis' : ''}.`,
-          ));
+        if (currentCartQuantity + quantity > effectiveAvailable) {
+          const errMsg = `Stock insuficiente para "${product.title}". Apenas ${effectiveAvailable} unidade${effectiveAvailable !== 1 ? 's' : ''} disponível${effectiveAvailable !== 1 ? 'eis' : ''}.`;
+          if (!silent) {
+            toast.error(errMsg);
+          }
+          reject(new Error(errMsg));
           return;
         }
       }
@@ -44,12 +58,24 @@ export const CartProvider = ({ children }) => {
         }
         return [...prevItems, { product, variant, quantity }];
       });
+      
+      if (!silent) {
+        toast.success(`"${product.title}" adicionado ao carrinho!`, {
+          description: `${quantity}x · ${variant.name || 'Edição Standard'}`,
+        });
+      }
       resolve();
     });
   }, [cartItems]);
 
   const removeFromCart = useCallback((variantId) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.variant.id !== variantId));
+    setCartItems((prevItems) => {
+      const item = prevItems.find((i) => i.variant.id === variantId);
+      if (item) {
+        toast.info(`"${item.product.title}" removido do carrinho.`);
+      }
+      return prevItems.filter((item) => item.variant.id !== variantId);
+    });
   }, []);
 
   const updateQuantity = useCallback((variantId, quantity) => {
@@ -65,6 +91,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = useCallback(() => {
     setCartItems([]);
+    toast.success('Carrinho limpo com sucesso.');
   }, []);
 
   const getCartTotalCents = useCallback(() => {

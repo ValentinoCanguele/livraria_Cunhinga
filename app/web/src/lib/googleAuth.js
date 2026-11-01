@@ -1,5 +1,7 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth as mainAuth, db } from './firebaseClient';
 
 const firebaseConfig = {
   projectId: "skilful-form-c5jvd",
@@ -25,22 +27,39 @@ googleProvider.addScope('https://www.googleapis.com/auth/contacts');
 let cachedToken = null;
 let authStateListener = null;
 
+export const getCachedGoogleToken = () => {
+  return cachedToken || sessionStorage.getItem('google_access_token');
+};
+
+export const setCachedGoogleToken = (token) => {
+  cachedToken = token;
+  if (token) {
+    sessionStorage.setItem('google_access_token', token);
+  } else {
+    sessionStorage.removeItem('google_access_token');
+  }
+};
+
 export const initGoogleAuth = (onSuccess, onFailure) => {
   if (authStateListener) authStateListener();
 
-  authStateListener = onAuthStateChanged(googleAuth, (user) => {
-    if (user) {
-      // Check session storage for token persistence in same browser session if desired, 
-      // but skill recommends in-memory caching.
-      if (cachedToken) {
-        onSuccess(user, cachedToken);
-      } else {
-        // We need to re-login if token is cleared from memory, or retrieve from memory cache.
-        onFailure();
-      }
+  // Listen to the main auth state instead of the isolated googleAuth to unify authentication
+  authStateListener = onAuthStateChanged(mainAuth, (user) => {
+    const token = getCachedGoogleToken();
+    if (user && token) {
+      onSuccess(user, token);
     } else {
-      cachedToken = null;
-      onFailure();
+      // If no token in sessionStorage but user is logged in, try googleAuth fallback
+      const fallbackListener = onAuthStateChanged(googleAuth, (gUser) => {
+        if (gUser && cachedToken) {
+          onSuccess(gUser, cachedToken);
+        } else {
+          onFailure();
+        }
+      });
+      return () => {
+        fallbackListener();
+      };
     }
   });
 
@@ -49,13 +68,22 @@ export const initGoogleAuth = (onSuccess, onFailure) => {
 
 export const signInWithGoogleWorkspace = async () => {
   try {
-    const result = await signInWithPopup(googleAuth, googleProvider);
+    // Unify login by signing in with the main Auth instance
+    const result = await signInWithPopup(mainAuth, googleProvider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential || !credential.accessToken) {
       throw new Error('Failed to obtain Google access token.');
     }
-    cachedToken = credential.accessToken;
-    return { user: result.user, token: cachedToken };
+    setCachedGoogleToken(credential.accessToken);
+    
+    // Perform an asynchronous workspace data backup/sync to Firestore in the background
+    try {
+      syncGoogleWorkspaceToFirestore(result.user.uid, credential.accessToken).catch(console.error);
+    } catch (syncErr) {
+      console.warn('Silent background sync warning:', syncErr);
+    }
+
+    return { user: result.user, token: credential.accessToken };
   } catch (error) {
     if (error && error.code === 'auth/popup-closed-by-user') {
       console.warn('Google Workspace Sign-In: Popup closed by user.');
@@ -67,11 +95,87 @@ export const signInWithGoogleWorkspace = async () => {
 };
 
 export const logoutGoogleWorkspace = async () => {
+  await signOut(mainAuth);
   await googleAuth.signOut();
-  cachedToken = null;
+  setCachedGoogleToken(null);
 };
 
-export const getCachedGoogleToken = () => cachedToken;
+// ==========================================
+// FIRESTORE SYNCHRONIZATION (ARCHIVE COPY)
+// ==========================================
+export const syncGoogleWorkspaceToFirestore = async (userId, token) => {
+  if (!userId || !token) return null;
+  const timestamp = new Date().toISOString();
+  const status = {
+    contacts: false,
+    calendar: false,
+    gmail: false,
+    drive: false,
+    timestamp
+  };
+
+  try {
+    // 1. Sync Contacts (with backup info)
+    try {
+      const contacts = await listGoogleContacts(token);
+      await setDoc(doc(db, 'users', userId, 'googleData', 'contacts'), {
+        data: contacts || [],
+        lastSynced: timestamp
+      });
+      status.contacts = true;
+    } catch (e) {
+      console.error('Failed to sync contacts:', e);
+    }
+
+    // 2. Sync Calendar
+    try {
+      const events = await listCalendarEvents(token);
+      await setDoc(doc(db, 'users', userId, 'googleData', 'calendar'), {
+        data: events || [],
+        lastSynced: timestamp
+      });
+      status.calendar = true;
+    } catch (e) {
+      console.error('Failed to sync calendar:', e);
+    }
+
+    // 3. Sync Gmail Inbox
+    try {
+      const gmail = await listGmailMessages(token);
+      await setDoc(doc(db, 'users', userId, 'googleData', 'gmail'), {
+        data: gmail || [],
+        lastSynced: timestamp
+      });
+      status.gmail = true;
+    } catch (e) {
+      console.error('Failed to sync gmail messages:', e);
+    }
+
+    // 4. Sync Drive Files
+    try {
+      const drive = await listDriveFiles(token);
+      await setDoc(doc(db, 'users', userId, 'googleData', 'drive'), {
+        data: drive || [],
+        lastSynced: timestamp
+      });
+      status.drive = true;
+    } catch (e) {
+      console.error('Failed to sync drive files:', e);
+    }
+
+    // Save master summary record of workspace sync
+    await setDoc(doc(db, 'users', userId, 'googleData', 'summary'), {
+      status,
+      lastSynced: timestamp
+    });
+
+    console.log('Google Workspace database backup/sync successful for user:', userId, status);
+    return status;
+  } catch (err) {
+    console.error('Critical failure in syncGoogleWorkspaceToFirestore:', err);
+    throw err;
+  }
+};
 
 // ==========================================
 // GOOGLE DRIVE API FUNCTIONS

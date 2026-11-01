@@ -12,7 +12,13 @@ export const useWishlist = () => {
 
   useEffect(() => {
     if (!isAuthed || !user?.id) {
-      setWishlist([]);
+      try {
+        const stored = localStorage.getItem('local-wishlist');
+        setWishlist(stored ? JSON.parse(stored) : []);
+      } catch {
+        setWishlist([]);
+      }
+      setLoading(false);
       return;
     }
 
@@ -42,21 +48,15 @@ export const useWishlist = () => {
   };
 
   const addToWishlist = async (book) => {
-    if (!isAuthed || !user?.id) {
-      toast({
-        variant: 'destructive',
-        title: 'Iniciar sessão necessário',
-        description: 'Por favor, inicie sessão para adicionar livros à sua lista de desejos.',
-      });
-      return;
-    }
-
-    const docId = `${user.id}_${book.id}`;
-    const docRef = doc(db, 'wishlists', docId);
+    const bookTitle = book.title || 'Sem título';
 
     // Resolve book cover image reliably
     let bookCover = '';
-    if (book.cover_url) {
+    if (book.image) {
+      bookCover = book.image;
+    } else if (book.cover) {
+      bookCover = book.cover;
+    } else if (book.cover_url) {
       bookCover = book.cover_url;
     } else if (book.images && book.images.length > 0) {
       bookCover = book.images[0].url || '';
@@ -64,8 +64,33 @@ export const useWishlist = () => {
       bookCover = book.expand.images[0].url || '';
     }
 
-    const bookTitle = book.title || 'Sem título';
     const bookPrice = typeof book.price === 'number' ? book.price : 0;
+
+    if (!isAuthed || !user?.id) {
+      const newItem = {
+        id: `local_${book.id}`,
+        bookId: book.id,
+        bookTitle,
+        bookCover,
+        bookPrice,
+        addedAt: new Date().toISOString()
+      };
+      setWishlist((prev) => {
+        const alreadyIn = prev.some(item => item.bookId === book.id);
+        if (alreadyIn) return prev;
+        const updated = [...prev, newItem];
+        localStorage.setItem('local-wishlist', JSON.stringify(updated));
+        return updated;
+      });
+      toast({
+        title: 'Adicionado aos Favoritos',
+        description: `"${bookTitle}" foi adicionado com sucesso.`,
+      });
+      return;
+    }
+
+    const docId = `${user.id}_${book.id}`;
+    const docRef = doc(db, 'wishlists', docId);
 
     const payload = {
       userId: user.id,
@@ -88,7 +113,18 @@ export const useWishlist = () => {
   };
 
   const removeFromWishlist = async (bookId) => {
-    if (!isAuthed || !user?.id) return;
+    if (!isAuthed || !user?.id) {
+      setWishlist((prev) => {
+        const updated = prev.filter(item => item.bookId !== bookId);
+        localStorage.setItem('local-wishlist', JSON.stringify(updated));
+        return updated;
+      });
+      toast({
+        title: 'Removido dos Favoritos',
+        description: 'O livro foi removido com sucesso.',
+      });
+      return;
+    }
 
     const docId = `${user.id}_${bookId}`;
     const docRef = doc(db, 'wishlists', docId);

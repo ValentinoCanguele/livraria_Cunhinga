@@ -336,7 +336,12 @@ const ProfilePage = () => {
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="font-bold text-[#0ea5c9]">Kz {Number(o.total).toFixed(2)}</p>
+                              <p className="font-bold text-[#0ea5c9]">
+                                Kz {(() => {
+                                  const totalVal = typeof o.total === 'number' ? o.total : parseFloat(o.total) || 0;
+                                  return totalVal.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                })()}
+                              </p>
                               <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium ${getOrderStatusColor(o.status)}`}>
                                 {getOrderStatusLabel(o.status)}
                               </span>

@@ -9,6 +9,7 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { shareBookOnWhatsApp } from '@/lib/whatsapp';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import { FloatingScrollTop } from '@/components/ui/FloatingScrollTop';
+import BookPreviewModal from '@/components/BookPreviewModal';
 
 const PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzc0MTUxIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzlDQTNBRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K";
 
@@ -18,10 +19,12 @@ export default function QuickViewModal({ product, open, onClose, onCartOpen, loa
   const { settings } = useSiteSettings();
   const [readingMode, setReadingMode] = useState(false);
   const readingScrollRef = useRef(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setReadingMode(false);
+      setShowPreview(false);
       return undefined;
     }
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -43,10 +46,14 @@ export default function QuickViewModal({ product, open, onClose, onCartOpen, loa
   const handleAdd = async () => {
     if (!variant || !inStock || !product) return;
     try {
-      await addToCart(product, variant, 1, variant.inventory_quantity);
-      toast({ title: 'Adicionado ao carrinho', description: product.title });
+      await addToCart(product, variant, 1, variant.inventory_quantity, { silent: true });
+      toast({
+        variant: 'cart-success',
+        product,
+        onCartOpen
+      });
+      if (onCartOpen) onCartOpen();
       onClose();
-      onCartOpen?.();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
     }
@@ -83,6 +90,7 @@ export default function QuickViewModal({ product, open, onClose, onCartOpen, loa
   }
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -170,6 +178,9 @@ export default function QuickViewModal({ product, open, onClose, onCartOpen, loa
                     ) : (
                       <p className="text-destructive text-sm text-center py-2">Esgotado — contacte-nos para encomenda</p>
                     )}
+                    <Button variant="outline" className="w-full border-primary/40 text-primary hover:bg-primary/5" onClick={() => setShowPreview(true)}>
+                      <BookOpen className="h-4 w-4 mr-2" /> Ler Amostra Grátis
+                    </Button>
                     <Button variant="outline" asChild className="w-full">
                       <Link to={`/product/${product.id}`} onClick={onClose}>
                         <Eye className="h-4 w-4 mr-2" /> Ver Página Completa
@@ -188,5 +199,9 @@ export default function QuickViewModal({ product, open, onClose, onCartOpen, loa
         </motion.div>
       )}
     </AnimatePresence>
+    {product && (
+      <BookPreviewModal product={product} open={showPreview} onClose={() => setShowPreview(false)} onCartOpen={onCartOpen} />
+    )}
+    </>
   );
 }

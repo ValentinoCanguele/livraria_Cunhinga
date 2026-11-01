@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import BrandLogo from '@/components/BrandLogo';
 import { pageTitle } from '@/lib/brand';
@@ -28,7 +28,6 @@ const LoginPage = () => {
   const { login, signup, loginWithGoogle } = useAuth();
   const { settings } = useSiteSettings();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     checkPocketBaseHealth().then(setServerOk);
@@ -57,9 +56,7 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (serverOk === false) {
-      toast({
-        variant: 'destructive',
-        title: 'Servidor offline',
+      toast.error('Servidor offline', {
         description: 'Inicie o PocketBase: npm run dev (porta 8090).',
       });
       return;
@@ -70,13 +67,19 @@ const LoginPage = () => {
       const authData = mode === 'login'
         ? await login(email, password)
         : await signup(email, password, name);
-      toast({ title: 'Bem-vindo!', description: `Olá, ${authData.record?.name || 'utilizador'}.` });
+      if (mode === 'login') {
+        toast.success('Sessão iniciada com sucesso!', {
+          description: `Bem-vindo de volta, ${authData.record?.name || 'utilizador'}!`,
+        });
+      } else {
+        toast.success('Conta criada com sucesso!', {
+          description: `Seja muito bem-vindo, ${name}!`,
+        });
+      }
       afterAuthNavigate(authData.record);
     } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro de autenticação',
-        description: err.message || 'Verifique as suas credenciais.',
+      toast.error('Erro de autenticação', {
+        description: err.message || 'Verifique se as suas credenciais de e-mail e palavra-passe estão corretas.',
       });
     } finally {
       setLoading(false);
@@ -87,15 +90,15 @@ const LoginPage = () => {
     setLoading(true);
     try {
       await loginWithGoogle();
-      toast({ title: 'Bem-vindo!' });
+      toast.success('Autenticado via Google!', {
+        description: 'Sessão iniciada de forma rápida e segura.',
+      });
       navigate(redirectTo || '/profile');
     } catch (err) {
       const cancelled = err?.code === 'auth/popup-closed-by-user';
       if (!cancelled) {
-        toast({
-          variant: 'destructive',
-          title: 'Google não disponível',
-          description: err?.message || 'Use email e palavra-passe.',
+        toast.error('Google não disponível', {
+          description: err?.message || 'Por favor, tente autenticar usando o seu e-mail e palavra-passe.',
         });
       }
     } finally {

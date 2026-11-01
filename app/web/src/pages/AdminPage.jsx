@@ -10,6 +10,7 @@ import BrandLogo from '@/components/BrandLogo';
 import BookFormModal from '@/components/admin/BookFormModal';
 import SettingsTab from '@/components/admin/SettingsTab';
 import UsersTab from '@/components/admin/UsersTab';
+import CRMContactsTab from '@/components/admin/CRMContactsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
 import AppsTab from '@/components/admin/AppsTab';
 import ContactsManager from '@/components/ContactsManager';
@@ -268,6 +269,7 @@ const AdminPage = () => {
               {canManageOrders && <TabsTrigger value="orders"><ShoppingBag className="h-4 w-4 mr-1.5" />Encomendas ({orders.length})</TabsTrigger>}
               {canManageSettings && <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1.5" />Configurações</TabsTrigger>}
               {canManageUsers && <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilizadores</TabsTrigger>}
+              {canManageUsers && <TabsTrigger value="crm"><Users className="h-4 w-4 mr-1.5" />CRM & Contactos</TabsTrigger>}
               {canManagePayments && <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Pagamentos</TabsTrigger>}
               {canManageMarketing && <TabsTrigger value="contacts"><Users className="h-4 w-4 mr-1.5" />CRM Contactos</TabsTrigger>}
               {isAdmin && <TabsTrigger value="apps"><Plug className="h-4 w-4 mr-1.5" />Apps</TabsTrigger>}
@@ -275,6 +277,7 @@ const AdminPage = () => {
 
             {canManageSettings && <TabsContent value="settings"><SettingsTab /></TabsContent>}
             {canManageUsers && <TabsContent value="users"><UsersTab /></TabsContent>}
+            {canManageUsers && <TabsContent value="crm"><CRMContactsTab /></TabsContent>}
             {canManagePayments && <TabsContent value="payments"><PaymentsTab /></TabsContent>}
             {canManageMarketing && <TabsContent value="contacts"><ContactsManager /></TabsContent>}
             {isAdmin && <TabsContent value="apps"><AppsTab /></TabsContent>}

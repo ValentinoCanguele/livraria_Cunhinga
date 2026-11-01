@@ -7,6 +7,7 @@ import {
   Layers, Star, Package, ChevronRight, TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProductFilters } from '@/hooks/useProductFilters.jsx';
 import ProductsList from '@/components/ProductsList.jsx';
@@ -27,9 +28,9 @@ import { applyShopTheme, shopDefaults } from '@/lib/shopTheme';
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Destaques' },
   { value: 'title', label: 'A – Z' },
-  { value: 'price-low', label: 'Preço ↑' },
-  { value: 'price-high', label: 'Preço ↓' },
-  { value: 'newest', label: 'Mais recentes' },
+  { value: 'price-low', label: 'Preço: Menor ao Maior' },
+  { value: 'price-high', label: 'Preço: Maior ao Menor' },
+  { value: 'newest', label: 'Novidades' },
 ];
 
 function sortProducts(products, sortBy) {
@@ -327,6 +328,35 @@ const ShopPage = () => {
       )}
 
       <main className="container-custom py-10 min-h-screen">
+        {/* Dynamic Breadcrumbs */}
+        <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-muted-foreground mb-6 bg-card border border-border/80 px-4 py-3 rounded-xl shadow-xs shrink-0" id="shop-breadcrumbs">
+          <Link to="/" className="hover:text-primary transition-colors font-medium">Início</Link>
+          <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+          <Link to="/shop" className="hover:text-primary transition-colors font-medium" onClick={clearFilters}>Loja</Link>
+          {activeFilters.categories?.length > 0 && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              <span className="text-foreground font-semibold bg-primary/10 text-primary px-2.5 py-0.5 rounded-full text-[11px] uppercase tracking-wide">
+                {activeFilters.categories.join(', ')}
+              </span>
+            </>
+          )}
+          {activeFilters.collection && bookCollections.find(c => c.id === activeFilters.collection) && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              <span className="text-foreground font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 rounded-full text-[11px] uppercase tracking-wide">
+                Coleção: {bookCollections.find(c => c.id === activeFilters.collection).title}
+              </span>
+            </>
+          )}
+          {activeFilters.search && (
+            <>
+              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              <span className="text-foreground font-semibold italic">Busca: "{activeFilters.search}"</span>
+            </>
+          )}
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar filtros */}
           <aside className="hidden lg:block w-72 flex-shrink-0">
@@ -347,10 +377,15 @@ const ShopPage = () => {
             {/* Barra de ferramentas */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-card border border-border p-4 rounded-2xl shadow-sm">
               <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="outline" size="sm" className="lg:hidden" onClick={() => setIsMobileFilterOpen(true)}>
-                  <SlidersHorizontal className="h-4 w-4 mr-1" />
-                  Filtros {filterCount > 0 && `(${filterCount})`}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" className="lg:hidden" onClick={() => setIsMobileFilterOpen(true)}>
+                      <SlidersHorizontal className="h-4 w-4 mr-1" />
+                      Filtros {filterCount > 0 && `(${filterCount})`}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Filtrar catálogo</TooltipContent>
+                </Tooltip>
                 <div className="text-sm text-muted-foreground">
                   A mostrar <strong className="text-foreground">{displayProducts.length}</strong>
                   {sortedProducts.length !== displayProducts.length && ` de ${sortedProducts.length}`}
@@ -379,12 +414,22 @@ const ShopPage = () => {
                   </div>
                 )}
                 <div className="flex border rounded-lg overflow-hidden">
-                  <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9 rounded-none" onClick={() => setViewMode('grid')}>
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                  <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9 rounded-none" onClick={() => setViewMode('list')}>
-                    <List className="h-4 w-4" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9 rounded-none" onClick={() => setViewMode('grid')}>
+                        <LayoutGrid className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Visualização em Grelha</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9 rounded-none" onClick={() => setViewMode('list')}>
+                        <List className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Visualização em Lista</TooltipContent>
+                  </Tooltip>
                 </div>
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-[160px] h-9"><SelectValue /></SelectTrigger>

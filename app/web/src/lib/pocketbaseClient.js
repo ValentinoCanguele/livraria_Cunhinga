@@ -7,4 +7,7 @@ const pb = new PocketBase(PB_URL);
 // Evita cancelar pedidos de auth em paralelo (ex.: Firebase + login email)
 pb.autoCancellation(false);
 
+// Disable automatic cancellation to prevent React double-renders or concurrent queries from aborting each other
+pb.autoCancellation(false);
+
 export default pb;

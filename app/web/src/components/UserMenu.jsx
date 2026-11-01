@@ -114,7 +114,7 @@ export function GuestAuthButton({ className, fullWidth = false }) {
       <Button
         variant="outline"
         size="sm"
-        className={cn('rounded-full border-[#0ea5c9]/30 hover:bg-[#0ea5c9]/10', fullWidth && 'w-full')}
+        className={cn('rounded-full bg-transparent border-[#0ea5c9]/30 hover:bg-[#0ea5c9]/10', fullWidth && 'w-full')}
         onClick={() => navigate('/login')}
       >
         <User className="h-4 w-4 mr-2" />

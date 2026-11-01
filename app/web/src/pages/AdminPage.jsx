@@ -260,7 +260,7 @@ const AdminPage = () => {
       canManageSettings && { value: 'stores', label: 'Lojas', icon: Store },
     ] },
     { label: 'Relatórios', tabs: [
-      canAccessAdmin && { value: 'vendas-huambo', label: 'Vendas Huambo', icon: BarChart3 },
+      canAccessAdmin && { value: 'vendas-huambo', label: 'Vendas por loja', icon: BarChart3 },
     ] },
     { label: 'Clientes', tabs: [
       canManageUsers && { value: 'users', label: 'Utilizadores e Clientes', icon: Users },

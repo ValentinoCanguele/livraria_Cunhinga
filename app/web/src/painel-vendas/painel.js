@@ -4,6 +4,7 @@
  * `api` = { db, user, downloads }, a interface que o pacote esperava em window.claude.use() (ver adapter.js).
  */
 import * as d3 from 'd3';
+import { toCsv, buildXlsx, renderSummaryPng, renderVideo, printReport } from './exportar.js';
 
 export function mountPainel(root, api) {
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -18,7 +19,12 @@ export function mountPainel(root, api) {
   const CRIT = { media: 'média dos meses fechados', tendencia: 'tendência face ao ano anterior', meta: 'meta anual' };
 
   // ---------- Formatação ----------
-  const grp = (n) => (n == null || !isFinite(n)) ? '—' : Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  // Valores sempre com cêntimos: os totais mostrados têm de bater com a soma das linhas.
+  const grp = (n) => {
+    if (n == null || !isFinite(n)) return '—';
+    const [i, d] = (Math.round(Math.abs(n) * 100) / 100).toFixed(2).split('.');
+    return i.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + d;
+  };
   const kz = (n) => (n == null || !isFinite(n)) ? '—' : (n < 0 ? '−' : '') + grp(Math.abs(n)) + ' Kz';
   const kzs = (n) => (n == null || !isFinite(n)) ? '—' : (n >= 0 ? '+' : '−') + grp(Math.abs(n)) + ' Kz';
   const pct = (p) => (p == null || !isFinite(p)) ? '—' : (p >= 0 ? '+' : '−') + Math.abs(p * 100).toFixed(1).replace('.', ',') + '%';
@@ -50,7 +56,8 @@ export function mountPainel(root, api) {
   // ---------- Estado ----------
   const S = { db: null, user: null, uid: null, isOwner: false, canWrite: null, years: {}, note: null, cfg: undefined, hist: [],
     ano: null, comp: null, model: null, sel: null, playing: false, timers: [], raf: null,
-    admin: false, ed: { ano: null, dirty: false }, readOnly: false, downloads: null };
+    admin: false, ed: { ano: null, dirty: false }, readOnly: false, downloads: null,
+    store: null, sales: null, sys: { ano: null, data: null } };
 
   // ---------- Modelo ----------
   function build(ano, comp) {
@@ -63,50 +70,59 @@ export function mountPainel(root, api) {
       const obs = A && Array.isArray(A.observacoes) ? (A.observacoes[i] || '') : '';
       return { i, mes, v1: v1 == null ? null : Number(v1), v2: v2 == null ? null : Number(v2), estado, obs };
     });
-    const sum = (a, f) => a.reduce((s, r) => s + (f(r) || 0), 0);
+    // Somas em cêntimos inteiros, para não acumular erros de vírgula flutuante (ex.: 551 909,65 Kz).
+    const toC = (v) => (v == null ? 0 : Math.round(Number(v) * 100));
+    const sum = (a, f) => a.reduce((s, r) => s + toC(f(r)), 0) / 100;
+    const avg = (total, n) => (n ? Math.round((total * 100) / n) / 100 : null);
+    const round2 = (v) => (v == null || !isFinite(v) ? null : Math.round(v * 100) / 100);
     const fech = rows.filter((r) => r.estado === 'Fechado');
     const com2 = rows.filter((r) => r.v2 != null);
     const naoF = rows.filter((r) => r.estado !== 'Fechado');
-    const media2 = fech.length ? sum(fech, (r) => r.v2) / fech.length : null;
+    const media2 = avg(sum(fech, (r) => r.v2), fech.length);
     const fechC = fech.filter((r) => r.v1 != null);
-    const fech2 = sum(fech, (r) => r.v2), fech1 = fechC.length ? sum(fechC, (r) => r.v1) : null;
+    const fech2 = sum(fech, (r) => r.v2);
+    // O crescimento dos meses fechados compara só os meses que existem nos dois anos.
+    const fech2c = sum(fechC, (r) => r.v2);
+    const fech1 = fechC.length ? sum(fechC, (r) => r.v1) : null;
     const meta = A && A.meta_anual ? Number(A.meta_anual) : null;
     let crit = (A && A.criterio) || 'media';
     if (crit === 'meta' && !meta) crit = 'media';
     if (crit === 'tendencia' && !(B && fech1)) crit = 'media';
-    const ratio = fech1 ? sum(fechC, (r) => r.v2) / fech1 : null;
-    const metaRest = meta && naoF.length ? Math.max(0, meta - fech2) / naoF.length : null;
+    const ratio = fech1 ? fech2c / fech1 : null;
+    const metaRest = meta && naoF.length ? round2(Math.max(0, meta - fech2) / naoF.length) : null;
     rows.forEach((r) => {
       let e = null;
       if (r.estado !== 'Fechado') {
         if (crit === 'tendencia') e = r.v1 != null ? r.v1 * ratio : media2;
         else if (crit === 'meta') e = metaRest;
         else e = media2;
+        // Mês em curso: o valor já registado é o mínimo garantido desse mês.
+        if (r.estado === 'Em curso' && r.v2 != null) e = e == null ? r.v2 : Math.max(e, r.v2);
       }
-      r.projMes = e;
-      r.est = r.v2 == null ? e : null;
-      r.dif = (r.v2 != null && r.v1 != null) ? r.v2 - r.v1 : null;
+      r.projMes = round2(e);
+      r.est = r.v2 == null ? r.projMes : null;
+      r.dif = (r.v2 != null && r.v1 != null) ? (toC(r.v2) - toC(r.v1)) / 100 : null;
       r.cresc = (r.v2 != null && r.v1) ? r.v2 / r.v1 - 1 : null;
     });
     let a1 = 0, a2 = 0;
-    rows.forEach((r) => { a1 += r.v1 || 0; r.acum1 = (B ? a1 : null); if (r.v2 != null) { a2 += r.v2; r.acum2 = a2; } else r.acum2 = null; });
+    rows.forEach((r) => { a1 += toC(r.v1); r.acum1 = (B ? a1 / 100 : null); if (r.v2 != null) { a2 += toC(r.v2); r.acum2 = a2 / 100; } else r.acum2 = null; });
     const temB = rows.filter((r) => r.v1 != null);
     const total1 = temB.length ? sum(temB, (r) => r.v1) : null;
     const comp1 = com2.filter((r) => r.v1 != null);
     const ytd2 = sum(com2, (r) => r.v2), ytd1 = comp1.length ? sum(comp1, (r) => r.v1) : null;
     const ytd2c = sum(comp1, (r) => r.v2);
-    const media1 = temB.length ? total1 / temB.length : null;
+    const media1 = avg(total1, temB.length);
     const melhor = fech.length ? fech.reduce((b, r) => (r.v2 > b.v2 ? r : b), fech[0]) : null;
-    const projeccao = !naoF.length ? fech2 : (naoF.every((r) => r.projMes != null) ? fech2 + sum(naoF, (r) => r.projMes) : null);
+    const projeccao = !naoF.length ? fech2 : (naoF.every((r) => r.projMes != null) ? (toC(fech2) + naoF.reduce((t, r) => t + toC(r.projMes), 0)) / 100 : null);
     let acc = 0, ultrapassa = null;
-    if (total1) for (const r of com2) { acc += r.v2; if (!ultrapassa && acc > total1) ultrapassa = r.mes; }
+    if (total1) for (const r of com2) { acc += toC(r.v2); if (!ultrapassa && acc > toC(total1)) ultrapassa = r.mes; }
     const ultimo = com2.length ? com2[com2.length - 1] : null;
     const g = (a, b) => (a != null && b) ? a / b - 1 : null;
     return { ano, comp: B ? comp : null, rows, fech, com2, crit, meta,
-      R: { total1, ytd1, ytd2, ytd2c, dif_ytd: ytd1 != null ? ytd2c - ytd1 : null, cresc_ytd: g(ytd2c, ytd1),
-        fech1, fech2, cresc_fech: g(fech2, fech1), media1, media2, cresc_media: g(media2, media1),
+      R: { total1, ytd1, ytd2, ytd2c, dif_ytd: ytd1 != null ? (toC(ytd2c) - toC(ytd1)) / 100 : null, cresc_ytd: g(ytd2c, ytd1),
+        fech1, fech2, fech2c, cresc_fech: g(fech2c, fech1), media1, media2, cresc_media: g(media2, media1),
         melhor, projeccao, cresc_proj: g(projeccao, total1), progresso: projeccao ? ytd2 / projeccao : null,
-        metaPct: meta ? ytd2 / meta : null, falta: projeccao != null ? Math.max(0, projeccao - ytd2) : null,
+        metaPct: meta ? ytd2 / meta : null, falta: projeccao != null ? Math.max(0, toC(projeccao) - toC(ytd2)) / 100 : null,
         ultrapassa, ultimo, nfech: fech.length, ultimoFech: fech.length ? fech[fech.length - 1] : null } };
   }
 
@@ -361,7 +377,7 @@ export function mountPainel(root, api) {
     setPill($('k1-d'), R.cresc_ytd, B != null && R.ytd1 != null ? 'vs ' + kz(R.ytd1) + ' em ' + B + ' (mesmos meses)' : '');
     $('k2-lab').textContent = 'Meses fechados' + (R.ultimoFech ? ' · Jan–' + short(R.ultimoFech.mes) : '');
     countUp($('k2'), R.fech2, kz, animate ? 1100 : 0, 200);
-    setPill($('k2-d'), R.cresc_fech, R.fech1 != null ? 'vs ' + kz(R.fech1) : '');
+    setPill($('k2-d'), R.cresc_fech, R.fech1 != null ? 'vs ' + kz(R.fech1) + (R.fech2c !== R.fech2 ? ' (mesmos meses)' : '') : '');
     $('k3-lab').textContent = 'Média mensal ' + A;
     countUp($('k3'), R.media2, kz, animate ? 1100 : 0, 250);
     setPill($('k3-d'), R.cresc_media, R.media1 != null ? 'vs ' + kz(R.media1) + ' (' + B + ')' : '');
@@ -540,6 +556,7 @@ export function mountPainel(root, api) {
     sa.value = S.ano != null ? String(S.ano) : ''; sc.value = S.comp != null ? String(S.comp) : '';
     sa.disabled = !ys.length; sc.disabled = !ys.length;
     $('btn-pres').disabled = !ys.length;
+    $('btn-exp').disabled = !ys.length;
   }
   function defaultYears() {
     const ys = yearsList();
@@ -683,7 +700,8 @@ export function mountPainel(root, api) {
       const ob = el('input', 'ob'); ob.id = 'ed-o' + i; ob.type = 'text'; ob.autocomplete = 'off'; ob.maxLength = 200; ob.placeholder = 'Observação (opcional)';
       ob.value = Array.isArray(Y.observacoes) ? (Y.observacoes[i] || '') : ''; ob.dataset.orig = ob.value; ob.dataset.i = String(i); ob.setAttribute('aria-label', 'Observação de ' + mes);
       if (S.readOnly) { inp.disabled = true; ob.disabled = true; }
-      w.append(hd, inp, ob); return w;
+      const sv = el('button', 'sysv'); sv.type = 'button'; sv.dataset.i = String(i); sv.hidden = true;
+      w.append(hd, inp, ob, sv); return w;
     }));
     const sc = $('ed-curso');
     sc.replaceChildren(new Option('Nenhum (todos fechados)', ''), ...MESES.map((m, i) => new Option(m, String(i + 1))));
@@ -696,6 +714,7 @@ export function mountPainel(root, api) {
     edStatus(Y.actualizado ? 'Última gravação de ' + S.ed.ano + ': ' + new Date(Y.actualizado).toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' }) : '');
     $('ed-save').disabled = true;
     $('ed-del').textContent = 'Apagar ' + S.ed.ano; $('ed-del-confirm').hidden = true;
+    sysHints();
   }
   function edCheckDirty() {
     let dirty = false, bad = false;
@@ -811,19 +830,178 @@ export function mountPainel(root, api) {
       S.ed.dirty = false; edTabs(); if (S.ed.ano != null) edFill(); render(false);
     } catch (e) { ms.textContent = errMsg(e); ms.className = 'st err'; }
   });
-  $('ed-export').addEventListener('click', async () => {
-    const ms = $('ed-misc-st');
-    const rows = [['ano', 'mes_num', 'mes', 'vendas_kz', 'estado', 'observacao']];
+  $('ed-export').addEventListener('click', () => doExport('xlsx', $('ed-misc-st')));
+
+  // ---------- Vendas registadas no sistema ----------
+  function sysHints() {
+    const D = S.sys.data, ok = !!D && S.sys.ano === S.ed.ano;
+    root.querySelectorAll('#ed-grid .sysv').forEach((b) => {
+      const i = Number(b.dataset.i);
+      const n = ok ? D.counts[i] : 0;
+      b.hidden = !n;
+      if (n) b.textContent = 'Sistema: ' + kz(D.months[i]) + ' · ' + n + (n === 1 ? ' encomenda' : ' encomendas') + ' — usar';
+      b.disabled = S.readOnly;
+    });
+    $('ed-sys-fill').disabled = !ok || S.readOnly;
+    $('ed-sys-all').disabled = !ok || S.readOnly;
+  }
+  async function sysLoad() {
+    const st = $('ed-sys-st');
+    if (!S.sales || !S.sales.available) { st.textContent = (S.sales && S.sales.reason) || 'As vendas do sistema não estão disponíveis nesta vista.'; st.className = 'st err'; return; }
+    if (S.ed.ano == null) { st.textContent = 'Adicione primeiro um ano.'; st.className = 'st err'; return; }
+    const ano = S.ed.ano;
+    st.textContent = 'A ler as encomendas de ' + ano + '…'; st.className = 'st';
+    $('ed-sys-load').disabled = true;
+    try {
+      const D = await S.sales.fetch(ano, { paidOnly: $('ed-sys-modo').value === 'paid' });
+      if (dead) return;
+      S.sys = { ano, data: D };
+      const n = D.counts.reduce((a, b) => a + b, 0);
+      const tot = D.months.reduce((t, v) => t + Math.round(v * 100), 0) / 100;
+      st.textContent = n
+        ? n + (n === 1 ? ' encomenda' : ' encomendas') + ' de ' + S.sales.storeName + ' em ' + ano + ': ' + kz(tot) + ' (sem portes). Use os botões por mês ou preencha de uma vez; nada é gravado até carregar em Guardar.'
+        : 'Não há encomendas de ' + S.sales.storeName + ' em ' + ano + ' com este critério.';
+      st.className = 'st' + (n ? ' okk' : '');
+      sysHints();
+    } catch (e) {
+      st.textContent = 'Não foi possível ler as encomendas agora. Tente de novo.'; st.className = 'st err';
+    } finally { $('ed-sys-load').disabled = false; }
+  }
+  function sysApply(onlyEmpty) {
+    const D = S.sys.data;
+    if (!D || S.sys.ano !== S.ed.ano || S.readOnly) return;
+    let n = 0;
+    D.months.forEach((v, i) => {
+      if (!D.counts[i]) return; // meses sem encomendas ficam como estão (podem ter valores manuais)
+      const inp = $('ed-m' + i);
+      if (onlyEmpty && inp.value.trim()) return;
+      inp.value = inField(v); n++;
+    });
+    $('ed-sys-st').textContent = n ? n + (n === 1 ? ' mês preenchido' : ' meses preenchidos') + ' com as vendas do sistema. Reveja e carregue em Guardar.' : 'Nenhum mês alterado.';
+    $('ed-sys-st').className = 'st';
+    edCheckDirty();
+  }
+  $('ed-sys-load').addEventListener('click', sysLoad);
+  $('ed-sys-modo').addEventListener('change', () => { S.sys = { ano: null, data: null }; sysHints(); $('ed-sys-st').textContent = ''; });
+  $('ed-sys-fill').addEventListener('click', () => sysApply(true));
+  $('ed-sys-all').addEventListener('click', () => sysApply(false));
+  $('ed-grid').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.sysv'); if (!b || S.readOnly) return;
+    const D = S.sys.data, i = Number(b.dataset.i);
+    if (!D || S.sys.ano !== S.ed.ano) return;
+    $('ed-m' + i).value = inField(D.months[i]);
+    edCheckDirty();
+  });
+
+  // ---------- Exportar ----------
+  const lojaNome = () => (S.store && S.store.name) || 'Loja do Huambo';
+  const slug = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const estadoDe = (Y, i) => { const v = Y.meses ? Y.meses[i] : null; return v == null ? 'Por preencher' : (Y.mes_em_curso === i + 1 ? 'Em curso' : 'Fechado'); };
+  function exportData() {
+    const M = S.model;
+    return {
+      loja: lojaNome(), ano: M.ano, comp: M.comp, crit: M.crit, critTxt: CRIT[M.crit], meta: M.meta,
+      fonte: (S.years[M.ano] && S.years[M.ano].fonte) || '',
+      geradoEm: new Date().toLocaleString('pt-PT', { dateStyle: 'short', timeStyle: 'short' }),
+      logo: logoSrc(), rows: M.rows, R: M.R,
+    };
+  }
+  function allYearsRows() {
+    const rows = [['Loja', 'Ano', 'Mês nº', 'Mês', 'Vendas (Kz)', 'Estado', 'Observação']];
     yearsList().forEach((y) => { const Y = S.years[y]; MESES.forEach((m, i) => {
       const v = Y.meses ? Y.meses[i] : null;
-      const est = v == null ? 'Por preencher' : (Y.mes_em_curso === i + 1 ? 'Em curso' : 'Fechado');
-      const o = Array.isArray(Y.observacoes) ? (Y.observacoes[i] || '') : '';
-      rows.push([y, i + 1, m, v == null ? '' : String(v).replace('.', ','), est, o]);
+      rows.push([lojaNome(), y, i + 1, m, v == null ? null : Number(v), estadoDe(Y, i), Array.isArray(Y.observacoes) ? (Y.observacoes[i] || '') : '']);
     }); });
-    const csv = rows.map((r) => r.map((c) => { const s = String(c); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(';')).join('\r\n');
-    if (!S.downloads) { ms.textContent = 'A exportação não está disponível nesta vista.'; ms.className = 'st err'; return; }
-    try { await S.downloads.save({ filename: 'vendas-huambo.csv', data: '﻿' + csv }); ms.textContent = 'Ficheiro CSV pronto.'; ms.className = 'st okk'; }
-    catch (e) { ms.textContent = e && e.code === 'cancelled' ? 'Exportação cancelada.' : 'Não foi possível exportar agora.'; ms.className = 'st err'; }
+    return rows;
+  }
+  function xlsxSheets(d) {
+    const R = d.R, A = d.ano, B = d.comp;
+    const resumo = [
+      ['Indicador', 'Valor', 'Notas'],
+      ['Loja', d.loja, ''],
+      ['Ano', String(A), B ? 'comparado com ' + B : 'sem comparação'],
+      ['Vendas ' + A + (R.ultimo ? ' (até ' + R.ultimo.mes + ')' : ''), R.ytd2, ''],
+      ['Período comparável ' + A, R.ytd2c, 'meses com valor nos dois anos'],
+      ['Período comparável ' + (B || '—'), R.ytd1, ''],
+      ['Diferença no período comparável', R.dif_ytd, ''],
+      ['Crescimento no período comparável', R.cresc_ytd, ''],
+      ['Meses fechados ' + A, R.fech2, R.nfech + ' meses'],
+      ['Média mensal ' + A + ' (meses fechados)', R.media2, ''],
+      ['Média mensal ' + (B || '—'), R.media1, ''],
+      ['Melhor mês ' + A, R.melhor ? R.melhor.v2 : null, R.melhor ? R.melhor.mes : ''],
+      ['Total registado ' + (B || '—'), R.total1, ''],
+      ['Projecção anual ' + A, R.projeccao, 'critério: ' + d.critTxt],
+      ['Crescimento da projecção', R.cresc_proj, ''],
+      ['Falta para a projecção', R.falta, ''],
+      ['Meta anual', d.meta, d.meta ? Math.round((R.metaPct || 0) * 100) + '% atingido' : 'sem meta'],
+      ['Fonte', d.fonte || '—', ''],
+      ['Gerado em', d.geradoEm, ''],
+    ];
+    const meses = [['Mês', B ? String(B) : 'Comparação', String(A), 'Estimativa', 'Diferença', 'Crescimento', 'Acumulado ' + (B || ''), 'Acumulado ' + A, 'Estado', 'Observação']];
+    d.rows.forEach((r) => meses.push([r.mes, r.v1, r.v2, r.est, r.dif, r.cresc, r.acum1, r.acum2, r.estado, r.obs || '']));
+    meses.push(['Total', R.total1, R.ytd2, null, null, null, null, null, '', '']);
+    return [
+      { name: 'Resumo ' + A, rows: resumo, money: [1], widths: [42, 22, 34], pctRows: [7, 14] },
+      { name: 'Meses ' + A, rows: meses, money: [1, 2, 3, 4, 6, 7], pct: [5], widths: [12, 18, 18, 18, 16, 12, 18, 18, 14, 40], boldRows: [meses.length - 1] },
+      { name: 'Todos os anos', rows: allYearsRows(), money: [4], widths: [30, 8, 8, 12, 18, 14, 40] },
+    ];
+  }
+  let exporting = false;
+  async function doExport(fmt, statusEl) {
+    const st = statusEl || $('exp-st');
+    const say = (t, cls) => { st.textContent = t; st.className = 'st' + (statusEl ? '' : ' exp-st') + (cls ? ' ' + cls : ''); };
+    if (!S.model) { say('Ainda não há dados para exportar.', 'err'); return; }
+    if (!S.downloads) { say('A exportação não está disponível nesta vista.', 'err'); return; }
+    if (exporting) return;
+    exporting = true;
+    root.querySelectorAll('#exp-menu button').forEach((b) => { b.disabled = true; });
+    const d = exportData();
+    const base = 'vendas-' + slug(d.loja) + '-' + d.ano;
+    try {
+      if (fmt === 'xlsx') {
+        const sheets = xlsxSheets(d).map((sh) => {
+          // Na folha Resumo as linhas de crescimento são percentagens, não Kz.
+          if (!sh.pctRows) return sh;
+          const rows = sh.rows.map((r, i) => (sh.pctRows.includes(i) && typeof r[1] === 'number' ? [r[0], pct(r[1]), r[2]] : r));
+          return { ...sh, rows };
+        });
+        await S.downloads.save({ filename: base + '.xlsx', data: buildXlsx(sheets) });
+        say('Ficheiro Excel pronto.', 'okk');
+      } else if (fmt === 'csv') {
+        await S.downloads.save({ filename: 'vendas-' + slug(d.loja) + '-todos-os-anos.csv', data: toCsv(allYearsRows()) });
+        say('Ficheiro CSV pronto.', 'okk');
+      } else if (fmt === 'json') {
+        const anos = yearsList().map((y) => ({ ...S.years[y] }));
+        const body = { loja: d.loja, gerado_em: new Date().toISOString(), anos, resumo: { ano: d.ano, comparar: d.comp, criterio: d.crit, ...d.R } };
+        await S.downloads.save({ filename: base + '.json', data: JSON.stringify(body, null, 2) });
+        say('Ficheiro JSON pronto.', 'okk');
+      } else if (fmt === 'png') {
+        say('A desenhar a imagem…');
+        await S.downloads.save({ filename: base + '.png', data: await renderSummaryPng(d) });
+        say('Imagem pronta.', 'okk');
+      } else if (fmt === 'pdf') {
+        await printReport(d);
+        say('Relatório aberto noutra janela: escolha “Guardar como PDF” na impressão.', 'okk');
+      } else if (fmt === 'video') {
+        say('A gravar o vídeo… mantenha este separador aberto.');
+        const { blob, ext } = await renderVideo(d, (t, total) => say('A gravar o vídeo… ' + Math.floor(t) + ' de ' + Math.round(total) + ' s'));
+        await S.downloads.save({ filename: base + '.' + ext, data: blob });
+        say('Vídeo pronto (' + ext.toUpperCase() + ').', 'okk');
+      }
+    } catch (e) {
+      say((e && e.message) || 'Não foi possível exportar agora.', 'err');
+    } finally {
+      exporting = false;
+      root.querySelectorAll('#exp-menu button').forEach((b) => { b.disabled = false; });
+    }
+  }
+  $('btn-exp').addEventListener('click', () => {
+    const menu = $('exp-menu'); menu.hidden = !menu.hidden;
+    $('btn-exp').setAttribute('aria-expanded', String(!menu.hidden));
+  });
+  $('exp-menu').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button[data-fmt]'); if (!b) return;
+    doExport(b.dataset.fmt);
   });
 
   // ---------- Histórico ----------
@@ -1061,8 +1239,11 @@ export function mountPainel(root, api) {
 
   // ---------- Ligação aos dados ----------
   (async () => {
-    const { db, user, downloads } = api;
+    const { db, user, downloads, store, sales } = api;
     S.downloads = downloads;
+    S.store = store || null; S.sales = sales || null;
+    if (S.store) $('eyebrow').textContent = 'Livraria e Editora Adventista · ' + S.store.name;
+    if (!S.sales || !S.sales.available) $('ed-sys-note').textContent = (S.sales && S.sales.reason) || 'As vendas do sistema não estão disponíveis nesta vista.';
     S.db = db; S.user = user;
     try { S.uid = user ? await user.id() : null; } catch (e) { S.uid = null; }
     try { S.isOwner = user ? !!(await user.isOwner()) : false; } catch (e) { S.isOwner = false; }

@@ -319,3 +319,21 @@ details.more[open] summary { margin-bottom: 10px; }
 .wrap { max-width: none; padding: 0; }
 .pres { z-index: 60; }
 .modal { z-index: 70; }
+
+/* Exportar (abre dentro do topo: o .hero tem overflow hidden) */
+.exp { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 36rem; position: relative; z-index: 1; }
+.exp[hidden] { display: none; }
+.exp button { font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 10px; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.07); color: var(--band-fg); padding: 6px 10px; display: grid; gap: 1px; text-align: left; }
+.exp button span { font-weight: 500; font-size: 11px; color: var(--band-muted); }
+.exp button:hover { background: rgba(255,255,255,.14); }
+.exp button:disabled { opacity: .5; cursor: default; }
+.exp-st { margin: 0; color: var(--band-muted); text-align: right; position: relative; z-index: 1; min-height: 1em; }
+@media (max-width: 700px) { .exp { justify-content: flex-start; } .exp-st { text-align: left; } }
+
+/* Vendas registadas no sistema (editor) */
+.sys { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; display: grid; gap: 8px; }
+.sys-h { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.sys-h .note { margin: 0; }
+.sys-sel { font: inherit; font-size: 12px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--input); color: var(--fg); }
+.mcard .sysv { font: inherit; font-size: 11px; text-align: left; cursor: pointer; border: 1px dashed var(--teal); color: var(--teal); background: transparent; border-radius: 8px; padding: 4px 8px; }
+.mcard .sysv[hidden] { display: none; }

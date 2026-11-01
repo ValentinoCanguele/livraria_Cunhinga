@@ -3,7 +3,7 @@
     <div>
       <div class="brand">
         <span class="logo"><img alt="Ministério de Publicações — Livraria e Editora Adventista" src="__LOGO__" id="logo-img"></span>
-        <span class="eyebrow">Livraria e Editora Adventista · Loja do Huambo</span>
+        <span class="eyebrow" id="eyebrow">Livraria e Editora Adventista · Loja do Huambo</span>
       </div>
       <h1 class="h1" id="titulo">Painel de Vendas</h1>
       <p class="take" id="takeaway"><span class="loading">A carregar os dados de vendas…</span></p>
@@ -23,7 +23,20 @@
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 1h10v7H1zM5 9h2v1.5h2V12H3v-1.5h2z" fill="currentColor"/></svg>
           Modo apresentação
         </button>
+        <button class="btn ghost" id="btn-exp" type="button" aria-haspopup="menu" aria-expanded="false" disabled>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1h2v5h2L6 9 3 6h2zM1 10h10v1.5H1z" fill="currentColor"/></svg>
+          Exportar
+        </button>
       </div>
+      <div class="exp" id="exp-menu" role="menu" hidden>
+        <button type="button" role="menuitem" data-fmt="xlsx">Excel (.xlsx)<span>resumo, meses e todos os anos</span></button>
+        <button type="button" role="menuitem" data-fmt="pdf">PDF<span>relatório para imprimir ou guardar</span></button>
+        <button type="button" role="menuitem" data-fmt="png">Imagem (.png)<span>resumo com gráfico</span></button>
+        <button type="button" role="menuitem" data-fmt="video">Vídeo<span>relatório animado (~28 s)</span></button>
+        <button type="button" role="menuitem" data-fmt="csv">CSV<span>todos os anos da loja</span></button>
+        <button type="button" role="menuitem" data-fmt="json">JSON<span>dados completos</span></button>
+      </div>
+      <p class="st exp-st" id="exp-st" role="status"></p>
     </div>
   </section>
 
@@ -175,6 +188,21 @@
       <div class="fld"><label for="ed-fonte">Fonte dos dados <span>opcional</span></label><input id="ed-fonte" type="text" autocomplete="off" placeholder="ex.: Relatório mensal"></div>
     </div>
 
+    <div class="sys" id="ed-sys">
+      <div class="sys-h"><b>Vendas registadas no sistema</b><span class="note" id="ed-sys-note">Encomendas da loja: levantamentos nesta loja e entregas na sua província, sem portes e sem as canceladas.</span></div>
+      <div class="ed-actions">
+        <label class="st" for="ed-sys-modo">Contar</label>
+        <select id="ed-sys-modo" class="sys-sel">
+          <option value="paid">Só encomendas pagas</option>
+          <option value="all">Todas, excepto canceladas</option>
+        </select>
+        <button class="btn line sm" id="ed-sys-load" type="button">Ver vendas do sistema</button>
+        <button class="btn line sm" id="ed-sys-fill" type="button" disabled>Preencher meses vazios</button>
+        <button class="btn line sm" id="ed-sys-all" type="button" disabled>Substituir meses com vendas</button>
+      </div>
+      <p class="st" id="ed-sys-st" role="status"></p>
+    </div>
+
     <div class="grid12" id="ed-grid"></div>
 
     <details class="more">
@@ -189,7 +217,7 @@
     <details class="more">
       <summary>Exportar, apagar e senha</summary>
       <div class="ed-actions" style="margin-bottom:12px">
-        <button class="btn line sm" id="ed-export" type="button">Exportar CSV (todos os anos)</button>
+        <button class="btn line sm" id="ed-export" type="button">Exportar Excel (todos os anos)</button>
         <button class="btn line sm" id="ed-pass" type="button" hidden>Alterar senha de administrador</button>
       </div>
       <div class="danger-zone">

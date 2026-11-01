@@ -7,7 +7,11 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
 - **Ramo:** `claude/youthful-heisenberg-rq5gnw` (parte de `supabase/migracao`, que ainda não está no `main`).
 - **PR aberto:** [ValentinoCanguele/livraria_Cunhinga#3](https://github.com/ValentinoCanguele/livraria_Cunhinga/pull/3) para o `main`. A descrição do PR tem o resumo completo e a lista de verificação antes do merge.
 - **Supabase:** projecto "Livraria Adventista", ref `bggqkjjqbjhbjsckzopj`, organização "Colpotor" (plano grátis), região eu-north-1.
-- **Cloudflare:** ainda não há nada criado (Workers, KV e D1 vazios; R2 não activado). O site vai para o Cloudflare Pages pelo workflow `deploy-cloudflare.yml`.
+- **Cloudflare Pages:** projecto `livraria-adventista` (conta canguelev@fata.adventist.org), ramo de produção `main`.
+  - Produção em https://livraria-adventista.pages.dev, com o código do PR #3. Foi publicada à mão com o Wrangler porque o Actions está bloqueado.
+  - Cada ramo tem o seu URL de pré-visualização (`<ramo>.livraria-adventista.pages.dev`, ver `wrangler pages deployment list`). O `main` antigo (PocketBase) está em `main-pocketbase`, e esse e os ramos `cursor/*` não têm backend.
+  - Publicar à mão: `npm run build` e depois `npx wrangler@4 pages deploy dist/app/web --project-name=livraria-adventista --branch=<ramo>` (`--branch=main` vai para produção). As variáveis `VITE_SUPABASE_*` vêm de `app/web/.env`.
+  - Workers, KV, D1 e R2 continuam por usar.
 
 ## Bloqueios (só o dono da conta resolve)
 

@@ -163,3 +163,22 @@ Ainda não publicada; vai no deploy depois do merge.
   1. passar a loja de Talatona para o Huambo (pedido do dono);
   2. a migração `painel_vendas_por_loja`.
 - O painel funciona antes e depois da migração.
+
+## Coleções, slider, pagamentos e integrações (2026-11-01)
+
+- **Pagamentos** (`PaymentsTab.jsx`):
+  - subir/descer (a ordem é a do checkout) e activar ou desactivar na própria linha;
+  - eliminar pede confirmação e propõe desactivar quando há encomendas com o método ou é do sistema (`entrega`, `transferencia`); estes códigos não podem ser renomeados;
+  - código normalizado e sem repetidos; avisos quando nenhum método está activo ou há códigos repetidos.
+  - **Pendente (decisão do dono):** há 3 linhas `unitel_money` repetidas, inactivas e sem encomendas. Não foram apagadas; depois de as limpar, convém criar um índice único em `payment_methods.code`.
+- **Coleções** (`CollectionsTab.jsx`):
+  - eliminar tira os livros da coleção (antes ficavam a apontar para uma coleção que já não existia) e propõe "Ocultar";
+  - ordem, visível/oculta e destaque num clique;
+  - adicionar livros com pesquisa; endereço sem repetidos; contadores de SEO.
+- **Slider** (`SlidesTab.jsx`, migração `20261101180619_slides_agendamento`):
+  - `starts_at` e `ends_at`; a leitura pública só devolve slides activos dentro do período (quem tem `manage_catalog` vê todos), e `getHeroSlides` também filtra pelas datas;
+  - ordem, activar, tornar principal (só um de cada vez), duplicar e estado "No ar / Agendado / Terminado";
+  - aviso quando o preço do slide difere do preço do livro, que é o cobrado no checkout. Quando houver promoções nos livros, o slide pode passar a usar o preço efectivo.
+  - Testado na base de dados (transacção anulada): o visitante só vê o slide no ar; um período inválido é recusado.
+- **Integrações** (`AppsTab.jsx`): ficam só o Google Drive e o WhatsApp Business, os únicos que o servidor lê. Os interruptores sem efeito (OAuth, Maps, Contactos, Newsletter, PWA, Rastreio, SMTP) passam a uma lista com o separador onde cada um se configura. As linhas antigas em `app_integrations` continuam na base de dados, sem uso.
+- **Lojas:** revistas; já tinham pesquisa, filtros, ordem e confirmação ao eliminar.

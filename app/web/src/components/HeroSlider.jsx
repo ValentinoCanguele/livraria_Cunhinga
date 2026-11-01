@@ -65,6 +65,8 @@ function SlideMedia({ slide, eager }) {
       alt={slide.title}
       className="w-full h-full object-cover"
       loading={eager ? 'eager' : 'lazy'}
+      // Imagem externa indisponível: fica só o fundo do slide, sem ícone de imagem partida.
+      onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
     />
   );
 }

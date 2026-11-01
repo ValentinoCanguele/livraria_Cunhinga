@@ -112,7 +112,7 @@ export default function TrackOrderPage() {
                 <Input
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value.toUpperCase())}
-                  placeholder="ENC-XXXXXX"
+                  placeholder="ENC-XXXXXXXXX"
                   required
                   className="font-mono"
                 />

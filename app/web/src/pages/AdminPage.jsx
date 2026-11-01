@@ -8,6 +8,8 @@ import { sanitizeBookPayload } from '@/lib/bookSave';
 import { pbErrorMessage } from '@/lib/mediaSave';
 import BrandLogo from '@/components/BrandLogo';
 import BookFormModal from '@/components/admin/BookFormModal';
+import BooksBulkBar from '@/components/admin/BooksBulkBar';
+import { Checkbox } from '@/components/ui/checkbox';
 import SettingsTab from '@/components/admin/SettingsTab';
 import UsersTab from '@/components/admin/UsersTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
@@ -53,6 +55,7 @@ const AdminPage = () => {
   const [duplicatingBook, setDuplicatingBook] = useState(null);
   const [saving, setSaving] = useState(false);
   const [bookSearch, setBookSearch] = useState('');
+  const [selectedBookIds, setSelectedBookIds] = useState([]);
   const [bookFilter, setBookFilter] = useState('all');
 
   const [orderFilter, setOrderFilter] = useState('all');
@@ -426,10 +429,22 @@ const AdminPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  <BooksBulkBar
+                    selected={books.filter((b) => selectedBookIds.includes(b.id))}
+                    onClear={() => setSelectedBookIds([])}
+                    onDone={() => { setSelectedBookIds([]); loadAll(); }}
+                  />
                   <div className="bg-card border rounded-xl overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 text-left">
                         <tr>
+                          <th className="pl-4 w-8">
+                            <Checkbox
+                              aria-label="Seleccionar todos os livros visíveis na lista"
+                              checked={filteredBooks.length > 0 && filteredBooks.every((b) => selectedBookIds.includes(b.id))}
+                              onCheckedChange={(v) => setSelectedBookIds(v ? filteredBooks.map((b) => b.id) : [])}
+                            />
+                          </th>
                           <th className="p-4 w-14" />
                           <th className="p-4">Código</th>
                           <th className="p-4">Título</th>
@@ -444,7 +459,7 @@ const AdminPage = () => {
                       <tbody className="divide-y">
                         {books.length === 0 && (
                           <tr>
-                            <td colSpan={9} className="p-12 text-center text-muted-foreground">
+                            <td colSpan={10} className="p-12 text-center text-muted-foreground">
                               <PackageSearch className="h-10 w-10 mx-auto mb-3 opacity-40" />
                               <p className="font-medium">Nenhum livro no catálogo</p>
                               <p className="text-sm mt-1">Clique em Adicionar para publicar o primeiro livro.</p>
@@ -453,11 +468,18 @@ const AdminPage = () => {
                         )}
                         {books.length > 0 && filteredBooks.length === 0 && (
                           <tr>
-                            <td colSpan={9} className="p-10 text-center text-muted-foreground">Nenhum livro corresponde à pesquisa.</td>
+                            <td colSpan={10} className="p-10 text-center text-muted-foreground">Nenhum livro corresponde à pesquisa.</td>
                           </tr>
                         )}
                         {filteredBooks.map((b) => (
-                          <tr key={b.id} className="hover:bg-muted/30">
+                          <tr key={b.id} className={`hover:bg-muted/30 ${selectedBookIds.includes(b.id) ? 'bg-[#0ea5c9]/5' : ''}`}>
+                            <td className="pl-4">
+                              <Checkbox
+                                aria-label={`Seleccionar ${b.title}`}
+                                checked={selectedBookIds.includes(b.id)}
+                                onCheckedChange={(v) => setSelectedBookIds((prev) => (v ? [...prev, b.id] : prev.filter((id) => id !== b.id)))}
+                              />
+                            </td>
                             <td className="p-4">
                               <div className="h-12 w-9 rounded overflow-hidden bg-muted border shrink-0">
                                 {b.cover ? (

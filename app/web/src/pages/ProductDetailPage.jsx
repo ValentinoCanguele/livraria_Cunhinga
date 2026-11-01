@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getProduct, getProductQuantities, getRelatedProducts } from '@/api/EcommerceApi';
+import { getProduct, getProductQuantities, getRelatedProducts, trackBookView } from '@/api/EcommerceApi';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { shareBookOnWhatsApp } from '@/lib/whatsapp';
 import RelatedProducts from '@/components/RelatedProducts';
@@ -220,6 +220,7 @@ function ProductDetailPage() {
         setLoading(true);
         setError(null);
         const fetchedProduct = await getProduct(id);
+        trackBookView(fetchedProduct.id);
 
         try {
           const quantitiesResponse = await getProductQuantities({

@@ -385,6 +385,22 @@ export async function getLowStockBooks() {
   }
 }
 
+/** Conta uma visualização do livro (uma vez por sessão do navegador); falhas são ignoradas. */
+export function trackBookView(bookId) {
+  if (!bookId) return;
+  const key = `viewed:${bookId}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch { /* sem sessionStorage: conta na mesma */ }
+  fetch(`${APP_API_URL}/catalog/view`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ book_id: bookId }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 export async function searchProducts(query, limit = 50) {
   const q = query.trim();
   if (!q) return getProducts({ limit });

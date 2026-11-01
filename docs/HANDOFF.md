@@ -76,7 +76,7 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
    - um gestor com permissões parciais.
 3. Limpezas pendentes:
    - a Edge Function `migrar-dados` está publicada no Supabase mas não está no repositório (provavelmente de uso único). Apagá-la só com autorização do dono;
-   - testar as regras de `wishlists` e `book_reviews` na base de dados. O teste está escrito, mas o Supabase pede confirmação para o correr (cria dados fictícios numa transacção anulada no fim) e o pedido ficou sem resposta;
+   - ~~testar as regras de `wishlists` e `book_reviews`~~: testado. Cada cliente só vê e altera os seus desejos e avaliações; os visitantes lêem avaliações mas não escrevem; o nome vem do perfil (não do cliente) e "compra verificada" só é dada a quem comprou o livro;
    - publicar `firestore.rules` no Firebase, se alguma vez lá foram publicadas regras abertas.
 4. ~~Políticas de CRM com `is_staff()`~~: feito na migração `20261101170640_permissoes_crm_integracoes` (CRM com `manage_users`/`manage_marketing`; integrações e registo de comunicações só admin; ler `site_settings` exige `manage_settings`). O Storage continua com `is_staff()`.
 

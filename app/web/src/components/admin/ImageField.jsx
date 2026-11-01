@@ -7,9 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import pb from '@/lib/dataClient';
 import { normalizeImageUrl, isPersistableImageUrl } from '@/lib/imageUrl';
 import { listDriveFolderImages, openGoogleDrivePicker } from '@/lib/googleDrivePicker';
+import { uploadPublicImage } from '@/lib/mediaUpload';
 
 /**
  * Campo de imagem com URL externa, upload ou Google Drive.
+ * Upload: com `onFileChange` o formulário recebe o ficheiro e guarda-o ao submeter;
+ * com `uploadFolder` a imagem é enviada logo para o Storage e `onChange` recebe o URL público.
  */
 export default function ImageField({
   label,
@@ -23,6 +26,7 @@ export default function ImageField({
   previewClassName = 'h-24 w-24',
   driveConfig = null,
   showDrive = true,
+  uploadFolder = '',
 }) {
   const initialMode = value?.startsWith('blob:') ? 'upload' : 'url';
   const [mode, setMode] = useState(initialMode);
@@ -31,7 +35,9 @@ export default function ImageField({
   const [driveLoading, setDriveLoading] = useState(false);
   const [driveFiles, setDriveFiles] = useState([]);
   const [driveListed, setDriveListed] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
+  const uploadsNow = !!uploadFolder && !onFileChange;
 
   const defaultHint = `Formatos: PNG, JPG, WebP, SVG · Máx. ${maxSizeMB}MB · Proporção recomendada: ${aspect}`;
 
@@ -49,7 +55,7 @@ export default function ImageField({
     onFileChange?.(null);
   };
 
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
     if (!allowed.includes(file.type)) {
@@ -63,8 +69,26 @@ export default function ImageField({
     const localUrl = URL.createObjectURL(file);
     setPreview(localUrl);
     onChange(localUrl);
-    onFileChange?.(file);
     setError('');
+    if (!uploadsNow) {
+      onFileChange?.(file);
+      return;
+    }
+    const previous = value?.startsWith('blob:') ? '' : (value || '');
+    setUploading(true);
+    try {
+      const url = await uploadPublicImage(uploadFolder, file);
+      setPreview(url);
+      onChange(url);
+    } catch (err) {
+      setPreview(previous);
+      onChange(previous);
+      setError(err.message);
+    } finally {
+      setUploading(false);
+      URL.revokeObjectURL(localUrl);
+      if (inputRef.current) inputRef.current.value = '';
+    }
   };
 
   const clear = () => {
@@ -184,10 +208,14 @@ export default function ImageField({
                 className="hidden"
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
-              <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => inputRef.current?.click()}>
-                <Upload className="h-4 w-4 mr-2" /> Escolher ficheiro
+              <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => inputRef.current?.click()} disabled={uploading}>
+                {uploading
+                  ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> A enviar imagem…</>
+                  : <><Upload className="h-4 w-4 mr-2" /> Escolher ficheiro</>}
               </Button>
-              <p className="text-[10px] text-muted-foreground">O ficheiro será guardado no servidor ao submeter o formulário.</p>
+              <p className="text-[10px] text-muted-foreground">
+                {uploadsNow ? 'A imagem é enviada para o servidor assim que a escolher.' : 'O ficheiro será guardado no servidor ao submeter o formulário.'}
+              </p>
             </TabsContent>
 
             {driveEnabled && (

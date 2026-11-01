@@ -16,6 +16,7 @@ import { Megaphone, User, BookMarked, Layers, TrendingUp } from 'lucide-react';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import ImageField from '@/components/admin/ImageField';
 import { useIntegrations } from '@/hooks/useIntegrations';
+import { isUploadPending } from '@/lib/mediaUpload';
 
 const PLACEHOLDER_COVER = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&q=80';
 
@@ -41,9 +42,24 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
   if (!open) return null;
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+  const samplePages = (form.sample_pages || []).map((p) => (typeof p === 'string' ? p : p?.url || ''));
+  const setSamplePage = (i, url) => setForm((f) => {
+    const pages = (f.sample_pages || []).map((p) => (typeof p === 'string' ? p : p?.url || ''));
+    pages[i] = url;
+    return { ...f, sample_pages: pages };
+  });
+  const moveSamplePage = (i, dir) => setForm((f) => {
+    const pages = [...(f.sample_pages || [])];
+    const j = i + dir;
+    if (j < 0 || j >= pages.length) return f;
+    [pages[i], pages[j]] = [pages[j], pages[i]];
+    return { ...f, sample_pages: pages };
+  });
+  const uploadPending = isUploadPending(form.cover, form.author_photo, samplePages);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (uploadPending) return;
     onSave({
       ...form,
       price: Number(form.price) || 0,
@@ -56,7 +72,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
       benefit_bullets: Array.isArray(form.benefit_bullets)
         ? form.benefit_bullets
         : (form.benefit_bullets || '').split('\n').map((s) => s.trim()).filter(Boolean),
-      sample_pages: Array.isArray(form.sample_pages) ? form.sample_pages : [],
+      sample_pages: samplePages.filter(Boolean),
       versions: Array.isArray(form.versions) ? form.versions : [],
       preview_enabled: !!form.preview_enabled,
     });
@@ -294,6 +310,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                     aspect="1:1"
                     previewClassName="h-20 w-20"
                     driveConfig={driveImageConfig}
+                    uploadFolder="stock_books"
                   />
                   <div className="space-y-2">
                     <Label>Biografia do Autor</Label>
@@ -306,16 +323,30 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                     <Switch checked={form.preview_enabled} onCheckedChange={(v) => set('preview_enabled', v)} />
                     <Label>Permitir pré-visualização na loja</Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Páginas Introdutórias (uma URL de imagem por linha)</Label>
-                    <Textarea
-                      rows={6}
-                      value={(form.sample_pages || []).map((p) => (typeof p === 'string' ? p : p.url || '')).join('\n')}
-                      onChange={(e) => set('sample_pages', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean))}
-                      placeholder="https://exemplo.com/pagina1.jpg&#10;https://exemplo.com/pagina2.jpg"
-                      className="font-mono text-xs"
-                    />
-                    <p className="text-xs text-muted-foreground">Imagens das primeiras páginas para o leitor explorar antes de comprar.</p>
+                  <div className="space-y-3">
+                    <Label>Páginas introdutórias</Label>
+                    <p className="text-xs text-muted-foreground">Imagens das primeiras páginas para o leitor explorar antes de comprar, pela ordem em que aparecem.</p>
+                    {samplePages.map((url, i) => (
+                      <div key={i} className="p-3 rounded-xl border bg-muted/20 space-y-2">
+                        <ImageField
+                          label={`Página ${i + 1}`}
+                          value={url}
+                          onChange={(v) => setSamplePage(i, v)}
+                          aspect="3:4"
+                          previewClassName="h-24 w-[4.5rem]"
+                          driveConfig={driveImageConfig}
+                          uploadFolder="stock_books"
+                        />
+                        <div className="flex gap-1">
+                          <Button type="button" variant="ghost" size="sm" className="h-7" disabled={i === 0} onClick={() => moveSamplePage(i, -1)}>↑ Subir</Button>
+                          <Button type="button" variant="ghost" size="sm" className="h-7" disabled={i === samplePages.length - 1} onClick={() => moveSamplePage(i, 1)}>↓ Descer</Button>
+                          <Button type="button" variant="ghost" size="sm" className="h-7 text-destructive ml-auto" onClick={() => set('sample_pages', samplePages.filter((_, j) => j !== i))}>Remover página</Button>
+                        </div>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => set('sample_pages', [...samplePages, ''])}>
+                      + Adicionar página
+                    </Button>
                   </div>
                 </TabsContent>
 
@@ -371,6 +402,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                     hint="Capa: 400×600px ou superior · URL, upload ou Google Drive"
                     previewClassName="h-32 w-24"
                     driveConfig={driveImageConfig}
+                    uploadFolder="stock_books"
                   />
                 </TabsContent>
 
@@ -400,9 +432,9 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
 
           <div className="sticky bottom-0 flex gap-3 px-6 py-4 border-t bg-background/95 backdrop-blur">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" className="flex-1 btn-primary py-6 text-base" disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editing ? 'Guardar Alterações' : 'Publicar Livro'}
+            <Button type="submit" className="flex-1 btn-primary py-6 text-base" disabled={saving || uploadPending}>
+              {(saving || uploadPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {uploadPending ? 'A enviar imagens…' : editing ? 'Guardar Alterações' : 'Publicar Livro'}
             </Button>
           </div>
         </form>

@@ -16,6 +16,7 @@ import StoresTab from '@/components/admin/StoresTab';
 import ContactsManager from '@/components/ContactsManager';
 import { pageTitle } from '@/lib/brand';
 import pb from '@/lib/dataClient';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,10 @@ const AdminPage = () => {
       if (!payload.title?.trim()) {
         throw new Error('O título do livro é obrigatório.');
       }
+      // O checkout no servidor recusa livros sem preço.
+      if (!(payload.price > 0)) {
+        throw new Error('Indique um preço maior que zero; sem preço o livro não pode ser comprado.');
+      }
       if (editingBook) {
         await pb.collection('stock_books').update(editingBook.id, payload);
         toast({ title: 'Livro atualizado', description: `Código: ${payload.book_code || editingBook.book_code}` });
@@ -105,7 +110,9 @@ const AdminPage = () => {
       setDuplicatingBook(null);
       loadAll();
     } catch (err) {
-      const msg = pbErrorMessage(err);
+      const msg = err?.data?.data?.code === '23505'
+        ? `Já existe outro livro com o código ${data.book_code}. Use um código diferente.`
+        : pbErrorMessage(err);
       toast({ variant: 'destructive', title: 'Erro ao guardar livro', description: msg });
     } finally {
       setSaving(false);
@@ -125,7 +132,15 @@ const AdminPage = () => {
   };
 
   const handleDeleteBook = async (b) => {
-    if (!confirm(`Eliminar "${b.title}"? Esta acção não pode ser desfeita.`)) return;
+    // As encomendas guardam uma cópia dos itens; eliminar o livro não as apaga, mas convém avisar.
+    const { count } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .contains('items', [{ book_id: b.id }]);
+    const warning = count
+      ? `\n\nEste livro aparece em ${count} encomenda(s). As encomendas mantêm o título, mas o livro desaparece da loja, das listas de desejos e das avaliações. Para o tirar só de venda, ponha o stock a 0.`
+      : '';
+    if (!confirm(`Eliminar "${b.title}"? Esta acção não pode ser desfeita.${warning}`)) return;
     try {
       await pb.collection('stock_books').delete(b.id);
       toast({ title: 'Livro eliminado' });

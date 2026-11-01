@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ImageField, { uploadImageToRecord, removeImageFromRecord, syncUploadedImageUrl } from '@/components/admin/ImageField';
 import { sanitizeImageUrlForSave } from '@/lib/imageUrl';
 import { pbErrorMessage } from '@/lib/mediaSave';
+import { isUploadPending } from '@/lib/mediaUpload';
 import PhoneInput from '@/components/PhoneInput';
 import { formatAngolaPhone } from '@/lib/angolaPhone';
 
@@ -241,6 +242,10 @@ export default function SettingsTab() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (isUploadPending(form.login_bg_url, form.shop_bg_image_url)) {
+      toast({ title: 'A enviar imagem…', description: 'Aguarde que o envio termine e guarde de novo.' });
+      return;
+    }
     setSaving(true);
     try {
       const data = {
@@ -406,6 +411,7 @@ export default function SettingsTab() {
             hint="Fundo login: JPG/WebP · 1920×1080px recomendado"
             previewClassName="h-24 w-40"
             driveConfig={driveImageConfig}
+            uploadFolder="site_settings"
           />
         </TabsContent>
 
@@ -699,6 +705,7 @@ export default function SettingsTab() {
                   previewClassName="h-24 w-40"
                   driveConfig={driveImageConfig}
                   hint="JPG, PNG, WebP ou SVG · 1920×1080 recomendado"
+                  uploadFolder="site_settings"
                 />
                 {form.shop_bg_mode === 'video' && (
                   <div className="space-y-2">

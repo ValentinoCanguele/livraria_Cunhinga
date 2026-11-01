@@ -12,6 +12,7 @@ import RichTextEditor, { SLIDE_TEMPLATES } from '@/components/admin/RichTextEdit
 import ImageField from '@/components/admin/ImageField';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { pbErrorMessage, sanitizeUrlField } from '@/lib/mediaSave';
+import { isUploadPending } from '@/lib/mediaUpload';
 
 const emptySlide = {
   title: '',
@@ -127,6 +128,10 @@ export default function SlidesTab({ onChange }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (isUploadPending(form.image, form.book_cover)) {
+      toast({ title: 'A enviar imagem…', description: 'Aguarde que o envio termine e guarde de novo.' });
+      return;
+    }
     if (form.media_type !== 'video' && !sanitizeUrlField(form.image)) {
       toast({ variant: 'destructive', title: 'Imagem obrigatória', description: 'Adicione uma imagem de fundo ou mude o tipo para vídeo.' });
       return;
@@ -357,6 +362,7 @@ export default function SlidesTab({ onChange }) {
                     previewClassName="h-24 w-40"
                     driveConfig={driveImageConfig}
                     hint="16:9 recomendado · 1920×1080px · URL, upload ou Google Drive"
+                    uploadFolder="hero_slides"
                   />
                   {form.template === 'book_promo' && (
                     <ImageField
@@ -366,6 +372,7 @@ export default function SlidesTab({ onChange }) {
                       aspect="3:4"
                       previewClassName="h-28 w-20"
                       driveConfig={driveImageConfig}
+                      uploadFolder="hero_slides"
                     />
                   )}
                   <div className="space-y-2">

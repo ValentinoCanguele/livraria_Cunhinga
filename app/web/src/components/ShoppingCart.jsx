@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShoppingCart as ShoppingCartIcon, X, Loader2, ChevronLeft, Truck, CreditCard, MapPin, Shield, Lock, MessageCircle, ChevronDown, ChevronUp, Zap, PenLine,
+  ShoppingCart as ShoppingCartIcon, X, Loader2, ChevronLeft, Truck, CreditCard, MapPin, Shield, Lock, MessageCircle, ChevronDown, ChevronUp, PenLine,
 } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
   const { settings } = useSiteSettings();
   const { integrations } = useIntegrations();
   const waApiActive = !!(integrations?.whatsapp_business?.enabled && integrations?.whatsapp_business?.config?.configured);
-  const { cartItems, removeFromCart, updateQuantity, getCartTotal, getCartTotalCents, clearCart, refreshCart } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, getCartTotalCents, clearCart, refreshCart } = useCart();
 
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [physicalStores, setPhysicalStores] = useState([]);

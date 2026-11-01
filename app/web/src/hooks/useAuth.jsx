@@ -53,10 +53,16 @@ export const AuthProvider = ({ children }) => {
     logout: async () => {
       pb.authStore.clear();
       setUser(null);
-      // Termina também a ligação ao Google Workspace, se existir.
+      // Termina também a ligação ao Google Workspace, se existir. O Firebase só serve as
+      // ferramentas Workspace do painel: é carregado aqui, e não no arranque da loja, para
+      // não pôr 154 KB gzip no caminho crítico de quem só vem comprar um livro.
+      const tinhaGoogle = !!sessionStorage.getItem('google_access_token');
       sessionStorage.removeItem('google_access_token');
-      // Import dinâmico: o Firebase (só Google Workspace) não entra no carregamento inicial do site.
-      await import('@/lib/firebaseClient').then((m) => m.logoutFirebase()).catch(() => {});
+      if (tinhaGoogle) {
+        await import('@/lib/firebaseClient')
+          .then((m) => m.logoutFirebase())
+          .catch(() => {});
+      }
     },
     // Redirecciona para a Google; ao voltar, o Supabase cria a sessão e o perfil.
     loginWithGoogle: async (redirectPath = '/profile') => {

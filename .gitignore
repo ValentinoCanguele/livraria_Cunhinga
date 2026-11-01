@@ -18,3 +18,7 @@ client_secret_*.json
 
 # Restos locais do PocketBase (retirado do projecto; nunca voltar a enviar bases de dados)
 app/pocketbase/
+
+# Pacote original do painel de vendas (o código vive em app/web/src/painel-vendas/)
+/painel-vendas-huambo/
+/painel-vendas-huambo.zip

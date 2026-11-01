@@ -7,8 +7,10 @@
     "dev": "vite --host :: --port 3000",
     "build": "vite build --outDir ../../dist/app/web",
     "start": "vite preview --outDir ../../dist/app/web --host :: --port 3000",
-    "lint": "eslint . --quiet",
-    "lint:warn": "eslint ."
+    "lint": "eslint .",
+    "lint:warn": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -45,7 +47,7 @@
     "cmdk": "^1.1.1",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
-    "dompurify": "^3.2.6",
+    "dompurify": "^3.4.17",
     "embla-carousel-react": "^8.6.0",
     "esbuild": "^0.28.1",
     "firebase": "^12.16.0",
@@ -83,9 +85,11 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.1.0",
     "globals": "^15.14.0",
+    "jsdom": "^30.1.3",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "terser": "^5.37.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^5.0.5"
   }
 }

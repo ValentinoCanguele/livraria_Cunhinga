@@ -6,23 +6,6 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { withCacheBust } from '@/lib/imageUrl';
 import { BRAND } from '@/lib/brand';
 
-function LogoText({ light = false, siteName }) {
-  const parts = (siteName || BRAND.name).split(' ');
-  const line1 = parts.length > 1 ? parts.slice(0, -1).join(' ') : 'Livraria';
-  const line2 = parts.length > 1 ? parts[parts.length - 1] : siteName || 'ADVENTISTA';
-
-  return (
-    <div className="hidden sm:flex flex-col leading-tight">
-      <span className={cn('text-[10px] font-medium tracking-widest uppercase', light ? 'text-white/70' : 'text-muted-foreground')}>
-        {line1}
-      </span>
-      <span className={cn('text-base font-bold tracking-wide', light ? 'text-[#22d3ee]' : 'text-[#0ea5c9]')}>
-        {line2.toUpperCase()}
-      </span>
-    </div>
-  );
-}
-
 export function BrandLogo({ className, linkTo = '/', variant = 'default', showText = true }) {
   const { settings } = useSiteSettings();
   const isLight = variant === 'light';

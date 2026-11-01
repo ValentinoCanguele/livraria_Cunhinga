@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
+import {
   Loader2, Mail, MessageSquare, Terminal, CheckCircle2, XCircle, MinusCircle,
-  Trash2, RefreshCw, Search, Play, Check, Shield, Activity, Save, Key, Smartphone, BookOpen, ExternalLink
+  Trash2, RefreshCw, Search, Play, Activity, Smartphone, BookOpen
 } from 'lucide-react';
 import pb from '@/lib/dataClient';
 import { pbErrorMessage } from '@/lib/mediaSave';
@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { testWhatsAppApi, testEmailApi } from '@/lib/messaging';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import PhoneInput from '@/components/PhoneInput';

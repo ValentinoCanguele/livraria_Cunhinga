@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, Store, Search, Star, Copy } from 'lucide-react';
+import { Plus, Pencil, Trash2, LogOut, Loader2, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, Store, Search, Star, Copy } from 'lucide-react';
 import CollectionsTab from '@/components/admin/CollectionsTab';
 import SlidesTab from '@/components/admin/SlidesTab';
 import { sanitizeBookPayload } from '@/lib/bookSave';
@@ -24,7 +24,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SalesReportsPanel from '@/components/admin/SalesReportsPanel';
@@ -37,6 +36,21 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 // O painel de vendas traz o d3; só é carregado quando se abre o separador.
 const VendasHuamboTab = lazy(() => import('@/components/admin/VendasHuamboTab'));
+
+// Colunas das encomendas para a lista e os relatórios. Fica de fora o que é grande e
+// só serve numa encomenda à vez: as duas assinaturas em base64 (até 200 KB e 600 KB
+// cada) e a linha temporal. Com `select *` o painel descarregava tudo isso de todas as
+// encomendas a cada abertura.
+const ORDER_LIST_FIELDS = [
+  'id', 'order_number', 'created', 'updated', 'customer_email', 'customer_name', 'phone',
+  'items', 'total', 'shipping_cost', 'status', 'payment_status', 'payment_method',
+  'payment_method_code', 'payment_method_name', 'payment_reference', 'payment_category',
+  'delivery_status', 'tracking_number', 'carrier', 'estimated_delivery',
+  'address', 'city', 'notes', 'order_type', 'sale_channel', 'shipping_method', 'pickup_store',
+  'delivery_province', 'delivery_municipality', 'delivery_locality', 'delivery_street',
+  'delivery_reference', 'delivery_address_full', 'delivery_relative_name', 'delivery_relative_phone',
+  'delivery_recipient_name', 'delivery_confirmed_at', 'delivery_confirmed_by', 'checkout_signature_at',
+];
 
 const AdminPage = () => {
   const { user, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout } = useAuth();
@@ -82,7 +96,7 @@ const AdminPage = () => {
       const [booksList, slidesList, ordersList, lowStock] = await Promise.all([
         pb.collection('stock_books').getFullList({ sort: '-featured,title' }),
         pb.collection('hero_slides').getFullList({ sort: 'sort_order' }).catch(() => []),
-        canManageOrders ? pb.collection('orders').getFullList({ sort: '-created' }).catch(() => []) : [],
+        canManageOrders ? pb.collection('orders').getFullList({ sort: '-created', fields: ORDER_LIST_FIELDS.join(',') }).catch(() => []) : [],
         canManageCatalog ? getLowStockBooks() : [],
       ]);
       setBooks(booksList);
@@ -236,6 +250,20 @@ const AdminPage = () => {
     if (o.order_type === 'whatsapp_order' || o.sale_channel === 'whatsapp') return 'WhatsApp';
     if (o.order_type === 'online_purchase' || o.sale_channel === 'web_purchase') return 'Compra Online';
     return o.sale_channel || o.order_type || '—';
+  };
+
+  // A assinatura do comprador não vem na lista (é grande); busca-se só desta encomenda.
+  const handleReceipt = async (order) => {
+    let full = order;
+    try {
+      const { checkout_signature_data } = await pb.collection('orders')
+        .getOne(order.id, { fields: 'id,checkout_signature_data' });
+      full = { ...order, checkout_signature_data };
+    } catch (err) {
+      console.error('Assinatura do recibo:', err);
+      toast({ title: 'Recibo sem assinatura', description: 'Não foi possível ler a assinatura desta encomenda.' });
+    }
+    downloadReceipt(receiptFromOrder(full), receiptBrand(siteSettings));
   };
 
   const handlePaymentStatus = async (order, paymentStatus) => {
@@ -743,7 +771,7 @@ const AdminPage = () => {
                             )}
 
                             <div>
-                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => downloadReceipt(receiptFromOrder(o), receiptBrand(siteSettings))}>
+                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleReceipt(o)}>
                                 Emitir recibo
                               </Button>
                             </div>

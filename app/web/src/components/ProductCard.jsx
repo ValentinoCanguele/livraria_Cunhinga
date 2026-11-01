@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Loader2, Eye, MessageCircle, Grid3X3, List, Heart } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MessageCircle, Heart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';

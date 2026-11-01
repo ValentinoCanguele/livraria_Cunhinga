@@ -60,9 +60,13 @@ export default function DeliveryConfirmPanel({ orderNumber, email, order, onConf
             <> em {new Date(order.delivery_confirmed_at).toLocaleString('pt-AO')}</>
           )}
         </p>
-        {order.delivery_signature_data && (
+        {/* A assinatura só vem na resposta de quem acabou de confirmar. No seguimento
+            posterior fica só a indicação de que está registada. */}
+        {order.delivery_signature_data ? (
           <img src={order.delivery_signature_data} alt="Assinatura" className="max-h-24 border rounded bg-white p-2" />
-        )}
+        ) : order.delivery_signature_present ? (
+          <p className="text-xs text-muted-foreground">Assinatura registada e guardada com a encomenda.</p>
+        ) : null}
       </div>
     );
   }

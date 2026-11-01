@@ -15,7 +15,7 @@ import {
 } from '@/lib/googleAuth';
 import {
   FolderOpen, Calendar, Mail, Users, File, Trash2, Plus, LogOut,
-  Send, User, Clock, Search, ArrowRight, UploadCloud, Loader2, CheckCircle2, AlertCircle
+  Send, User, Clock, Search, ArrowRight, UploadCloud, Loader2, CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,7 +128,6 @@ const GoogleWorkspaceHub = () => {
       setCalendarEvents([]);
       setGmailMessages([]);
       setContacts([]);
-      setIsArchivedMode(false);
       toast({ title: 'Desconectado', description: 'A sua sessão Google foi encerrada.' });
     } catch (err) {
       console.error(err);

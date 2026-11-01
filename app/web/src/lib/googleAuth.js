@@ -75,13 +75,6 @@ export const signInWithGoogleWorkspace = async () => {
     }
     setCachedGoogleToken(credential.accessToken);
     
-    // Perform an asynchronous workspace data backup/sync to Firestore in the background
-    try {
-      syncGoogleWorkspaceToFirestore(result.user.uid, credential.accessToken).catch(console.error);
-    } catch (syncErr) {
-      console.warn('Silent background sync warning:', syncErr);
-    }
-
     return { user: result.user, token: credential.accessToken };
   } catch (error) {
     if (error && error.code === 'auth/popup-closed-by-user') {

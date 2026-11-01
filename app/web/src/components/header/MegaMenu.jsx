@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ChevronDown, BookOpen, Star, PackageCheck, Layers, Truck, Search, Info, Mail, HelpCircle,
-  RotateCcw, MessageCircle, MapPin, LayoutDashboard, ShoppingBag, Image as ImageIcon, Settings,
+  RotateCcw, MessageCircle, MapPin, ShoppingBag, Image as ImageIcon, Settings,
   Users, CreditCard, Plug, BarChart3, ArrowRight,
 } from 'lucide-react';
 import { getFeaturedProducts, getProducts } from '@/api/EcommerceApi';

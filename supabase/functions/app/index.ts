@@ -33,14 +33,41 @@ const json = (body: unknown, status = 200) =>
 // ---------------------------------------------------------------------------
 // Utilitários
 // ---------------------------------------------------------------------------
+// Limite de pedidos partilhado por todas as instâncias (migração `limites_pedidos`).
+// O limite em memória que existia aqui era por isolate: as Edge Functions escalam e
+// reciclam, por isso perdia-se a cada arranque a frio e não travava ninguém.
 const rateLimitStore: Record<string, number[]> = {};
-function checkRateLimit(bucket: string, ip: string, maxPerMinute = 30) {
+let sharedRateLimitOff = false;
+
+/** Recuo local, para o caso de a função na base de dados ainda não existir. */
+function checkRateLimitLocal(bucket: string, ip: string, maxPerMinute: number) {
   const key = `${bucket}:${ip || "anon"}`;
   const now = Date.now();
   rateLimitStore[key] = (rateLimitStore[key] || []).filter((t) => now - t < 60000);
   if (rateLimitStore[key].length >= maxPerMinute) return false;
   rateLimitStore[key].push(now);
   return true;
+}
+
+async function checkRateLimit(bucket: string, ip: string, maxPerMinute = 30): Promise<boolean> {
+  if (!sharedRateLimitOff) {
+    const { data, error } = await db.rpc("check_rate_limit", {
+      p_bucket: bucket,
+      p_client: ip || "anon",
+      p_max: maxPerMinute,
+    });
+    if (!error) return data !== false;
+    // Função em falta (migração por aplicar): usa o limite local e não volta a tentar.
+    if (error.code === "PGRST202" || /could not find the function|does not exist/i.test(error.message || "")) {
+      sharedRateLimitOff = true;
+      console.log("check_rate_limit em falta na base de dados; a usar o limite em memória.");
+    } else {
+      // Falha passageira da base de dados não pode derrubar a loja.
+      console.log("check_rate_limit:", error.message);
+      return checkRateLimitLocal(bucket, ip, maxPerMinute);
+    }
+  }
+  return checkRateLimitLocal(bucket, ip, maxPerMinute);
 }
 
 const nowISO = () => new Date().toISOString();
@@ -687,7 +714,7 @@ async function findOrderByNumberAndEmail(orderNumber: string, email: string) {
 }
 
 route("POST", "/track", async ({ body, ip }) => {
-  if (!checkRateLimit("track", ip, storeRules(await getSettings()).trackRate)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
+  if (!await checkRateLimit("track", ip, storeRules(await getSettings()).trackRate)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
   const orderNumber = String(body.orderNumber || "").trim();
   const email = normalizeEmail(body.email || "");
   if (!orderNumber || !email) throw bad("Número da encomenda e email são obrigatórios.");
@@ -702,7 +729,11 @@ route("POST", "/track", async ({ body, ip }) => {
     delivery_street: order.delivery_street || "", delivery_reference: order.delivery_reference || "",
     delivery_address_full: order.delivery_address_full || order.address || "",
     delivery_confirmed_at: order.delivery_confirmed_at || "", delivery_confirmed_by: order.delivery_confirmed_by || "",
-    delivery_recipient_name: order.delivery_recipient_name || "", delivery_signature_data: order.delivery_signature_data || "",
+    delivery_recipient_name: order.delivery_recipient_name || "",
+    // A imagem da assinatura não sai daqui: basta o número da encomenda e o email para
+    // chegar a esta rota, e o número é curto. Quem confirmou a recepção vê-a na resposta
+    // do /confirm-delivery; a equipa vê-a no painel (RLS) e no recibo.
+    delivery_signature_present: !!order.delivery_signature_data,
     tracking_number: order.tracking_number || "", carrier: order.carrier || "",
     estimated_delivery: order.estimated_delivery || "", payment_status: order.payment_status || "pending",
     timeline: order.delivery_timeline || [], created: order.created,
@@ -738,7 +769,7 @@ route("GET", "/geo/localities", async ({ url }) => {
 
 route("POST", "/confirm-delivery", async ({ body, ip }) => {
   const confirmRate = Math.max(1, Math.floor(storeRules(await getSettings()).trackRate / 2));
-  if (!checkRateLimit("confirm-delivery", ip, confirmRate)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
+  if (!await checkRateLimit("confirm-delivery", ip, confirmRate)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
   const orderNumber = String(body.orderNumber || "").trim();
   const email = normalizeEmail(body.email || "");
   const recipientName = String(body.recipientName || "").trim();
@@ -810,7 +841,7 @@ route("POST", "/delivery-event", async ({ auth, body }) => {
 route("POST", "/checkout", async ({ body: data, ip }) => {
   const settings = await getSettings();
   const rules = storeRules(settings);
-  if (!checkRateLimit("checkout", ip, rules.checkoutRate)) throw bad("Demasiadas tentativas de checkout. Aguarde um minuto.");
+  if (!await checkRateLimit("checkout", ip, rules.checkoutRate)) throw bad("Demasiadas tentativas de checkout. Aguarde um minuto.");
   const items: Row[] = data.items || [];
   if (!items.length) throw bad("Carrinho vazio.");
 
@@ -995,7 +1026,7 @@ function buildReceiptText(order: Row, siteName: string, paymentLink = "") {
 }
 
 route("POST", "/whatsapp/receipt", async ({ body, ip }) => {
-  if (!checkRateLimit("whatsapp_receipt", ip, 10)) throw bad("Demasiados pedidos. Aguarde um minuto.");
+  if (!await checkRateLimit("whatsapp_receipt", ip, 10)) throw bad("Demasiados pedidos. Aguarde um minuto.");
   const orderNumber = String(body.order_number || "").trim();
   const email = normalizeEmail(body.email || "");
   if (!orderNumber || !email) throw bad("Número da encomenda e email são obrigatórios.");
@@ -1006,7 +1037,7 @@ route("POST", "/whatsapp/receipt", async ({ body, ip }) => {
   if (!phone) return json({ sent: false, fallback: true, message: "A encomenda não tem telefone — use o link manual." });
   if (reqPhone && reqPhone !== normalizePhone(phone)) throw bad("Telefone não corresponde à encomenda.");
   const settings = await getSettings();
-  if (!checkRateLimit("whatsapp_receipt_order", order.id, storeRules(settings).receiptPerOrder)) throw bad("O recibo desta encomenda já foi enviado. Aguarde um minuto.");
+  if (!await checkRateLimit("whatsapp_receipt_order", order.id, storeRules(settings).receiptPerOrder)) throw bad("O recibo desta encomenda já foi enviado. Aguarde um minuto.");
   const config = await getWhatsAppConfig();
   if (!config) return json({ sent: false, fallback: true, message: "API WhatsApp não configurada — use link manual." });
   const text = buildReceiptText(order, settings?.site_name || "Livraria Adventista", await orderPaymentLink(order));
@@ -1048,7 +1079,7 @@ route("GET", "/push/config", async () => {
 });
 
 route("POST", "/push/subscribe", async ({ auth, body, ip }) => {
-  if (!checkRateLimit("push-subscribe", ip, 10)) throw bad("Demasiados pedidos. Aguarde um minuto.");
+  if (!await checkRateLimit("push-subscribe", ip, 10)) throw bad("Demasiados pedidos. Aguarde um minuto.");
   const endpoint = String(body.endpoint || "").trim();
   if (!/^https:\/\/[^\s]{8,1000}$/.test(endpoint)) throw bad("Endpoint inválido.");
   const keys = body.keys && typeof body.keys === "object"
@@ -1062,7 +1093,7 @@ route("POST", "/push/subscribe", async ({ auth, body, ip }) => {
 });
 
 route("POST", "/contact-message", async ({ body, ip }) => {
-  if (!checkRateLimit("contact", ip, 8)) throw bad("Demasiados pedidos. Aguarde um minuto.");
+  if (!await checkRateLimit("contact", ip, 8)) throw bad("Demasiados pedidos. Aguarde um minuto.");
   const name = String(body.name || "").trim();
   const email = normalizeEmail(body.email || "");
   const message = String(body.message || "").trim();
@@ -1176,7 +1207,7 @@ route("POST", "/contacts/campaigns/run-due", async ({ auth }) => {
 });
 
 route("POST", "/newsletter", async ({ body, ip }) => {
-  if (!checkRateLimit("newsletter", ip, 6)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
+  if (!await checkRateLimit("newsletter", ip, 6)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
   const email = normalizeEmail(body.email || "");
   if (!email) throw bad("Email obrigatório.");
   const { data } = await db.from("newsletter").select("id").ilike("email", likeExact(email)).limit(1);
@@ -1212,7 +1243,7 @@ route("GET", "/catalog/summary", async () => {
 });
 
 route("POST", "/catalog/view", async ({ body, ip }) => {
-  if (!checkRateLimit("catalog-view", ip, 60)) return json({ ok: true });
+  if (!await checkRateLimit("catalog-view", ip, 60)) return json({ ok: true });
   const bookId = String(body.book_id || body.id || "").trim();
   if (!bookId) throw bad("book_id obrigatório.");
   const { data, error } = await db.rpc("increment_book_views", { p_id: bookId });
@@ -1561,7 +1592,7 @@ function faqFallback(message: string, settings: Row | null, books: Row[]) {
 }
 
 route("POST", "/chat", async ({ body, ip }) => {
-  if (!checkRateLimit("chat", ip, 20)) throw bad("Demasiadas mensagens. Aguarde um minuto.");
+  if (!await checkRateLimit("chat", ip, 20)) throw bad("Demasiadas mensagens. Aguarde um minuto.");
   const message = String(body.message || "").trim();
   const page = String(body.page || "/").slice(0, 120);
   const history = (Array.isArray(body.history) ? body.history : []).slice(-8)

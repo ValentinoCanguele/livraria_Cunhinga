@@ -8,7 +8,8 @@
     "build": "npm run build --prefix app/web",
     "start": "npm run start --prefix app/web",
     "lint": "npm run lint --prefix app/web",
-    "deploy:site": "bash scripts/deploy-site.sh"
+    "deploy:site": "bash scripts/deploy-site.sh",
+    "test": "npm run test --prefix app/web"
   },
   "workspaces": [
     "app/web"

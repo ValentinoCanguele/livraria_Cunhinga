@@ -21,6 +21,9 @@ import { isUploadPending } from '@/lib/mediaUpload';
 
 const PLACEHOLDER_COVER = '/images/site/capa-por-definir.webp';
 
+// Código por atribuir: a base de dados gera o seguinte da numeração ao gravar (ex.: LIV-101).
+const AUTO_CODE = '(automático)';
+
 export default function BookFormModal({ open, onClose, onSave, editing, template, saving }) {
   const [form, setForm] = useState(emptyBookForm);
   const [copied, setCopied] = useState(false);
@@ -139,7 +142,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                 <div className="rounded-xl bg-card border p-4 space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" /> Código</span>
-                    <code className="font-mono text-[#0ea5c9] font-semibold">{form.book_code || autoCode}</code>
+                    <code className="font-mono text-[#0ea5c9] font-semibold">{form.book_code || AUTO_CODE}</code>
                   </div>
                   {editing && (
                     <div className="flex items-center justify-between">
@@ -152,7 +155,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground flex items-center gap-1.5"><Barcode className="h-3.5 w-3.5" /> SKU</span>
-                    <code className="font-mono text-xs">{form.sku || form.book_code || autoCode}</code>
+                    <code className="font-mono text-xs">{form.sku || form.book_code || AUTO_CODE}</code>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Stock</span>

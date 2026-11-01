@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,7 +16,6 @@ import {
 import { useWishlist } from '@/hooks/useWishlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useReviews } from '@/hooks/useReviews';
-import { signInWithGoogleWorkspace, getCachedGoogleToken, createCalendarEvent } from '@/lib/googleAuth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header.jsx';
 import { pageTitle } from '@/lib/brand';
@@ -83,6 +82,10 @@ function ProductDetailPage() {
   const handleAddLaunchToCalendar = async () => {
     try {
       setAddingCalendarEvent(true);
+      // O Google Workspace traz o SDK do Firebase (154 KB gzip). A página do livro é das
+      // mais visitadas da loja: só carrega isto quem clica em juntar ao calendário.
+      const { signInWithGoogleWorkspace, getCachedGoogleToken, createCalendarEvent } =
+        await import('@/lib/googleAuth');
       let token = getCachedGoogleToken();
       if (!token) {
         toast({

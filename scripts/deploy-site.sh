@@ -39,8 +39,9 @@ tip="$(git rev-parse "$upstream")"
 grep -q '^VITE_SUPABASE_URL=.' app/web/.env 2>/dev/null && grep -q '^VITE_SUPABASE_PUBLISHABLE_KEY=.' app/web/.env \
   || fail "app/web/.env sem VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY."
 
-echo "→ lint e build de $(git rev-parse --short HEAD) ($branch)"
+echo "→ lint, testes e build de $(git rev-parse --short HEAD) ($branch)"
 npm run lint --silent
+npm test --silent
 npm run build --silent
 
 target="main"

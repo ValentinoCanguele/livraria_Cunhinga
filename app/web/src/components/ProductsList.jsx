@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Filter, BookOpen, X, SlidersHorizontal } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Search, BookOpen, X } from 'lucide-react';
 import { ProductGrid } from '@/components/ProductCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';

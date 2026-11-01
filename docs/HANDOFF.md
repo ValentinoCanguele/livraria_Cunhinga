@@ -64,6 +64,32 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
   - Os deploys confirmam os segredos antes de começar.
   - O deploy do Cloudflare cria o projecto Pages se não existir.
 
+## Análise crítica e correcções (2026-11-01, segunda passagem)
+
+Detalhe em `docs/AUDITORIA.md`, secção 9.1. Em resumo:
+
+- **O gate de qualidade passou a existir.** O ESLint tinha `no-undef` e `no-unused-vars` em
+  `off` e corria com `--quiet`. Estão a erro, e há 14 testes (`npm test`, vitest + jsdom)
+  ligados ao `ci.yml` e ao `scripts/deploy-site.sh`. Ao ligá-lo apareceram três bugs reais —
+  entre eles o `autoCode` do `BookFormModal`, que **rebentava o formulário de livro novo**.
+  Não voltar a desligar estas regras: era por aqui que passavam os erros que só apareciam no
+  browser.
+- **Sanitização de HTML** com lista branca explícita no DOMPurify, testada contra os bypasses
+  do sanitizador antigo.
+- **`/track` já não devolve a imagem da assinatura** (só `delivery_signature_present`).
+- **O `/admin` já não descarrega todas as encomendas com `select *`**: usa `ORDER_LIST_FIELDS`
+  e lê a assinatura só da encomenda cujo recibo se emite.
+- **Carregamento inicial de 580 para 331 KB gzip.** O `manualChunks` à mão era a causa;
+  ficou só `vendor-react`. O Firebase é import dinâmico e perdeu o SDK do Firestore.
+- **Edge Function publicada** (a CLI desta máquina está autenticada, ao contrário do que a
+  primeira passagem concluiu). `/admin/users` e `/contacts/*` voltaram a responder.
+
+**Pendente, e precisa de uma decisão:** a migração `20261101231055_limites_pedidos`
+(limite de pedidos partilhado, em vez de em memória por isolate) **não está aplicada** — a
+ferramenta de aplicar migrações foi recusada nesta sessão. A Edge Function já a usa e recua
+para o limite local enquanto ela não existir, por isso não há regressão; mas até ser
+aplicada, o `/chat`, o `/checkout` e o `/track` continuam praticamente sem limite.
+
 ## Regras para continuar
 
 - **Migrações novas:** aplicar com a ferramenta `apply_migration` do Supabase. Depois ler a versão atribuída em `supabase_migrations.schema_migrations` e guardar o ficheiro com esse nome e **exactamente** o mesmo SQL. Se as versões não coincidirem, `supabase db push` no CI falha.

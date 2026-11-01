@@ -9,11 +9,11 @@ Gravidade: **Crítica · Alta · Média · Baixa**. Estado: ✅ corrigido nesta 
 | # | Achado | Gravidade | Estado |
 |---|---|---|---|
 | 1 | Sanitização de HTML contornável (injecção de código nas descrições e slides) | Crítica | ✅ |
-| 2 | Edge Function publicada desactualizada: módulo de utilizadores partido em produção | Alta | ⏳ precisa de token Supabase |
+| 2 | Edge Function publicada desactualizada: módulo de utilizadores partido em produção | Alta | ✅ publicada (2026-11-01 23:21) |
 | 3 | GitHub Actions bloqueado por pagamento (CI e deploys automáticos não correm) | Alta | ⏳ dono da conta |
 | 4 | Service worker serve HTML antigo depois de cada deploy (risco de ecrã branco) | Alta | ⏳ |
 | 5 | 100 de 102 livros sem descrição; 17 capas em branco; capas trocadas | Alta (negócio) | ⏳ conteúdo |
-| 6 | Carregamento inicial pesado (Firebase e Recharts em todas as páginas) | Média | ✅ 573 → 338 KB |
+| 6 | Carregamento inicial pesado (Firebase e Recharts em todas as páginas) | Média | ✅ 580 → 331 KB |
 | 7 | Contactos provisórios no site (telefone `+244 923 000 000`, WhatsApp vazio) | Média | ⏳ Configurações |
 | 8 | Emails de confirmação de encomenda desligados (sem SMTP) | Média | ⏳ Configurações |
 | 9 | Sem `robots.txt`, `sitemap.xml`, `favicon.ico`, etiquetas `og:` | Média | ⏳ |
@@ -21,9 +21,14 @@ Gravidade: **Crítica · Alta · Média · Baixa**. Estado: ✅ corrigido nesta 
 | 11 | 11 vulnerabilidades em dependências (10 altas, impacto prático baixo) | Média | ⏳ |
 | 12 | Stock: 96 de 102 livros esgotados ou com 1–4 unidades | Média (negócio) | ⏳ conferir |
 | 13 | API lenta (0,85–1,5 s por pedido, Supabase em Estocolmo, sem cache) | Média | ⏳ |
-| 14 | 53 botões só com ícone sem nome acessível | Baixa | ⏳ |
+| 14 | 53 botões só com ícone sem nome acessível | Baixa | ✅ |
 | 15 | Rotas de utilizadores procuram o id antes de verificar a permissão | Baixa | ⏳ |
 | 16 | Loja Talatona → Huambo e painel por loja (SQL pronto) | — | ⏳ `docs/migracoes-pendentes` |
+| 17 | Gate de qualidade inexistente: ESLint com `no-undef`/`no-unused-vars` em `off` e `--quiet`; zero testes | Crítica | ✅ |
+| 18 | Três bugs de runtime que o gate desligado escondia (criar livro no painel rebentava) | Alta | ✅ |
+| 19 | `/track` devolvia a assinatura manuscrita a quem soubesse nº da encomenda + email | Alta | ✅ |
+| 20 | `/admin` descarregava todas as encomendas com `select *`, assinaturas base64 incluídas | Média | ✅ |
+| 21 | Limite de pedidos em memória por isolate: na prática não limitava nada | Alta | ⏳ migração por aplicar |
 
 ## 1. Repositório e deploy
 
@@ -125,6 +130,74 @@ Gravidade: **Crítica · Alta · Média · Baixa**. Estado: ✅ corrigido nesta 
 - Todas as imagens têm `alt`.
 - 53 botões só com ícone não têm `aria-label` nem `title`, por exemplo em `Header.jsx` (132, 139), `ContactsManager.jsx` (769, 770, 826, 827, 855) e `LivrariaAssistant.jsx` (196).
 
+## 9.1 Segunda passagem (2026-11-01, sessão da análise crítica)
+
+### Corrigido
+
+- **O gate de qualidade não existia** (achado 17). O `eslint.config.js` tinha `no-undef` e
+  `no-unused-vars` em `off`, e o script corria com `--quiet`: a única regra a nível de erro
+  era `rules-of-hooks`. O CI verificava, na prática, só se o projecto compilava. Ligadas as
+  regras a erro e acrescentados **14 testes** (vitest + jsdom) sobre a sanitização de HTML e
+  o escape de filtros. Correm no `ci.yml` e no `scripts/deploy-site.sh` — este último é hoje
+  o único gate real, com o Actions bloqueado.
+
+- **Três bugs de runtime que o gate desligado escondia** (achado 18), todos restos de
+  remoções anteriores:
+  - `BookFormModal`: `autoCode` nunca foi definido. Todo livro novo ou duplicado começa com
+    `book_code: ''`, logo o `||` avaliava a variável e rebentava o render — **criar um livro
+    no painel estava quebrado em produção**. Passou a uma constante `AUTO_CODE`.
+  - `GoogleWorkspaceHub`: `setIsArchivedMode` não existe desde que o arquivo no Firestore
+    saiu; desligar a conta Google falhava a meio, em silêncio (o `catch` engolia).
+  - `googleAuth`: chamada a `syncGoogleWorkspaceToFirestore`, apagada com o Firestore.
+
+- **Sanitização mais fechada** (achado 1). O DOMPurify entrou com `USE_PROFILES`; passou a
+  lista branca explícita das tags que o editor do painel produz, com `ALLOWED_URI_REGEXP`
+  (só `http(s)`, `mailto`, `tel` e imagens embutidas), `FORBID_ATTR` para `srcdoc`,
+  `formaction` e `xlink:href`, e `rel="noopener noreferrer nofollow"` em todas as ligações.
+  Os testes cobrem cada bypass do sanitizador antigo — verificou-se que os seis payloads
+  passavam intactos, e que com um `<script>` partido ao meio o antigo **construía** uma tag
+  limpa.
+
+- **Assinatura manuscrita fora do `/track`** (achado 19). A rota devolvia nome, telefone,
+  telefone do parente, morada completa e a imagem da assinatura a quem apresentasse número
+  da encomenda + email — e o número é curto (prefixo + base36 do tempo + 3 caracteres).
+  Passa a devolver só `delivery_signature_present`. Quem confirma a recepção continua a ver
+  a sua assinatura na resposta do `/confirm-delivery`.
+
+- **Carga do painel** (achado 20). O `/admin` fazia `getFullList` das encomendas com
+  `select *`, incluindo `checkout_signature_data` e `delivery_signature_data` (até 200 KB e
+  600 KB por encomenda) e a linha temporal. Passa a pedir uma lista explícita de colunas
+  (`ORDER_LIST_FIELDS`); a assinatura é lida só da encomenda cujo recibo se emite. Hoje são
+  4 encomendas e as assinaturas estão vazias: era um problema latente, que morde por volta
+  da centena de encomendas.
+
+- **Carregamento inicial de 580 para 331 KB gzip** (achado 6). A causa era o próprio
+  `manualChunks`: agrupava por substring (`id.includes('react')` apanhava o `react-smooth`,
+  do recharts), partia pacotes por vários chunks, o Rollup religava-os com imports
+  estáticos e o `index.html` pré-carregava o firebase (154 KB) e o recharts (97 KB). Medido
+  com um build sem `manualChunks`: o Vite já punha o recharts dentro do chunk do AdminPage e
+  o Firebase num chunk próprio. Ficou só `vendor-react` fixo (estável entre deploys). O
+  Firebase passou a import dinâmico no logout e na página do livro, e perdeu o SDK do
+  Firestore — que estava a ser carregado em cada visita e a fazer no arranque um pedido a
+  `test/connection` que as regras do Firestore negam.
+
+- **Edge Function publicada** (achado 2). A CLI nesta máquina **está** autenticada
+  (`~/.supabase/access-token`); o 401 da primeira passagem estava desactualizado.
+  Publicada com `--no-verify-jwt`. Verificado em produção: `/admin/users` e
+  `/contacts/stats` respondem 403 ("Sem permissão") em vez de 404 ("Rota não encontrada"),
+  ou seja **o módulo de utilizadores deixou de estar partido**.
+
+### Por fazer
+
+- **Limite de pedidos partilhado** (achado 21). O limite vivia num objecto em memória de
+  cada isolate: as Edge Functions escalam e reciclam, por isso perdia-se a cada arranque a
+  frio — e é o que protege o `/chat` (gasto directo na chave de IA), o `/checkout` e o
+  `/track`. A migração `20261101231055_limites_pedidos` cria `private.rate_limits` e
+  `check_rate_limit`, e a função já a usa, **mas a migração ainda não foi aplicada**: a
+  ferramenta de aplicar migrações foi recusada nesta sessão. Enquanto não for, a função
+  detecta a falta e recua para o limite local (comportamento anterior, sem regressão).
+  Aplicar com `supabase db push` ou pelo painel.
+
 ## 10. Não verificado nesta auditoria
 
 - **Checkout real:** não foi feita nenhuma encomenda, para não criar dados nem mexer no stock.
@@ -134,7 +207,7 @@ Gravidade: **Crítica · Alta · Média · Baixa**. Estado: ✅ corrigido nesta 
 
 ## Próximos passos, por ordem
 
-1. Token Supabase da conta dona → publicar a Edge Function, aplicar `docs/migracoes-pendentes/` e correr os advisors.
+1. Aplicar a migração `limites_pedidos` e o SQL de `docs/migracoes-pendentes/`. (A Edge Function já está publicada e os advisors já correram: ver 9.1.)
 2. Desbloquear o GitHub (pagamento) → CI e deploys automáticos.
 3. Service worker: network-first no HTML.
 4. Conteúdo: descrições, capas em branco ou trocadas, stock real, contactos, SMTP.

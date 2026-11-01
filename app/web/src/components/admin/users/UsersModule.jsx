@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Loader2, Plus, Search, MoreHorizontal, Eye, Pencil, KeyRound, Ban, CheckCircle2, Trash2, UserPlus,
-  Users, UserCheck, ShoppingBag, ShieldAlert, Copy, MessageCircle, ChevronLeft, ChevronRight, RefreshCw,
+  Users, UserCheck, ShoppingBag, ShieldAlert, Copy, MessageCircle, ChevronLeft, ChevronRight, RefreshCw, Download,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -18,12 +18,38 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { listUsers, setUserSuspended, sendAccessLink, deleteUser } from '@/lib/usersApi';
+import { listUsers, listAllUsers, setUserSuspended, sendAccessLink, deleteUser } from '@/lib/usersApi';
 import UserFormDialog from './UserFormDialog';
 import UserDetailSheet from './UserDetailSheet';
 import { PersonAvatar, Pill, ROLE_BADGE, accountState, formatDate, formatKz } from './userFormat';
 
 const PER_PAGE = 20;
+
+/** CSV com ";" (abre directamente no Excel em português) e BOM para os acentos. */
+function downloadCsv(rows, filename) {
+  const cols = [
+    ['name', 'Nome'], ['email', 'Email'], ['phone', 'Telefone'], ['role', 'Tipo'], ['estado', 'Estado'],
+    ['orders_count', 'Encomendas'], ['orders_total', 'Total gasto (Kz)'], ['last_order_at', 'Última compra'],
+    ['last_sign_in_at', 'Último acesso'], ['created', 'Conta criada'],
+  ];
+  const esc = (v) => {
+    const t = v == null ? '' : String(v);
+    return /[";\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const lines = [cols.map(([, h]) => h).join(';')];
+  rows.forEach((r) => {
+    const row = { ...r, role: (ROLE_BADGE[r.role] || ROLE_BADGE.member).label, estado: accountState(r).label,
+      orders_total: Number(r.orders_total || 0).toFixed(2).replace('.', ',') };
+    lines.push(cols.map(([k]) => esc(row[k])).join(';'));
+  });
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const STATUS_FILTERS = {
   customers: [
@@ -75,6 +101,7 @@ export default function UsersModule() {
   const [data, setData] = useState({ items: [], total: 0, summary: {} });
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [formUser, setFormUser] = useState(null);
@@ -104,6 +131,19 @@ export default function UsersModule() {
   }, [scope, query, status, page, toast]);
 
   useEffect(() => { load(); }, [load]);
+
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const rows = await listAllUsers({ scope, q: query, status });
+      downloadCsv(rows, `${scope === 'team' ? 'equipa' : 'clientes'}-${new Date().toISOString().slice(0, 10)}.csv`);
+      toast({ title: 'Exportação pronta', description: `${rows.length} linha(s).` });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Exportação falhou', description: err.message });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const changeScope = (value) => { setScope(value); setStatus('all'); setPage(1); };
 
@@ -235,6 +275,9 @@ export default function UsersModule() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCsv} disabled={exporting || !data.total} title="Exportar a lista filtrada">
+            {exporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}Exportar
+          </Button>
           <Button variant="outline" size="icon" onClick={load} title="Recarregar">
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>

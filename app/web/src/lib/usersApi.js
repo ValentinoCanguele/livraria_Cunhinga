@@ -30,6 +30,17 @@ const origin = () => window.location.origin;
 export const listUsers = ({ scope = 'all', q = '', status = 'all', page = 1, perPage = 25 } = {}) =>
   call('GET', '/admin/users', { query: { scope, q, status, page, per_page: perPage } });
 
+/** Todas as linhas do filtro actual (em páginas de 100), para exportar. */
+export async function listAllUsers({ scope = 'all', q = '', status = 'all' } = {}) {
+  const items = [];
+  for (let page = 1; page <= 50; page += 1) {
+    const res = await listUsers({ scope, q, status, page, perPage: 100 });
+    items.push(...(res.items || []));
+    if (items.length >= (res.total || 0) || !(res.items || []).length) break;
+  }
+  return items;
+}
+
 export const listUserOrders = (email) => call('GET', '/admin/users/orders', { query: { email } });
 
 /** Sem palavra-passe, é gerado um link para a pessoa a definir (enviado por email se o email da loja estiver configurado). */

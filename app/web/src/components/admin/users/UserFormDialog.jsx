@@ -9,6 +9,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PERMISSIONS, ROLES, MANAGER_PERMISSIONS, DEFAULT_PERMISSIONS } from '@/lib/permissions';
 import { createUser, updateUser } from '@/lib/usersApi';
+import PhoneInput from '@/components/PhoneInput';
+import { isValidAngolaPhone, localDigits, normalizeAngolaPhone } from '@/lib/angolaPhone';
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 const emptyForm = {
   name: '',
@@ -52,7 +56,10 @@ export default function UserFormDialog({ open, onOpenChange, user, isAdmin, curr
   const submit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!form.email.trim()) return setError('Indique o email.');
+    if (!EMAIL_RE.test(form.email.trim())) return setError('Indique um email válido.');
+    // Telefone opcional; se preenchido, tem de ser um número angolano completo.
+    const phone = localDigits(form.phone) ? normalizeAngolaPhone(form.phone) : '';
+    if (phone && !isValidAngolaPhone(phone)) return setError('O telefone deve ter 9 dígitos e começar por 9 (ex.: +244 923 000 000).');
     if (form.password && form.password.length < 8) return setError('A palavra-passe deve ter pelo menos 8 caracteres.');
     setSaving(true);
     try {
@@ -60,7 +67,7 @@ export default function UserFormDialog({ open, onOpenChange, user, isAdmin, curr
       if (isEdit) {
         const patch = {};
         if (form.name !== (user.name || '')) patch.name = form.name;
-        if (form.phone !== (user.phone || '')) patch.phone = form.phone;
+        if (phone !== (user.phone || '')) patch.phone = phone;
         if (form.email.trim().toLowerCase() !== (user.email || '').toLowerCase()) patch.email = form.email;
         if (canEditRole) {
           if (form.role !== user.role) patch.role = form.role;
@@ -72,14 +79,14 @@ export default function UserFormDialog({ open, onOpenChange, user, isAdmin, curr
         result = await createUser({
           name: form.name,
           email: form.email,
-          phone: form.phone,
+          phone,
           role: isAdmin ? form.role : 'member',
           permissions: form.role === 'manager' ? form.permissions : undefined,
           password: form.password || undefined,
           send_link: form.password ? form.sendLink : true,
         });
       }
-      onSaved?.(result, { created: !isEdit, name: form.name, email: form.email, phone: form.phone });
+      onSaved?.(result, { created: !isEdit, name: form.name, email: form.email, phone });
       onOpenChange(false);
     } catch (err) {
       setError(err.message);
@@ -112,7 +119,7 @@ export default function UserFormDialog({ open, onOpenChange, user, isAdmin, curr
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="uf-phone">Telefone</Label>
-              <Input id="uf-phone" value={form.phone} onChange={(e) => set({ phone: e.target.value })} placeholder="+244 9XX XXX XXX" maxLength={40} />
+              <PhoneInput id="uf-phone" value={form.phone} onChange={(phone) => set({ phone })} />
             </div>
 
             {!isEdit && (

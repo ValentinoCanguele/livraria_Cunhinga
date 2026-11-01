@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Mail, Phone, ShoppingBag, CalendarClock, LogIn, KeyRound } from 'lucide-react';
+import { Loader2, Mail, Phone, ShoppingBag, CalendarClock, LogIn, KeyRound, MessageCircle, Copy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { buildWhatsAppUrl } from '@/lib/whatsapp';
+import { displayAngolaPhone, localDigits } from '@/lib/angolaPhone';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { PERMISSIONS } from '@/lib/permissions';
 import { listUserOrders } from '@/lib/usersApi';
@@ -64,6 +67,32 @@ export default function UserDetailSheet({ person, open, onOpenChange, actions })
         <div className="mt-5 space-y-5">
           {actions}
 
+          {/* Contacto rápido */}
+          <div className="flex flex-wrap gap-2">
+            {localDigits(person.phone).length === 9 && (
+              <>
+                <Button asChild size="sm" variant="outline">
+                  <a href={buildWhatsAppUrl(person.phone, `Olá ${person.name || ''}!`)} target="_blank" rel="noreferrer">
+                    <MessageCircle className="h-4 w-4 mr-1" />WhatsApp
+                  </a>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <a href={`tel:+244${localDigits(person.phone)}`}><Phone className="h-4 w-4 mr-1" />Ligar</a>
+                </Button>
+              </>
+            )}
+            {person.email && (
+              <>
+                <Button asChild size="sm" variant="outline">
+                  <a href={`mailto:${person.email}`}><Mail className="h-4 w-4 mr-1" />Email</a>
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => navigator.clipboard?.writeText(person.email)}>
+                  <Copy className="h-4 w-4 mr-1" />Copiar email
+                </Button>
+              </>
+            )}
+          </div>
+
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded-lg border p-2">
               <p className="text-lg font-bold">{person.orders_count || 0}</p>
@@ -81,7 +110,7 @@ export default function UserDetailSheet({ person, open, onOpenChange, actions })
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Info icon={Mail} label="Email">{person.email || '—'}</Info>
-            <Info icon={Phone} label="Telefone">{person.phone || '—'}</Info>
+            <Info icon={Phone} label="Telefone">{displayAngolaPhone(person.phone)}</Info>
             {person.has_account && <Info icon={CalendarClock} label="Conta criada">{formatDate(person.created, true)}</Info>}
             {person.has_account && <Info icon={LogIn} label="Último acesso">{formatDate(person.last_sign_in_at, true)}</Info>}
           </div>

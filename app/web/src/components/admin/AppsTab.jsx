@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  Loader2, Mail, MessageSquare, Terminal, CheckCircle2, 
+  Loader2, Mail, MessageSquare, Terminal, CheckCircle2, XCircle, MinusCircle,
   Trash2, RefreshCw, Search, Play, Check, Shield, Activity, Save, Key, Smartphone, BookOpen, ExternalLink
 } from 'lucide-react';
 import pb from '@/lib/dataClient';
-import { db } from '@/lib/firebaseClient';
-import { collection, getDocs, query, orderBy, limit, deleteDoc, doc, addDoc } from 'firebase/firestore';
+import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { Button } from '@/components/ui/button';
@@ -13,9 +12,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { testWhatsAppApi } from '@/lib/messaging';
+import { testWhatsAppApi, testEmailApi } from '@/lib/messaging';
+import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import PhoneInput from '@/components/PhoneInput';
-import { triggerOrderNotifications } from '@/lib/notifications';
+
+// Estado de cada envio, tal como a Edge Function "app" o grava em notification_logs.
+const LOG_STATUS = {
+  sent: { label: 'Enviado', icon: CheckCircle2, badge: 'bg-emerald-500/10 text-emerald-600', dot: 'bg-emerald-400', text: 'text-emerald-400' },
+  failed: { label: 'Falhou', icon: XCircle, badge: 'bg-red-500/10 text-red-600', dot: 'bg-red-400', text: 'text-red-400' },
+  skipped: { label: 'Não enviado', icon: MinusCircle, badge: 'bg-amber-500/10 text-amber-700', dot: 'bg-amber-400', text: 'text-amber-400' },
+};
+
+const LOG_CONTEXT = {
+  order: 'Encomenda',
+  receipt: 'Recibo',
+  test: 'Teste',
+  contact: 'Contacto',
+  campaign: 'Campanha',
+};
 
 const DEFAULT_APPS = [
   { name: 'Google OAuth', code: 'google_oauth', description: 'Login com conta Google — feito pelo Firebase Authentication', icon: '🔐' },
@@ -341,20 +355,20 @@ export default function AppsTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Load Firestore Logs
+  // Registo de comunicações (tabela notification_logs no Supabase, escrita pela Edge Function).
   const loadLogs = async () => {
     setLoadingLogs(true);
     try {
-      const q = query(collection(db, 'notification_logs'), orderBy('created', 'desc'), limit(50));
-      const querySnapshot = await getDocs(q);
-      const fetched = [];
-      querySnapshot.forEach((docSnap) => {
-        fetched.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      setLogs(fetched);
+      const { data, error } = await supabase
+        .from('notification_logs')
+        .select('*')
+        .order('created', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setLogs(data || []);
     } catch (e) {
       console.error('Error loading notification logs:', e);
-      toast({ variant: 'destructive', title: 'Erro de Leitura', description: 'Não foi possível carregar os logs do Firestore.' });
+      toast({ variant: 'destructive', title: 'Erro de Leitura', description: 'Não foi possível carregar o registo de comunicações.' });
     } finally {
       setLoadingLogs(false);
     }
@@ -394,45 +408,40 @@ export default function AppsTab() {
   const clearAllLogs = async () => {
     if (!window.confirm('Tem a certeza de que deseja apagar todo o histórico de logs de notificações?')) return;
     try {
-      const q = query(collection(db, 'notification_logs'), limit(100));
-      const querySnapshot = await getDocs(q);
-      const deletePromises = [];
-      querySnapshot.forEach((docSnap) => {
-        deletePromises.push(deleteDoc(doc(db, 'notification_logs', docSnap.id)));
-      });
-      await Promise.all(deletePromises);
+      // O Supabase exige um filtro em DELETE; "id <> ''" abrange todos os registos.
+      const { error } = await supabase.from('notification_logs').delete().neq('id', '');
+      if (error) throw error;
       setLogs([]);
-      toast({ title: 'Limpeza Concluída', description: 'Todos os logs do Firestore foram apagados.' });
+      toast({ title: 'Limpeza Concluída', description: 'O registo de comunicações foi apagado.' });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro ao apagar', description: err.message });
     }
   };
 
-  // Run a quick simulation of order confirmation notifications
-  const runTestSimulation = async (type) => {
+  // Envio de teste real através da Edge Function; o resultado fica no registo.
+  const runTestSend = async (type) => {
+    if (!pb.authStore.token) {
+      toast({ variant: 'destructive', title: 'Sessão expirada', description: 'Inicie sessão novamente para enviar um teste.' });
+      return;
+    }
+    const isEmail = type === 'email';
+    const target = window.prompt(
+      isEmail ? 'Email que vai receber o teste:' : 'Número de WhatsApp que vai receber o teste (ex.: +244 923 000 000):',
+      isEmail ? (pb.authStore.model?.email || '') : '',
+    );
+    if (!target || !target.trim()) return;
+
     setTestingType(type);
     try {
-      const mockOrder = {
-        order_number: `TST-${Math.floor(100000 + Math.random() * 900000)}`,
-        customer_name: 'Valentino Canguele',
-        customer_email: 'ValentinoCanguele@gmail.com',
-        phone: '+244 923 000 000',
-        shipping_cost: 1500,
-        total: 12500,
-        items: [
-          { title: 'O Grande Conflito', quantity: 1, price: 6000 },
-          { title: 'Caminho Para Cristo', quantity: 1, price: 5000 }
-        ]
-      };
-
-      // Enable the specific integration temporarily in our trigger if needed or run the trigger directly
-      await triggerOrderNotifications(mockOrder);
-      toast({ title: 'Teste Concluído', description: `Notificação de ${type === 'email' ? 'E-mail SMTP' : 'WhatsApp'} simulada com sucesso.` });
-      await loadLogs();
+      const result = isEmail
+        ? await testEmailApi(target.trim(), pb.authStore.token)
+        : await testWhatsAppApi(target.trim(), pb.authStore.token);
+      toast({ title: 'Teste enviado', description: result.message });
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Erro no Teste', description: err.message });
+      toast({ variant: 'destructive', title: 'Teste falhou', description: err.message });
     } finally {
       setTestingType(null);
+      await loadLogs();
     }
   };
 
@@ -442,7 +451,8 @@ export default function AppsTab() {
       (log.customer_name || '').toLowerCase().includes(searchLower) ||
       (log.recipient || '').toLowerCase().includes(searchLower) ||
       (log.order_number || '').toLowerCase().includes(searchLower) ||
-      (log.type || '').toLowerCase().includes(searchLower)
+      (log.type || '').toLowerCase().includes(searchLower) ||
+      (log.status || '').toLowerCase().includes(searchLower)
     );
   });
 
@@ -543,24 +553,24 @@ export default function AppsTab() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/20 p-4 rounded-xl border border-border">
             <div className="space-y-1">
               <h3 className="font-bold text-sm md:text-base text-foreground">Relatório de Comunicações em Tempo Real</h3>
-              <p className="text-xs text-muted-foreground">Histórico de e-mails SMTP e mensagens WhatsApp oficiais enviadas via Firestore.</p>
+              <p className="text-xs text-muted-foreground">Histórico real de emails e mensagens WhatsApp enviados pelo servidor (últimos 50).</p>
             </div>
             
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => runTestSimulation('email')}
+                onClick={() => runTestSend('email')}
                 disabled={!!testingType}
                 className="text-xs font-semibold border-sky-200 text-sky-700 bg-sky-50 hover:bg-sky-100 flex items-center gap-1.5"
               >
                 {testingType === 'email' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
-                Testar Envio SMTP
+                Testar Email
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => runTestSimulation('whatsapp')}
+                onClick={() => runTestSend('whatsapp')}
                 disabled={!!testingType}
                 className="text-xs font-semibold border-teal-200 text-teal-700 bg-teal-50 hover:bg-teal-100 flex items-center gap-1.5"
               >
@@ -596,13 +606,15 @@ export default function AppsTab() {
             <div className="text-center py-12 border rounded-xl bg-card">
               <Mail className="h-8 w-8 mx-auto text-muted-foreground mb-2 stroke-[1.5]" />
               <p className="font-bold text-sm">Nenhum log encontrado</p>
-              <p className="text-xs text-muted-foreground max-w-xs mx-auto mt-1">Realize uma compra de teste ou clique em "Testar Envio SMTP" para disparar comunicações automáticas.</p>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto mt-1">Os envios aparecem aqui depois de uma encomenda ou de um teste em "Testar Email" / "Testar WhatsApp API".</p>
             </div>
           ) : (
             <div className="space-y-3">
               {filteredLogs.map((log) => {
                 const isEmail = log.type === 'email';
                 const isExpanded = expandedLogId === log.id;
+                const status = LOG_STATUS[log.status] || LOG_STATUS.skipped;
+                const StatusIcon = status.icon;
 
                 return (
                   <div key={log.id} className="border rounded-xl bg-card overflow-hidden hover:border-primary/40 transition-colors">
@@ -632,12 +644,12 @@ export default function AppsTab() {
                             {new Date(log.created).toLocaleDateString('pt-AO')} às {new Date(log.created).toLocaleTimeString('pt-AO')}
                           </p>
                           <p className="text-[9px] text-[#0ea5c9] font-mono font-bold uppercase tracking-wider">
-                            {isEmail ? 'ESMTP Relay' : 'Meta API Hub'}
+                            {LOG_CONTEXT[log.context] || log.context}{log.provider ? ` · ${log.provider}` : ''}
                           </p>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-500/10 text-emerald-600 font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Enviado
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${status.badge}`}>
+                          <StatusIcon className="h-3 w-3" />
+                          {status.label}
                         </span>
                       </div>
                     </div>
@@ -649,10 +661,10 @@ export default function AppsTab() {
                         <div className="grid sm:grid-cols-2 gap-4 text-xs">
                           <div>
                             <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">Assunto / Endpoint</p>
-                            <p className="font-bold text-foreground">{log.subject}</p>
+                            <p className="font-bold text-foreground">{log.subject || (isEmail ? 'Sem assunto' : 'Mensagem WhatsApp')}</p>
                           </div>
                           <div>
-                            <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">ID do Registo Firestore</p>
+                            <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-1">ID do Registo</p>
                             <p className="font-mono text-muted-foreground break-all">{log.id}</p>
                           </div>
                         </div>
@@ -662,15 +674,15 @@ export default function AppsTab() {
                           <div className="flex items-center justify-between text-xs text-muted-foreground bg-slate-900 text-slate-200 px-3 py-1.5 rounded-t-lg font-mono">
                             <span className="flex items-center gap-1.5">
                               <Terminal className="h-3.5 w-3.5 text-sky-400" />
-                              {isEmail ? 'SMTP PROTOCOL INTERACTION' : 'WHATSAPP CLOUD API LOGS'}
+                              {isEmail ? 'RESPOSTA DO SERVIDOR DE EMAIL' : 'RESPOSTA DA WHATSAPP CLOUD API'}
                             </span>
-                            <span className="text-[10px] text-emerald-400 font-extrabold flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
-                              STATUS: OK (250)
+                            <span className={`text-[10px] font-extrabold flex items-center gap-1 ${status.text}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`}></span>
+                              {(log.status || '').toUpperCase()}
                             </span>
                           </div>
                           <pre className="p-4 bg-slate-950 text-slate-200 rounded-b-lg text-[10.5px] font-mono leading-relaxed overflow-x-auto border border-slate-800 whitespace-pre-wrap max-h-60 shadow-inner">
-                            {log.logs || 'Sem logs adicionais disponíveis.'}
+                            {log.detail || 'Sem detalhes registados.'}
                           </pre>
                         </div>
 
@@ -683,7 +695,7 @@ export default function AppsTab() {
                           {isEmail ? (
                             <div 
                               className="border rounded p-3 bg-white text-black text-xs overflow-auto max-h-80 shadow-xs"
-                              dangerouslySetInnerHTML={{ __html: log.content }}
+                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(log.content) }}
                             />
                           ) : (
                             <div className="p-3 rounded-lg bg-teal-50/50 border border-teal-100 text-xs text-slate-700 leading-relaxed max-w-md font-medium">

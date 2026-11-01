@@ -55,3 +55,17 @@ export async function testWhatsAppApi(phone, token) {
   if (!res.ok) throw new Error(data.message || 'Teste falhou');
   return data;
 }
+
+export async function testEmailApi(to, token) {
+  const res = await fetch(`${APP_API_URL}/admin/email/test`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ to }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Teste falhou');
+  return data;
+}

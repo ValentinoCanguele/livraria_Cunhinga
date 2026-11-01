@@ -23,7 +23,6 @@ import { openWhatsAppOrder } from '@/lib/whatsapp';
 import { calcShippingCents, SHIPPING_METHODS, getShippingLabel } from '@/lib/shipping';
 import { saveLastOrder } from '@/lib/receipt';
 import AngolaAddressSelector, { validateAngolaAddress, angolaAddressToPayload } from '@/components/AngolaAddressSelector';
-import { triggerOrderNotifications } from '@/lib/notifications';
 import SignaturePad from '@/components/SignaturePad';
 import PhoneInput from '@/components/PhoneInput';
 import { normalizeAngolaPhone, isValidAngolaPhone } from '@/lib/angolaPhone';
@@ -269,8 +268,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
           signature: checkoutSignature || ''
         };
         await setDoc(doc(db, 'orders', orderId), orderData);
-        // Desencadear notificações automáticas (SMTP / WhatsApp Business API)
-        await triggerOrderNotifications(orderData);
+        // O email e o WhatsApp de confirmação são enviados pela Edge Function no /checkout.
       } catch (firestoreErr) {
         console.warn('Failed to sync order to Firestore:', firestoreErr);
       }

@@ -16,7 +16,11 @@ import { checkPocketBaseHealth } from '@/lib/pbAuth';
 
 const LoginPage = () => {
   const location = useLocation();
-  const redirectTo = location.state?.from || null;
+  // ?redirect= só aceita caminhos internos (evita redireccionar para outros sites).
+  const redirectParam = new URLSearchParams(location.search).get('redirect');
+  const redirectTo = location.state?.from || (redirectParam?.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : null);
+  // Páginas fora da app React (ex.: /painel-vendas) precisam de navegação completa.
+  const goTo = (path) => (path.startsWith('/painel-vendas') ? window.location.assign(path) : navigate(path));
 
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState(() => sessionStorage.getItem('livraria_login_email') || '');
@@ -42,7 +46,7 @@ const LoginPage = () => {
 
   const afterAuthNavigate = (authRecord) => {
     if (redirectTo) {
-      navigate(redirectTo);
+      goTo(redirectTo);
       return;
     }
     const role = authRecord?.role;
@@ -93,7 +97,7 @@ const LoginPage = () => {
       toast.success('Autenticado via Google!', {
         description: 'Sessão iniciada de forma rápida e segura.',
       });
-      navigate(redirectTo || '/profile');
+      goTo(redirectTo || '/profile');
     } catch (err) {
       const cancelled = err?.code === 'auth/popup-closed-by-user';
       if (!cancelled) {

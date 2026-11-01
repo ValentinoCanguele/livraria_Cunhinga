@@ -30,6 +30,10 @@ export default defineConfig({
     emptyOutDir: true,
     chunkSizeWarningLimit: 600,
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        'painel-vendas': path.resolve(__dirname, 'painel-vendas.html'),
+      },
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {

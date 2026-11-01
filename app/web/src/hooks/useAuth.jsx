@@ -37,16 +37,19 @@ export const AuthProvider = ({ children }) => {
     },
     signup: async (email, password, name) => {
       const identity = normalizeLoginEmail(email);
-      await pb.collection('users').create({
-        email: identity,
-        password,
-        passwordConfirm: password,
-        name: name.trim(),
-        role: 'member',
-      });
-      const authData = await pb.collection('users').authWithPassword(identity, password);
-      setUser(authData.record);
-      return authData;
+      try {
+        const created = await pb.collection('users').create({
+          email: identity,
+          password,
+          passwordConfirm: password,
+          name: name.trim(),
+        });
+        if (created?.needsConfirmation) return { needsConfirmation: true, email: identity };
+        setUser(created);
+        return { record: created };
+      } catch (err) {
+        throw new Error(parsePbAuthError(err));
+      }
     },
     logout: async () => {
       pb.authStore.clear();

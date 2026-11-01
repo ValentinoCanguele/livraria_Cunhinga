@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Loader2, Mail, Lock, User, ArrowRight, Eye, EyeOff, ShieldCheck, Server, AlertCircle } from 'lucide-react';
+import { Loader2, Mail, Lock, User, ArrowRight, Eye, EyeOff, ShieldCheck, Server, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,6 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 import BrandLogo from '@/components/BrandLogo';
 import { pageTitle } from '@/lib/brand';
 import { withCacheBust } from '@/lib/imageUrl';
-import { checkPocketBaseHealth } from '@/lib/pbAuth';
 
 const LoginPage = () => {
   const location = useLocation();
@@ -26,16 +25,10 @@ const LoginPage = () => {
   const [name, setName] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [serverOk, setServerOk] = useState(null);
+  const [pendingConfirmation, setPendingConfirmation] = useState('');
   const { login, signup, loginWithGoogle } = useAuth();
   const { settings } = useSiteSettings();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    checkPocketBaseHealth().then(setServerOk);
-    const interval = setInterval(() => checkPocketBaseHealth().then(setServerOk), 20000);
-    return () => clearInterval(interval);
-  }, []);
 
   const bgImage = withCacheBust(
     settings.login_bg_url || '/images/site/login-fundo.webp',
@@ -57,31 +50,33 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (serverOk === false) {
-      toast.error('Servidor offline', {
-        description: 'Não foi possível contactar o servidor. Verifique a ligação à internet.',
-      });
-      return;
-    }
     setLoading(true);
+    setPendingConfirmation('');
     try {
       sessionStorage.setItem('livraria_login_email', email.trim());
       const authData = mode === 'login'
         ? await login(email, password)
         : await signup(email, password, name);
+      if (authData?.needsConfirmation) {
+        setPendingConfirmation(authData.email);
+        setMode('login');
+        setPassword('');
+        toast.success('Conta criada', { description: 'Abra o email que enviámos e confirme a conta para poder entrar.' });
+        return;
+      }
       if (mode === 'login') {
         toast.success('Sessão iniciada com sucesso!', {
           description: `Bem-vindo de volta, ${authData.record?.name || 'utilizador'}!`,
         });
       } else {
         toast.success('Conta criada com sucesso!', {
-          description: `Seja muito bem-vindo, ${name}!`,
+          description: `Seja muito bem-vindo, ${name.trim()}!`,
         });
       }
       afterAuthNavigate(authData.record);
     } catch (err) {
-      toast.error('Erro de autenticação', {
-        description: err.message || 'Verifique se as suas credenciais de e-mail e palavra-passe estão corretas.',
+      toast.error(mode === 'login' ? 'Não foi possível entrar' : 'Não foi possível criar a conta', {
+        description: err.message || 'Verifique o email e a palavra-passe.',
       });
     } finally {
       setLoading(false);
@@ -135,19 +130,17 @@ const LoginPage = () => {
                     {mode === 'login' ? 'Aceda à sua conta de cliente ou administrador.' : 'Registe-se em segundos.'}
                   </p>
                 </div>
-                <div className={`flex items-center gap-1.5 text-[10px] font-medium px-2 py-1 rounded-full border ${serverOk ? 'text-green-700 bg-green-500/10 border-green-500/30' : serverOk === false ? 'text-red-700 bg-red-500/10 border-red-500/30' : 'text-muted-foreground'}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${serverOk ? 'bg-green-500' : serverOk === false ? 'bg-red-500' : 'bg-muted-foreground animate-pulse'}`} />
-                  {serverOk ? 'Servidor OK' : serverOk === false ? 'Servidor offline' : 'A verificar...'}
-                </div>
               </div>
 
-              {serverOk === false && (
-                <div className="mb-4 flex gap-2 text-xs text-amber-900 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <p>Não foi possível contactar o servidor. Verifique a ligação à internet e tente novamente.</p>
+              {pendingConfirmation && (
+                <div className="mb-4 flex gap-2 text-xs text-sky-900 dark:text-sky-200 bg-sky-500/10 border border-sky-500/30 rounded-lg p-3" role="status">
+                  <MailCheck className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p>Enviámos um link de confirmação para <strong>{pendingConfirmation}</strong>. Depois de confirmar, entre com o email e a palavra-passe.</p>
                 </div>
               )}
 
+              {settings.google_oauth_enabled && (
+              <>
               <Button
                 type="button"
                 variant="outline"
@@ -168,6 +161,8 @@ const LoginPage = () => {
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
                 <div className="relative flex justify-center text-xs"><span className="bg-card px-2 text-muted-foreground">ou com email</span></div>
               </div>
+              </>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {mode === 'signup' && (
@@ -175,7 +170,7 @@ const LoginPage = () => {
                     <Label htmlFor="name">Nome</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="pl-9 h-11" required />
+                      <Input id="name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className="pl-9 h-11" required maxLength={100} />
                     </div>
                   </div>
                 )}
@@ -190,7 +185,7 @@ const LoginPage = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-9 h-11"
-                      placeholder="admin@livraria.ao"
+                      placeholder="o.seu.email@exemplo.com"
                       required
                     />
                   </div>
@@ -224,7 +219,10 @@ const LoginPage = () => {
                     </button>
                   </div>
                 </div>
-                <Button type="submit" className="w-full btn-primary py-6 text-base" disabled={loading || serverOk === false}>
+                {mode === 'signup' && (
+                  <p className="text-[11px] text-muted-foreground -mt-2">Mínimo de 8 caracteres.</p>
+                )}
+                <Button type="submit" className="w-full btn-primary py-6 text-base" disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />}
                   {mode === 'login' ? 'Entrar' : 'Criar Conta'}
                 </Button>
@@ -232,7 +230,7 @@ const LoginPage = () => {
 
               <p className="text-center text-sm text-muted-foreground mt-6">
                 {mode === 'login' ? 'Não tem conta?' : 'Já tem conta?'}{' '}
-                <button type="button" onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="text-[#0ea5c9] font-medium hover:underline">
+                <button type="button" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setPendingConfirmation(''); }} className="text-[#0ea5c9] font-medium hover:underline">
                   {mode === 'login' ? 'Registe-se' : 'Entrar'}
                 </button>
               </p>

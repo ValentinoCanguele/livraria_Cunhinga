@@ -509,9 +509,8 @@ async function createUser(data) {
   });
   if (error) throw translateAuthError(error);
   if (!result.user) throw new DataError('Não foi possível criar a conta.');
-  if (!result.session) {
-    throw new DataError('Conta criada. Confirme o seu email (enviámos um link) e depois entre.', 400);
-  }
+  // Com a confirmação de email activa, o Supabase cria a conta mas não abre sessão.
+  if (!result.session) return { needsConfirmation: true, email };
   const record = await loadProfile(result.user);
   setAuth(result.session.access_token, record);
   return record;

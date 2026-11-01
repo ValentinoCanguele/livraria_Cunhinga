@@ -1,5 +1,3 @@
-import { APP_API_URL } from '@/lib/supabaseClient';
-
 export function normalizeLoginEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
@@ -15,14 +13,4 @@ export function parsePbAuthError(err) {
   if (message) return message;
   if (err?.status === 400) return 'Email ou palavra-passe incorrectos.';
   return 'Não foi possível autenticar. Tente novamente.';
-}
-
-/** Verifica se a API (Supabase Edge Function) responde. */
-export async function checkPocketBaseHealth() {
-  try {
-    const res = await fetch(`${APP_API_URL}/health`, { method: 'GET', signal: AbortSignal.timeout(6000) });
-    return res.ok;
-  } catch {
-    return false;
-  }
 }

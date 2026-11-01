@@ -11,8 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { initializeCheckout } from '@/api/EcommerceApi';
-import { db } from '@/lib/firebaseClient';
-import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
@@ -230,48 +228,6 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
         signatureSignedAt: new Date().toISOString(),
         checkoutSignature,
       });
-
-      // Sync the order to Firestore for persistent cloud-based retrieval under "Meus Pedidos"
-      try {
-        const orderData = {
-          id: orderId,
-          order_number: orderNumber || `#${orderId.slice(0, 8).toUpperCase()}`,
-          userId: user?.uid || user?.id || 'anonymous',
-          customer_email: form.email.trim(),
-          customer_name: form.name.trim(),
-          phone: effectivePhone,
-          address: addressPayload.address || '',
-          city: addressPayload.city || '',
-          delivery_province: deliveryAddress.provinceName || '',
-          delivery_municipality: deliveryAddress.municipalityName || '',
-          delivery_locality: deliveryAddress.localityName || '',
-          delivery_street: deliveryAddress.street || '',
-          delivery_reference: deliveryAddress.reference || '',
-          payment_method: form.paymentMethod,
-          payment_status: 'pending',
-          delivery_status: 'received',
-          status: 'pending',
-          shipping_method: form.shippingMethod,
-          pickup_store: form.pickupStore || '',
-          notes: form.notes.trim() || '',
-          shipping_cost: shippingCents / 100,
-          total: total || (totalCents / 100),
-          items: cartItems.map(item => ({
-            bookId: item.product.id,
-            title: item.product.title,
-            subtitle: item.product.subtitle || '',
-            image: item.product.image || '',
-            quantity: item.quantity,
-            price: (item.variant.sale_price_in_cents ?? item.variant.price_in_cents) / 100,
-          })),
-          created: new Date().toISOString(),
-          signature: checkoutSignature || ''
-        };
-        await setDoc(doc(db, 'orders', orderId), orderData);
-        // O email e o WhatsApp de confirmação são enviados pela Edge Function no /checkout.
-      } catch (firestoreErr) {
-        console.warn('Failed to sync order to Firestore:', firestoreErr);
-      }
 
       if (isWhatsApp && waPhone && !waApiActive && !whatsapp_sent) {
         openWhatsAppOrder(waPhone, {

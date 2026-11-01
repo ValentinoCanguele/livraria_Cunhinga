@@ -93,19 +93,12 @@ const LoginPage = () => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      await loginWithGoogle();
-      toast.success('Autenticado via Google!', {
-        description: 'Sessão iniciada de forma rápida e segura.',
-      });
-      goTo(redirectTo || '/profile');
+      // Sai da página para a Google e volta já com a sessão iniciada.
+      await loginWithGoogle(redirectTo || '/profile');
     } catch (err) {
-      const cancelled = err?.code === 'auth/popup-closed-by-user';
-      if (!cancelled) {
-        toast.error('Google não disponível', {
-          description: err?.message || 'Por favor, tente autenticar usando o seu e-mail e palavra-passe.',
-        });
-      }
-    } finally {
+      toast.error('Google não disponível', {
+        description: err?.message || 'Por favor, tente autenticar usando o seu e-mail e palavra-passe.',
+      });
       setLoading(false);
     }
   };

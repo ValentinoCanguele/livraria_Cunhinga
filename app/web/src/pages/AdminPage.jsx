@@ -219,8 +219,8 @@ const AdminPage = () => {
       canManageSettings && { value: 'stores', label: 'Lojas', icon: Store },
     ] },
     { label: 'Clientes', tabs: [
-      canManageUsers && { value: 'users', label: 'Utilizadores', icon: Users },
-      canManageUsers && { value: 'crm', label: 'Clientes (CRM)', icon: Users },
+      canManageUsers && { value: 'users', label: 'Utilizadores e Clientes', icon: Users },
+      canManageUsers && { value: 'crm', label: 'Contactos (CRM)', icon: Users },
       canManageMarketing && { value: 'contacts', label: 'Contactos e campanhas', icon: Megaphone },
     ] },
     { label: 'Sistema', tabs: [

@@ -24,7 +24,7 @@ class HttpError extends Error {
 const bad = (msg: string) => new HttpError(400, msg);
 
 type Row = Record<string, any>;
-type Auth = { id: string; email: string; role: string } | null;
+type Auth = { id: string; email: string; role: string; permissions: Row } | null;
 type Ctx = { req: Request; url: URL; body: Row; auth: Auth; ip: string };
 
 const json = (body: unknown, status = 200) =>
@@ -58,9 +58,11 @@ type NotifyMeta = { context?: string; customer_name?: string; order_number?: str
 
 /** Regista o resultado real de cada envio em notification_logs (visível no admin → Integrações). */
 async function logNotification(entry: Row) {
+  // Emails de conta levam um link de acesso pessoal: não ficam guardados no registo, que toda a equipa lê.
+  const content = entry.context === "account" ? "(conteúdo omitido: contém um link de acesso pessoal)" : entry.content;
   const { error } = await db.from("notification_logs").insert({
     ...entry,
-    content: String(entry.content || "").slice(0, 20000),
+    content: String(content || "").slice(0, 20000),
     detail: String(entry.detail || "").slice(0, 2000),
   });
   if (error) console.log("notification_logs:", error.message);
@@ -75,13 +77,22 @@ async function getAuth(req: Request): Promise<Auth> {
   if (!token || token.startsWith("sb_")) return null;
   const { data, error } = await db.auth.getUser(token);
   if (error || !data?.user) return null;
-  const { data: profile } = await db.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
-  return { id: data.user.id, email: data.user.email || "", role: profile?.role || "member" };
+  const { data: profile } = await db.from("profiles").select("role, permissions").eq("id", data.user.id).maybeSingle();
+  return { id: data.user.id, email: data.user.email || "", role: profile?.role || "member", permissions: profile?.permissions || {} };
 }
 
 const isStaff = (auth: Auth) => !!auth && (auth.role === "admin" || auth.role === "manager");
 function requireStaff(auth: Auth) {
   if (!isStaff(auth)) throw new HttpError(403, "Acesso restrito a administradores.");
+  return auth!;
+}
+
+// Igual a private.has_permission() na base de dados: admin pode tudo; gestor só o que tiver activo.
+const PERMISSION_KEYS = ["manage_catalog", "manage_orders", "manage_settings", "manage_users", "manage_payments", "manage_marketing"];
+const can = (auth: Auth, key: string) =>
+  !!auth && (auth.role === "admin" || (auth.role === "manager" && auth.permissions?.[key] === true));
+function requirePermission(auth: Auth, key: string) {
+  if (!can(auth, key)) throw new HttpError(403, "Sem permissão para esta operação.");
   return auth!;
 }
 
@@ -722,7 +733,7 @@ route("POST", "/confirm-delivery", async ({ body }) => {
 });
 
 route("POST", "/delivery-event", async ({ auth, body }) => {
-  if (!isStaff(auth)) throw new HttpError(403, "Acesso negado.");
+  requirePermission(auth, "manage_orders");
   if (!body.orderId) throw bad("orderId obrigatório.");
   const { data: order } = await db.from("orders").select("*").eq("id", body.orderId).maybeSingle();
   if (!order) throw new HttpError(404, "Encomenda não encontrada.");
@@ -1116,13 +1127,219 @@ route("POST", "/catalog/view", async ({ body, ip }) => {
   return json({ ok: true, views_count: data });
 });
 
-// --- Gestão de utilizadores (o frontend não tem a service role) ---
+// --- Gestão de utilizadores e clientes (o frontend não tem a service role) ---
+// Regras:
+//  - É preciso a permissão "manage_users" (os administradores têm-na sempre).
+//  - Gestores gerem clientes; contas da equipa, papéis e permissões só os administradores.
+//  - Ninguém se apaga, suspende ou retira o próprio acesso de administrador.
+//  - Tem de ficar sempre pelo menos um administrador activo.
+const ROLES = ["member", "manager", "admin"];
+const SUSPEND_FOR = "876000h"; // ~100 anos: suspensão até ser reactivada
+
+function cleanPermissions(input: unknown): Row {
+  const src = input && typeof input === "object" ? input as Row : {};
+  return Object.fromEntries(PERMISSION_KEYS.map((k) => [k, src[k] === true]));
+}
+
+const cleanText = (value: unknown, max = 120) => String(value ?? "").trim().slice(0, max);
+const isEmail = (value: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+
+function safeOrigin(origin: unknown) {
+  try {
+    const u = new URL(String(origin || ""));
+    return u.protocol === "https:" || u.protocol === "http:" ? u.origin : "";
+  } catch {
+    return "";
+  }
+}
+
+async function loadTarget(id: unknown) {
+  const targetId = cleanText(id, 64);
+  if (!targetId) throw bad("id obrigatório.");
+  const { data } = await db.from("profiles").select("id, role, name").eq("id", targetId).maybeSingle();
+  if (!data) throw new HttpError(404, "Utilizador não encontrado.");
+  const { data: authUser } = await db.auth.admin.getUserById(targetId);
+  return { ...data, email: authUser?.user?.email || "" } as Row;
+}
+
+function assertCanManage(auth: Auth, target: Row) {
+  requirePermission(auth, "manage_users");
+  if (target.role !== "member" && auth!.role !== "admin") {
+    throw new HttpError(403, "Só administradores podem gerir contas da equipa.");
+  }
+}
+
+/** Administradores activos (não suspensos), sem contar com `excludeId`. */
+async function activeAdminCount(excludeId = "") {
+  const { data, error } = await db.rpc("admin_users_list", {
+    p_scope: "team", p_search: "", p_status: "active", p_limit: 100, p_offset: 0,
+  });
+  if (error) throw bad(error.message);
+  return (data?.items || []).filter((u: Row) => u.role === "admin" && u.id !== excludeId).length;
+}
+
+/** Gera um link para definir a palavra-passe e tenta enviá-lo pelo email da loja. */
+async function sendAccessLink(email: string, name: string, kind: "invite" | "reset", origin: unknown) {
+  const base = safeOrigin(origin);
+  const { data, error } = await db.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    ...(base ? { options: { redirectTo: `${base}/reset-password` } } : {}),
+  });
+  if (error) throw bad(error.message);
+  const link = data?.properties?.action_link || "";
+  const settings = await getSettings();
+  const site = settings?.site_name || "Livraria Adventista";
+  const subject = kind === "invite" ? `A sua conta na ${site}` : `Definir nova palavra-passe — ${site}`;
+  const intro = kind === "invite"
+    ? `Foi criada uma conta para si na <strong>${escapeHtml(site)}</strong>. Defina a sua palavra-passe para entrar.`
+    : `Recebemos um pedido para definir uma nova palavra-passe na <strong>${escapeHtml(site)}</strong>.`;
+  const html = [
+    `<div style="font-family:sans-serif;line-height:1.6;max-width:560px">`,
+    `<p>Olá ${escapeHtml(name || "")},</p>`,
+    `<p>${intro}</p>`,
+    `<p><a href="${escapeHtml(link)}" style="display:inline-block;padding:10px 18px;background:#0ea5c9;color:#fff;border-radius:8px;text-decoration:none">Definir palavra-passe</a></p>`,
+    `<p style="color:#64748b;font-size:13px">O link é pessoal e expira. Se não pediu isto, ignore este email.</p>`,
+    `</div>`,
+  ].join("");
+  const emailSent = await sendTransactionalEmail(settings, email, subject, html, { context: "account", customer_name: name });
+  return { link, emailSent };
+}
+
+route("GET", "/admin/users", async ({ auth, url }) => {
+  requirePermission(auth, "manage_users");
+  const perPage = Math.min(Math.max(Number(url.searchParams.get("per_page")) || 25, 1), 100);
+  const page = Math.max(Number(url.searchParams.get("page")) || 1, 1);
+  const scope = ["team", "customers", "all"].includes(url.searchParams.get("scope") || "") ? url.searchParams.get("scope") : "all";
+  const { data, error } = await db.rpc("admin_users_list", {
+    p_scope: scope,
+    p_search: cleanText(url.searchParams.get("q"), 100),
+    p_status: cleanText(url.searchParams.get("status"), 20) || "all",
+    p_limit: perPage,
+    p_offset: (page - 1) * perPage,
+  });
+  if (error) throw bad(error.message);
+  return json({ ...data, page, per_page: perPage });
+});
+
+route("GET", "/admin/users/orders", async ({ auth, url }) => {
+  if (!can(auth, "manage_users") && !can(auth, "manage_orders")) throw new HttpError(403, "Sem permissão para esta operação.");
+  const email = normalizeEmail(url.searchParams.get("email") || "");
+  if (!isEmail(email)) throw bad("Email inválido.");
+  const { data, error } = await db.from("orders")
+    .select("id, order_number, created, total, status, payment_status, delivery_status, payment_method_name, items")
+    .ilike("customer_email", likeExact(email))
+    .order("created", { ascending: false })
+    .limit(100);
+  if (error) throw bad(error.message);
+  return json({ items: data || [] });
+});
+
+route("POST", "/admin/users/create", async ({ auth, body }) => {
+  requirePermission(auth, "manage_users");
+  const email = normalizeEmail(body.email);
+  if (!isEmail(email)) throw bad("Indique um email válido.");
+  const role = ROLES.includes(body.role) ? body.role : "member";
+  if (role !== "member" && auth!.role !== "admin") throw new HttpError(403, "Só administradores podem criar contas da equipa.");
+  const password = String(body.password || "");
+  if (password && password.length < 8) throw bad("A palavra-passe deve ter pelo menos 8 caracteres.");
+  const name = cleanText(body.name) || email.split("@")[0];
+
+  const { data: created, error } = await db.auth.admin.createUser({
+    email,
+    password: password || `${crypto.randomUUID()}Aa1!`,
+    email_confirm: true,
+    user_metadata: { name },
+  });
+  if (error) {
+    if (/already|registered|exists/i.test(error.message)) throw new HttpError(409, "Já existe uma conta com este email.");
+    throw bad(error.message);
+  }
+  const id = created.user!.id;
+  const { error: profileError } = await db.from("profiles").update({
+    name,
+    email,
+    phone: cleanText(body.phone, 40),
+    role,
+    permissions: role === "manager" ? cleanPermissions(body.permissions) : null,
+  }).eq("id", id);
+  if (profileError) throw bad(profileError.message);
+
+  let access = { link: "", emailSent: false };
+  if (!password || body.send_link) access = await sendAccessLink(email, name, "invite", body.origin);
+  return json({ id, email, ...access });
+});
+
+route("POST", "/admin/users/update", async ({ auth, body }) => {
+  const target = await loadTarget(body.id);
+  assertCanManage(auth, target);
+  const patch: Row = {};
+  if (body.name !== undefined) patch.name = cleanText(body.name);
+  if (body.phone !== undefined) patch.phone = cleanText(body.phone, 40);
+
+  const roleChange = body.role !== undefined && body.role !== target.role;
+  if (roleChange || body.permissions !== undefined) {
+    if (auth!.role !== "admin") throw new HttpError(403, "Só administradores podem alterar papéis e permissões.");
+    const role = body.role !== undefined ? body.role : target.role;
+    if (!ROLES.includes(role)) throw bad("Papel inválido.");
+    if (target.id === auth!.id && role !== "admin") throw bad("Não pode retirar o seu próprio acesso de administrador.");
+    if (target.role === "admin" && role !== "admin" && await activeAdminCount(target.id) === 0) {
+      throw bad("Tem de existir pelo menos um administrador activo.");
+    }
+    patch.role = role;
+    patch.permissions = role === "manager" ? cleanPermissions(body.permissions) : null;
+  }
+
+  if (body.email !== undefined) {
+    const email = normalizeEmail(body.email);
+    if (!isEmail(email)) throw bad("Indique um email válido.");
+    if (email !== normalizeEmail(target.email)) {
+      const { error } = await db.auth.admin.updateUserById(target.id, { email, email_confirm: true });
+      if (error) {
+        if (/already|registered|exists/i.test(error.message)) throw new HttpError(409, "Já existe uma conta com este email.");
+        throw bad(error.message);
+      }
+      patch.email = email;
+    }
+  }
+
+  if (Object.keys(patch).length) {
+    const { error } = await db.from("profiles").update(patch).eq("id", target.id);
+    if (error) throw bad(error.message);
+  }
+  return json({ ok: true });
+});
+
+route("POST", "/admin/users/status", async ({ auth, body }) => {
+  const target = await loadTarget(body.id);
+  assertCanManage(auth, target);
+  const suspend = body.suspended === true;
+  if (suspend && target.id === auth!.id) throw bad("Não pode suspender a sua própria conta.");
+  if (suspend && target.role === "admin" && await activeAdminCount(target.id) === 0) {
+    throw bad("Tem de existir pelo menos um administrador activo.");
+  }
+  const { error } = await db.auth.admin.updateUserById(target.id, { ban_duration: suspend ? SUSPEND_FOR : "none" });
+  if (error) throw bad(error.message);
+  return json({ ok: true, suspended: suspend });
+});
+
+route("POST", "/admin/users/access-link", async ({ auth, body }) => {
+  const target = await loadTarget(body.id);
+  assertCanManage(auth, target);
+  if (!target.email) throw bad("Esta conta não tem email.");
+  const access = await sendAccessLink(target.email, target.name, "reset", body.origin);
+  return json(access);
+});
+
 route("POST", "/admin/users/delete", async ({ auth, body }) => {
-  if (auth?.role !== "admin") throw new HttpError(403, "Só administradores podem apagar utilizadores.");
-  const id = String(body.id || "");
-  if (!id) throw bad("id obrigatório.");
-  if (id === auth.id) throw bad("Não pode apagar a sua própria conta.");
-  const { error } = await db.auth.admin.deleteUser(id);
+  const target = await loadTarget(body.id);
+  assertCanManage(auth, target);
+  if (target.id === auth!.id) throw bad("Não pode apagar a sua própria conta.");
+  if (target.role === "admin" && await activeAdminCount(target.id) === 0) {
+    throw bad("Tem de existir pelo menos um administrador activo.");
+  }
+  // As encomendas ficam (estão ligadas ao email, não à conta).
+  const { error } = await db.auth.admin.deleteUser(target.id);
   if (error) throw bad(error.message);
   return json({ ok: true });
 });

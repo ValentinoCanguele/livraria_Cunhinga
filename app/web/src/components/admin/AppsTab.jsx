@@ -29,6 +29,7 @@ const LOG_CONTEXT = {
   test: 'Teste',
   contact: 'Contacto',
   campaign: 'Campanha',
+  account: 'Conta',
 };
 
 const DEFAULT_APPS = [

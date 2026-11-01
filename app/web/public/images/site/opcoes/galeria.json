@@ -1,0 +1,330 @@
+[
+ {
+  "tipo": "slide",
+  "rotulo": "Catálogo geral · parede (em uso)",
+  "url": "/images/site/slide-catalogo.webp",
+  "mini": "/images/site/opcoes/mini/slide-catalogo.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Ellen G. White · leque (em uso)",
+  "url": "/images/site/slide-ellen-white.webp",
+  "mini": "/images/site/opcoes/mini/slide-ellen-white.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Colportagem · duas filas (em uso)",
+  "url": "/images/site/slide-colportagem.webp",
+  "mini": "/images/site/opcoes/mini/slide-colportagem.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Bem-vindo · prateleira (em uso)",
+  "url": "/images/site/slide-bem-vindo.webp",
+  "mini": "/images/site/opcoes/mini/slide-bem-vindo.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "loja",
+  "rotulo": "Banner da loja · leque (actual)",
+  "url": "/images/site/loja-banner.webp",
+  "mini": "/images/site/opcoes/mini/loja-banner.webp",
+  "largura": 2880,
+  "altura": 820
+ },
+ {
+  "tipo": "login",
+  "rotulo": "Fundo do login · parede (actual)",
+  "url": "/images/site/login-fundo.webp",
+  "mini": "/images/site/opcoes/mini/login-fundo.webp",
+  "largura": 1200,
+  "altura": 1600
+ },
+ {
+  "tipo": "sobre-topo",
+  "rotulo": "Sobre · topo (actual)",
+  "url": "/images/site/sobre-topo.webp",
+  "mini": "/images/site/opcoes/mini/sobre-topo.webp",
+  "largura": 1920,
+  "altura": 1000
+ },
+ {
+  "tipo": "sobre-lateral",
+  "rotulo": "Sobre · lateral (actual)",
+  "url": "/images/site/sobre-livros.webp",
+  "mini": "/images/site/opcoes/mini/sobre-livros.webp",
+  "largura": 1200,
+  "altura": 1000
+ },
+ {
+  "tipo": "capa",
+  "rotulo": "Capa por definir · azul (actual)",
+  "url": "/images/site/capa-por-definir.webp",
+  "mini": "/images/site/opcoes/mini/capa-por-definir.webp",
+  "largura": 400,
+  "altura": 600
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Catálogo geral · parede",
+  "url": "/images/site/opcoes/slide-catalogo-parede.webp",
+  "mini": "/images/site/opcoes/mini/slide-catalogo-parede.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Catálogo geral · prateleira",
+  "url": "/images/site/opcoes/slide-catalogo-prateleira.webp",
+  "mini": "/images/site/opcoes/mini/slide-catalogo-prateleira.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Ellen G. White · destaque",
+  "url": "/images/site/opcoes/slide-ellen-white-destaque.webp",
+  "mini": "/images/site/opcoes/mini/slide-ellen-white-destaque.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Ellen G. White · prateleira",
+  "url": "/images/site/opcoes/slide-ellen-white-prateleira.webp",
+  "mini": "/images/site/opcoes/mini/slide-ellen-white-prateleira.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Apocalipse e profecia · leque",
+  "url": "/images/site/opcoes/slide-profecia-leque.webp",
+  "mini": "/images/site/opcoes/mini/slide-profecia-leque.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Apocalipse e profecia · destaque",
+  "url": "/images/site/opcoes/slide-profecia-destaque.webp",
+  "mini": "/images/site/opcoes/mini/slide-profecia-destaque.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Fé e doutrina · leque",
+  "url": "/images/site/opcoes/slide-doutrina-leque.webp",
+  "mini": "/images/site/opcoes/mini/slide-doutrina-leque.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Fé e doutrina · prateleira",
+  "url": "/images/site/opcoes/slide-doutrina-prateleira.webp",
+  "mini": "/images/site/opcoes/mini/slide-doutrina-prateleira.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Família e relacionamentos · leque",
+  "url": "/images/site/opcoes/slide-familia-leque.webp",
+  "mini": "/images/site/opcoes/mini/slide-familia-leque.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Família e relacionamentos · duas filas",
+  "url": "/images/site/opcoes/slide-familia-duas-filas.webp",
+  "mini": "/images/site/opcoes/mini/slide-familia-duas-filas.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Saúde e estilo de vida · duas filas",
+  "url": "/images/site/opcoes/slide-saude-duas-filas.webp",
+  "mini": "/images/site/opcoes/mini/slide-saude-duas-filas.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Saúde e estilo de vida · destaque",
+  "url": "/images/site/opcoes/slide-saude-destaque.webp",
+  "mini": "/images/site/opcoes/mini/slide-saude-destaque.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Pregação e liderança · leque",
+  "url": "/images/site/opcoes/slide-lideranca-leque.webp",
+  "mini": "/images/site/opcoes/mini/slide-lideranca-leque.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Pregação e liderança · prateleira",
+  "url": "/images/site/opcoes/slide-lideranca-prateleira.webp",
+  "mini": "/images/site/opcoes/mini/slide-lideranca-prateleira.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Destaques · destaque",
+  "url": "/images/site/opcoes/slide-destaques-destaque.webp",
+  "mini": "/images/site/opcoes/mini/slide-destaques-destaque.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "slide",
+  "rotulo": "Destaques · duas filas",
+  "url": "/images/site/opcoes/slide-destaques-duas-filas.webp",
+  "mini": "/images/site/opcoes/mini/slide-destaques-duas-filas.webp",
+  "largura": 1920,
+  "altura": 1080
+ },
+ {
+  "tipo": "loja",
+  "rotulo": "Banner da loja · leque",
+  "url": "/images/site/opcoes/loja-leque.webp",
+  "mini": "/images/site/opcoes/mini/loja-leque.webp",
+  "largura": 2880,
+  "altura": 820
+ },
+ {
+  "tipo": "loja",
+  "rotulo": "Banner da loja · prateleira",
+  "url": "/images/site/opcoes/loja-prateleira.webp",
+  "mini": "/images/site/opcoes/mini/loja-prateleira.webp",
+  "largura": 2880,
+  "altura": 820
+ },
+ {
+  "tipo": "loja",
+  "rotulo": "Banner da loja · parede",
+  "url": "/images/site/opcoes/loja-parede.webp",
+  "mini": "/images/site/opcoes/mini/loja-parede.webp",
+  "largura": 2880,
+  "altura": 820
+ },
+ {
+  "tipo": "loja",
+  "rotulo": "Banner da loja · ellen white",
+  "url": "/images/site/opcoes/loja-ellen-white.webp",
+  "mini": "/images/site/opcoes/mini/loja-ellen-white.webp",
+  "largura": 2880,
+  "altura": 820
+ },
+ {
+  "tipo": "loja",
+  "rotulo": "Banner da loja · familia",
+  "url": "/images/site/opcoes/loja-familia.webp",
+  "mini": "/images/site/opcoes/mini/loja-familia.webp",
+  "largura": 2880,
+  "altura": 820
+ },
+ {
+  "tipo": "loja",
+  "rotulo": "Banner da loja · doutrina",
+  "url": "/images/site/opcoes/loja-doutrina.webp",
+  "mini": "/images/site/opcoes/mini/loja-doutrina.webp",
+  "largura": 2880,
+  "altura": 820
+ },
+ {
+  "tipo": "login",
+  "rotulo": "Fundo do login · parede doutrina",
+  "url": "/images/site/opcoes/login-parede-doutrina.webp",
+  "mini": "/images/site/opcoes/mini/login-parede-doutrina.webp",
+  "largura": 1200,
+  "altura": 1600
+ },
+ {
+  "tipo": "login",
+  "rotulo": "Fundo do login · leque familia",
+  "url": "/images/site/opcoes/login-leque-familia.webp",
+  "mini": "/images/site/opcoes/mini/login-leque-familia.webp",
+  "largura": 1200,
+  "altura": 1600
+ },
+ {
+  "tipo": "login",
+  "rotulo": "Fundo do login · destaque ellen white",
+  "url": "/images/site/opcoes/login-destaque-ellen-white.webp",
+  "mini": "/images/site/opcoes/mini/login-destaque-ellen-white.webp",
+  "largura": 1200,
+  "altura": 1600
+ },
+ {
+  "tipo": "sobre-topo",
+  "rotulo": "Sobre · topo · parede familia",
+  "url": "/images/site/opcoes/sobre-topo-parede-familia.webp",
+  "mini": "/images/site/opcoes/mini/sobre-topo-parede-familia.webp",
+  "largura": 1920,
+  "altura": 1000
+ },
+ {
+  "tipo": "sobre-topo",
+  "rotulo": "Sobre · topo · parede ellen white",
+  "url": "/images/site/opcoes/sobre-topo-parede-ellen-white.webp",
+  "mini": "/images/site/opcoes/mini/sobre-topo-parede-ellen-white.webp",
+  "largura": 1920,
+  "altura": 1000
+ },
+ {
+  "tipo": "sobre-lateral",
+  "rotulo": "Sobre · lateral · leque ellen white",
+  "url": "/images/site/opcoes/sobre-lateral-leque-ellen-white.webp",
+  "mini": "/images/site/opcoes/mini/sobre-lateral-leque-ellen-white.webp",
+  "largura": 1200,
+  "altura": 1000
+ },
+ {
+  "tipo": "sobre-lateral",
+  "rotulo": "Sobre · lateral · prateleira familia",
+  "url": "/images/site/opcoes/sobre-lateral-prateleira-familia.webp",
+  "mini": "/images/site/opcoes/mini/sobre-lateral-prateleira-familia.webp",
+  "largura": 1200,
+  "altura": 1000
+ },
+ {
+  "tipo": "capa",
+  "rotulo": "Capa por definir · azul",
+  "url": "/images/site/opcoes/capa-azul.webp",
+  "mini": "/images/site/opcoes/mini/capa-azul.webp",
+  "largura": 400,
+  "altura": 600
+ },
+ {
+  "tipo": "capa",
+  "rotulo": "Capa por definir · vinho",
+  "url": "/images/site/opcoes/capa-vinho.webp",
+  "mini": "/images/site/opcoes/mini/capa-vinho.webp",
+  "largura": 400,
+  "altura": 600
+ },
+ {
+  "tipo": "capa",
+  "rotulo": "Capa por definir · areia",
+  "url": "/images/site/opcoes/capa-areia.webp",
+  "mini": "/images/site/opcoes/mini/capa-areia.webp",
+  "largura": 400,
+  "altura": 600
+ }
+]

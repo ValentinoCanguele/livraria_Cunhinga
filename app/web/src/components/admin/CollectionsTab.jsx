@@ -449,6 +449,7 @@ export default function CollectionsTab({ books = [], onBooksChange }) {
               </div>
               <ImageField
                 label="Capa da coleção"
+                gallery="slide"
                 value={form.cover}
                 onChange={(v) => { set('cover', v); setCoverRemoved(false); }}
                 onFileChange={(f) => { setCoverFile(f); if (f) setCoverRemoved(false); }}

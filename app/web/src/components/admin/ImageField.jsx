@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Link2, Upload, X, ImageIcon, Info, HardDrive, Loader2 } from 'lucide-react';
+import { Link2, Upload, X, ImageIcon, Info, HardDrive, Loader2, Images, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -9,10 +9,17 @@ import { normalizeImageUrl, isPersistableImageUrl } from '@/lib/imageUrl';
 import { listDriveFolderImages, openGoogleDrivePicker } from '@/lib/googleDrivePicker';
 import { uploadPublicImage } from '@/lib/mediaUpload';
 
+// Galeria de imagens do site (feitas com as capas reais do catálogo), em public/images/site/opcoes.
+const GALLERY_URL = '/images/site/opcoes/galeria.json';
+// O admin só grava URLs https:// (sanitizeImageUrlForSave); em desenvolvimento aponta para o site publicado.
+const SITE_URL = /^(localhost|127\.)/.test(window.location.hostname) ? 'https://livraria-adventista.pages.dev' : window.location.origin;
+const TAB_COLS = { 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' };
+
 /**
- * Campo de imagem com URL externa, upload ou Google Drive.
+ * Campo de imagem com URL externa, upload, Google Drive ou galeria do site.
  * Upload: com `onFileChange` o formulário recebe o ficheiro e guarda-o ao submeter;
  * com `uploadFolder` a imagem é enviada logo para o Storage e `onChange` recebe o URL público.
+ * Com `gallery` (tipo: 'slide', 'loja', 'login'…) aparece a aba Galeria com as imagens prontas desse tipo.
  */
 export default function ImageField({
   label,
@@ -27,6 +34,7 @@ export default function ImageField({
   driveConfig = null,
   showDrive = true,
   uploadFolder = '',
+  gallery = '',
 }) {
   const initialMode = value?.startsWith('blob:') ? 'upload' : 'url';
   const [mode, setMode] = useState(initialMode);
@@ -36,6 +44,7 @@ export default function ImageField({
   const [driveFiles, setDriveFiles] = useState([]);
   const [driveListed, setDriveListed] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [galleryItems, setGalleryItems] = useState(null);
   const inputRef = useRef(null);
   const uploadsNow = !!uploadFolder && !onFileChange;
 
@@ -157,7 +166,23 @@ export default function ImageField({
     setError('');
   };
 
-  const tabCols = driveEnabled ? 'grid-cols-3' : 'grid-cols-2';
+  useEffect(() => {
+    if (mode !== 'galeria' || galleryItems) return;
+    fetch(GALLERY_URL)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((list) => setGalleryItems(list.filter((i) => i.tipo === gallery)))
+      .catch(() => { setGalleryItems([]); setError('Não foi possível carregar a galeria.'); });
+  }, [mode, galleryItems, gallery]);
+
+  const selectGalleryItem = (item) => {
+    const url = SITE_URL + item.url;
+    setPreview(url);
+    onChange(url);
+    onFileChange?.(null);
+    setError('');
+  };
+
+  const tabCols = TAB_COLS[2 + (driveEnabled ? 1 : 0) + (gallery ? 1 : 0)];
 
   return (
     <div className="space-y-3">
@@ -179,6 +204,9 @@ export default function ImageField({
               <TabsTrigger value="upload" className="text-xs"><Upload className="h-3 w-3 mr-1" />Upload</TabsTrigger>
               {driveEnabled && (
                 <TabsTrigger value="drive" className="text-xs"><HardDrive className="h-3 w-3 mr-1" />Drive</TabsTrigger>
+              )}
+              {gallery && (
+                <TabsTrigger value="galeria" className="text-xs"><Images className="h-3 w-3 mr-1" />Galeria</TabsTrigger>
               )}
             </TabsList>
 
@@ -245,6 +273,41 @@ export default function ImageField({
                 )}
                 <p className="text-[10px] text-muted-foreground">
                   Imagens filtradas da pasta configurada em Integrações. Picker requer Client ID OAuth; galeria requer pasta pública + API key.
+                </p>
+              </TabsContent>
+            )}
+            {gallery && (
+              <TabsContent value="galeria" className="mt-2 space-y-2">
+                {!galleryItems ? (
+                  <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-72 overflow-y-auto p-1 border rounded-lg bg-muted/20">
+                    {galleryItems.map((item) => {
+                      const chosen = !!value && value.endsWith(item.url);
+                      return (
+                        <button
+                          key={item.url}
+                          type="button"
+                          title={item.rotulo}
+                          onClick={() => selectGalleryItem(item)}
+                          className={`relative text-left rounded-md overflow-hidden border bg-background hover:ring-2 hover:ring-[#0ea5c9] transition-shadow ${chosen ? 'ring-2 ring-[#0ea5c9]' : ''}`}
+                        >
+                          <img
+                            src={item.mini}
+                            alt={item.rotulo}
+                            loading="lazy"
+                            className="w-full object-cover bg-muted"
+                            style={{ aspectRatio: `${item.largura} / ${item.altura}` }}
+                          />
+                          <span className="block px-1.5 py-1 text-[10px] leading-tight text-muted-foreground truncate">{item.rotulo}</span>
+                          {chosen && <Check className="absolute top-1 right-1 h-4 w-4 rounded-full bg-[#0ea5c9] text-white p-0.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-[10px] text-muted-foreground">
+                  Imagens prontas, feitas com as capas reais do catálogo. Escolha uma e guarde o formulário.
                 </p>
               </TabsContent>
             )}

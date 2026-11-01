@@ -412,6 +412,7 @@ export default function SettingsTab() {
           />
           <ImageField
             label="Imagem de fundo do Login"
+            gallery="login"
             value={form.login_bg_url}
             onChange={(v) => set('login_bg_url', v)}
             aspect="16:9"
@@ -727,6 +728,7 @@ export default function SettingsTab() {
               <>
                 <ImageField
                   label="Imagem de fundo do hero da loja"
+                  gallery="loja"
                   value={form.shop_bg_image_url}
                   onChange={(v) => set('shop_bg_image_url', v)}
                   aspect="16:9"

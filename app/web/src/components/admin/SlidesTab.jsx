@@ -567,6 +567,7 @@ export default function SlidesTab({ onChange }) {
                   )}
                   <ImageField
                     label={form.media_type === 'video' ? 'Imagem poster do vídeo' : 'Imagem de fundo do slide'}
+                    gallery="slide"
                     value={form.image}
                     onChange={(v) => set('image', v)}
                     aspect="16:9"

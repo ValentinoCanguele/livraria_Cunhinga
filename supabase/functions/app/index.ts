@@ -637,7 +637,8 @@ async function findOrderByNumberAndEmail(orderNumber: string, email: string) {
   return data?.[0] || null;
 }
 
-route("POST", "/track", async ({ body }) => {
+route("POST", "/track", async ({ body, ip }) => {
+  if (!checkRateLimit("track", ip, 20)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
   const orderNumber = String(body.orderNumber || "").trim();
   const email = normalizeEmail(body.email || "");
   if (!orderNumber || !email) throw bad("Número da encomenda e email são obrigatórios.");
@@ -685,7 +686,8 @@ route("GET", "/geo/localities", async ({ url }) => {
   return json({ localities, count: localities.length });
 });
 
-route("POST", "/confirm-delivery", async ({ body }) => {
+route("POST", "/confirm-delivery", async ({ body, ip }) => {
+  if (!checkRateLimit("confirm-delivery", ip, 10)) throw bad("Demasiadas tentativas. Aguarde um minuto.");
   const orderNumber = String(body.orderNumber || "").trim();
   const email = normalizeEmail(body.email || "");
   const recipientName = String(body.recipientName || "").trim();
@@ -694,6 +696,7 @@ route("POST", "/confirm-delivery", async ({ body }) => {
   if (!orderNumber || !email) throw bad("Número da encomenda e email são obrigatórios.");
   if (!recipientName) throw bad("Nome de quem recebe é obrigatório.");
   if (!signature.startsWith("data:image")) throw bad("Assinatura inválida.");
+  if (signature.length > 600_000) throw bad("Assinatura demasiado grande.");
 
   const order = await findOrderByNumberAndEmail(orderNumber, email);
   if (!order) throw new HttpError(404, "Encomenda não encontrada.");
@@ -907,26 +910,39 @@ route("GET", "/messaging/status", async () => {
   });
 });
 
+// Recibo por WhatsApp: só para o telefone registado na encomenda e com o texto montado aqui,
+// a partir da encomenda. O texto enviado pelo browser é ignorado, para que ninguém use o número
+// oficial da loja para mandar mensagens escritas por si.
+function buildReceiptText(order: Row, siteName: string) {
+  const lines = [
+    `🧾 *Recibo — ${siteName}*`, `Nº: ${order.order_number || ""}`, "",
+    `Olá ${order.customer_name || ""}!`, "", "*Livros:*",
+    ...(order.items || []).map((it: Row) => `• ${it.quantity || 1}× ${it.title || "Livro"} — ${fmtMoneyKz(Number(it.price || 0) * Number(it.quantity || 1))}`),
+  ];
+  if (Number(order.shipping_cost)) lines.push(`Portes: ${fmtMoneyKz(order.shipping_cost)}`);
+  lines.push("", `*Total: ${fmtMoneyKz(order.total)}*`);
+  if (order.payment_method_name || order.payment_method) lines.push(`Pagamento: ${order.payment_method_name || order.payment_method}`);
+  lines.push("", "Obrigado pela sua compra! 📚");
+  return lines.join("\n");
+}
+
 route("POST", "/whatsapp/receipt", async ({ body, ip }) => {
   if (!checkRateLimit("whatsapp_receipt", ip, 10)) throw bad("Demasiados pedidos. Aguarde um minuto.");
-  const phone = String(body.phone || "").trim();
-  const text = String(body.text || "").trim();
   const orderNumber = String(body.order_number || "").trim();
-  const email = String(body.email || "").trim();
-  if (!phone || !text) throw bad("Telefone e texto do recibo são obrigatórios.");
-  if (!orderNumber) throw bad("Número de encomenda obrigatório para enviar recibo.");
-  const { data } = await db.from("orders").select("phone, customer_email").eq("order_number", orderNumber).limit(1);
-  const order = data?.[0];
+  const email = normalizeEmail(body.email || "");
+  if (!orderNumber || !email) throw bad("Número da encomenda e email são obrigatórios.");
+  const order = await findOrderByNumberAndEmail(orderNumber, email);
   if (!order) throw bad("Encomenda não encontrada.");
-  const orderPhone = normalizePhone(order.phone || "");
-  const reqPhone = normalizePhone(phone);
-  if (orderPhone && reqPhone && orderPhone !== reqPhone) throw bad("Telefone não corresponde à encomenda.");
-  const orderEmail = normalizeEmail(order.customer_email || "");
-  const reqEmail = normalizeEmail(email);
-  if (orderEmail && reqEmail && orderEmail !== reqEmail) throw bad("Email não corresponde à encomenda.");
+  const phone = String(order.phone || "").trim();
+  const reqPhone = normalizePhone(String(body.phone || ""));
+  if (!phone) return json({ sent: false, fallback: true, message: "A encomenda não tem telefone — use o link manual." });
+  if (reqPhone && reqPhone !== normalizePhone(phone)) throw bad("Telefone não corresponde à encomenda.");
+  if (!checkRateLimit("whatsapp_receipt_order", order.id, 3)) throw bad("O recibo desta encomenda já foi enviado. Aguarde um minuto.");
   const config = await getWhatsAppConfig();
   if (!config) return json({ sent: false, fallback: true, message: "API WhatsApp não configurada — use link manual." });
-  const result = await sendWhatsAppMessage(phone, text, config, undefined, { context: "receipt", order_number: orderNumber });
+  const settings = await getSettings();
+  const text = buildReceiptText(order, settings?.site_name || "Livraria Adventista");
+  const result = await sendWhatsAppMessage(phone, text, config, undefined, { context: "receipt", customer_name: order.customer_name, order_number: order.order_number });
   return json({
     sent: !!result.ok,
     fallback: !result.ok,

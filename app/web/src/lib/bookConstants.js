@@ -1,3 +1,4 @@
+import { toLocalInput } from '@/lib/pricing';
 import pb from '@/lib/dataClient';
 
 export const BOOK_GENRES = [
@@ -41,6 +42,10 @@ export const emptyBookForm = {
   author_photo: '',
   sample_pages: [],
   versions: [],
+  active: true,
+  sale_price: '',
+  sale_starts_at: '',
+  sale_ends_at: '',
 };
 
 export function bookToForm(record) {
@@ -73,5 +78,9 @@ export function bookToForm(record) {
     author_photo: record.author_photo || '',
     sample_pages: record.sample_pages || [],
     versions: record.versions || [],
+    active: record.active !== false,
+    sale_price: record.sale_price ?? '',
+    sale_starts_at: toLocalInput(record.sale_starts_at),
+    sale_ends_at: toLocalInput(record.sale_ends_at),
   };
 }

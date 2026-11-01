@@ -74,7 +74,7 @@ export default function CollectionsPage() {
           const col = cols.find((c) => c.slug === slug || c.id === slug);
           if (col) {
             const list = await pb.collection('stock_books').getFullList({
-              filter: `collection_id = "${escapeFilterValue(col.id)}"`,
+              filter: `collection_id = "${escapeFilterValue(col.id)}" && active = true`,
               sort: '-featured,title',
             });
             setBooks(list);

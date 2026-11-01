@@ -1,5 +1,10 @@
 import pb from '@/lib/dataClient';
 import { APP_API_URL, mediaUrl } from '@/lib/supabaseClient';
+import { effectivePrice, isSaleActive } from '@/lib/pricing';
+import { escapeFilterValue } from '@/lib/sanitizeHtml';
+
+// Só livros visíveis na loja (quem gere o catálogo também lê os ocultos, mas não os vê na loja).
+const VISIBLE = 'active = true';
 
 const CURRENCY = { code: 'AOA', symbol: 'Kz' };
 
@@ -23,6 +28,8 @@ export function formatCurrency(amountInCents, currencyInfo = CURRENCY) {
 
 function bookToProduct(book, collectionsMap = {}) {
   const priceInCents = Math.round((Number(book.price) || 0) * 100);
+  const onSale = isSaleActive(book);
+  const saleInCents = onSale ? Math.round(effectivePrice(book) * 100) : null;
   const stock = Number(book.stock) || 0;
   const variantId = `${book.id}-default`;
   const collectionId = book.collection_id || '';
@@ -32,9 +39,9 @@ function bookToProduct(book, collectionsMap = {}) {
     id: variantId,
     title: 'Standard',
     price_in_cents: priceInCents,
-    sale_price_in_cents: null,
+    sale_price_in_cents: saleInCents,
     price_formatted: formatCurrency(priceInCents),
-    sale_price_formatted: null,
+    sale_price_formatted: onSale ? formatCurrency(saleInCents) : null,
     currency_info: CURRENCY,
     inventory_quantity: stock,
     manage_inventory: true,
@@ -51,7 +58,10 @@ function bookToProduct(book, collectionsMap = {}) {
     price_in_cents: priceInCents,
     type: { value: book.genre || 'Geral' },
     purchasable: stock > 0,
-    ribbon_text: book.urgency_text || (book.featured ? 'Destaque' : book.stock_low && stock > 0 ? 'Últimas unidades' : null),
+    ribbon_text: book.urgency_text || (onSale ? `Promoção −${Math.round((1 - saleInCents / priceInCents) * 100)}%` : book.featured ? 'Destaque' : book.stock_low && stock > 0 ? 'Últimas unidades' : null),
+    on_sale: onSale,
+    sale_ends_at: onSale ? book.sale_ends_at || null : null,
+    active: book.active !== false,
     variants: [variant],
     options: [],
     collections: collectionId && collectionsMap[collectionId]
@@ -105,7 +115,7 @@ async function getCollectionsMap() {
 
 async function fetchBooks(options = {}) {
   const collectionsMap = await getCollectionsMap();
-  const filter = options.featured ? 'featured = true' : '';
+  const filter = options.featured ? `featured = true && ${VISIBLE}` : VISIBLE;
   const limit = Number(options.limit);
 
   let items;
@@ -330,7 +340,7 @@ export async function getRelatedProducts(author, excludeId, limit = 4, genre = n
     // 1. Same author first
     if (author?.trim()) {
       const cleanAuthor = author.trim().replace(/["\\]/g, '');
-      const filter = excludeId ? `author ~ "${cleanAuthor}" && id != "${excludeId}"` : `author ~ "${cleanAuthor}"`;
+      const filter = (excludeId ? `author ~ "${cleanAuthor}" && id != "${excludeId}"` : `author ~ "${cleanAuthor}"`) + ` && ${VISIBLE}`;
       const byAuthor = await pb.collection('stock_books').getList(1, limit, { filter, sort: BOOK_SORT }).catch(() => ({ items: [] }));
       for (const b of byAuthor.items) {
         if (!seenIds.has(b.id)) {
@@ -343,7 +353,7 @@ export async function getRelatedProducts(author, excludeId, limit = 4, genre = n
     // 2. Same genre if we need more
     if (items.length < limit && genre?.trim()) {
       const cleanGenre = genre.trim().replace(/["\\]/g, '');
-      const filter = excludeId ? `genre = "${cleanGenre}" && id != "${excludeId}"` : `genre = "${cleanGenre}"`;
+      const filter = (excludeId ? `genre = "${cleanGenre}" && id != "${excludeId}"` : `genre = "${cleanGenre}"`) + ` && ${VISIBLE}`;
       const byGenre = await pb.collection('stock_books').getList(1, limit * 2, { filter, sort: BOOK_SORT }).catch(() => ({ items: [] }));
       for (const b of byGenre.items) {
         if (items.length >= limit) break;
@@ -356,7 +366,7 @@ export async function getRelatedProducts(author, excludeId, limit = 4, genre = n
 
     // 3. Fallback to top books
     if (items.length < limit) {
-      const filter = excludeId ? `id != "${excludeId}"` : undefined;
+      const filter = excludeId ? `id != "${excludeId}" && ${VISIBLE}` : VISIBLE;
       const fallback = await pb.collection('stock_books').getList(1, limit * 2, { filter, sort: '-featured,stock' }).catch(() => ({ items: [] }));
       for (const b of fallback.items) {
         if (items.length >= limit) break;
@@ -405,7 +415,8 @@ export async function searchProducts(query, limit = 50) {
   const q = query.trim();
   if (!q) return getProducts({ limit });
 
-  const filter = `title ~ "${q}" || author ~ "${q}" || genre ~ "${q}" || book_code ~ "${q}" || isbn ~ "${q}"`;
+  const v = escapeFilterValue(q);
+  const filter = `(title ~ "${v}" || author ~ "${v}" || genre ~ "${v}" || book_code ~ "${v}" || isbn ~ "${v}") && ${VISIBLE}`;
   const records = await pb.collection('stock_books').getList(1, limit, { filter, sort: BOOK_SORT });
   const collectionsMap = await getCollectionsMap();
   return { products: records.items.map((b) => bookToProduct(b, collectionsMap)) };

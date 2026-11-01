@@ -123,9 +123,16 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                   <h3 className="font-bold text-lg line-clamp-2">{form.title || 'Título do livro'}</h3>
                   <p className="text-sm text-muted-foreground">{form.author || 'Autor'}</p>
                   {form.price && (
-                    <p className="text-[#0ea5c9] font-bold text-xl">
-                      Kz {Number(form.price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
-                    </p>
+                    Number(form.sale_price) > 0 && Number(form.sale_price) < Number(form.price) ? (
+                      <p className="font-bold text-xl">
+                        <span className="text-rose-600">Kz {Number(form.sale_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</span>
+                        <span className="ml-2 text-sm text-muted-foreground line-through">Kz {Number(form.price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[#0ea5c9] font-bold text-xl">
+                        Kz {Number(form.price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
+                      </p>
+                    )
                   )}
                 </div>
 
@@ -229,6 +236,38 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0ea5c9]/5 border border-[#0ea5c9]/20">
                     <Switch checked={form.featured} onCheckedChange={(v) => set('featured', v)} />
                     <Label className="cursor-pointer">Destacar na homepage</Label>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg border">
+                    <Switch checked={form.active !== false} onCheckedChange={(v) => set('active', v)} />
+                    <div>
+                      <Label className="cursor-pointer">Visível na loja</Label>
+                      <p className="text-xs text-muted-foreground">Desligado: o livro fica oculto aos clientes e não pode ser comprado, mas continua aqui no painel.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3 p-3 rounded-lg border border-rose-500/30 bg-rose-500/5">
+                    <div>
+                      <p className="text-sm font-semibold">Promoção</p>
+                      <p className="text-xs text-muted-foreground">O checkout cobra o preço promocional entre as datas indicadas (vazias = sem limite). Deixe o preço vazio para não haver promoção.</p>
+                    </div>
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Preço promocional (Kz)</Label>
+                        <Input type="number" min="0" step="0.01" value={form.sale_price} onChange={(e) => set('sale_price', e.target.value)} placeholder="Ex.: 4000" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Começa em</Label>
+                        <Input type="datetime-local" value={form.sale_starts_at} onChange={(e) => set('sale_starts_at', e.target.value)} disabled={!form.sale_price} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Termina em</Label>
+                        <Input type="datetime-local" value={form.sale_ends_at} onChange={(e) => set('sale_ends_at', e.target.value)} disabled={!form.sale_price} />
+                      </div>
+                    </div>
+                    {Number(form.sale_price) > 0 && Number(form.price) > 0 && (
+                      Number(form.sale_price) >= Number(form.price)
+                        ? <p className="text-xs text-destructive">O preço promocional tem de ser menor do que o preço normal.</p>
+                        : <p className="text-xs text-rose-700 dark:text-rose-300">Desconto de {Math.round((1 - Number(form.sale_price) / Number(form.price)) * 100)}%.</p>
+                    )}
                   </div>
                 </TabsContent>
 

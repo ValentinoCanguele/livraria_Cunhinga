@@ -418,13 +418,23 @@ async function countRows(table: string, filter?: (q: any) => any) {
   return count || 0;
 }
 
+// Preço em vigor (igual a public.effective_price na base de dados): promocional se estiver activo.
+function effectivePrice(b: Row) {
+  const price = Number(b?.price) || 0;
+  const sale = Number(b?.sale_price) || 0;
+  const now = Date.now();
+  const started = !b?.sale_starts_at || new Date(b.sale_starts_at).getTime() <= now;
+  const notEnded = !b?.sale_ends_at || new Date(b.sale_ends_at).getTime() > now;
+  return sale > 0 && sale < price && started && notEnded ? sale : price;
+}
+
 async function getNewBooksDigest() {
-  const { data: books } = await db.from("stock_books").select("title, price").gt("stock", 0)
+  const { data: books } = await db.from("stock_books").select("title, price, sale_price, sale_starts_at, sale_ends_at").eq("active", true).gt("stock", 0)
     .order("created", { ascending: false }).limit(5);
   if (!books?.length) return "";
   const lines = ["📚 *Novidades na Livraria Adventista*", ""];
   for (const b of books) {
-    const price = b.price ? `${Number(b.price).toLocaleString("pt-AO")} Kz` : "";
+    const price = b.price ? `${effectivePrice(b).toLocaleString("pt-AO")} Kz` : "";
     lines.push(`• ${b.title || "Livro"}${price ? " — " + price : ""}`);
   }
   lines.push("", "Visite: https://livrariaadventista.ao/shop");
@@ -1164,7 +1174,7 @@ route("POST", "/newsletter", async ({ body, ip }) => {
 
 route("GET", "/catalog/summary", async () => {
   const { data: books } = await db.from("stock_books")
-    .select("id, title, book_code, stock, genre, featured, cover, cover_image, sales_count").order("title").limit(500);
+    .select("id, title, book_code, stock, genre, featured, cover, cover_image, sales_count").eq("active", true).order("title").limit(500);
   const genres: Record<string, Row> = {};
   let inStock = 0, featured = 0, lowStock = 0, outOfStock = 0, withCover = 0;
   const topSellers = [];
@@ -1434,7 +1444,7 @@ route("GET", "/chat/config", async () => {
 function bookToChatItem(b: Row) {
   return {
     id: b.id, title: b.title || "", author: b.author || "", book_code: b.book_code || "",
-    price: b.price ? `${Number(b.price)} Kz` : "", cover: fileUrl("stock_books", b, "cover_image") || b.cover || "",
+    price: b.price ? `${effectivePrice(b)} Kz` : "", cover: fileUrl("stock_books", b, "cover_image") || b.cover || "",
     genre: b.genre || "", stock: Number(b.stock) || 0,
   };
 }
@@ -1446,7 +1456,7 @@ async function searchBooks(query: string, limit = 8) {
   const add = (list: Row[] | null) => {
     for (const b of list || []) if (!seen.has(b.id)) { seen.add(b.id); books.push(b); }
   };
-  const base = () => db.from("stock_books").select("*").gt("stock", 0);
+  const base = () => db.from("stock_books").select("*").eq("active", true).gt("stock", 0);
   if (q.length >= 2) {
     const like = `%${q}%`;
     add((await base().or(`title.ilike.${like},author.ilike.${like},genre.ilike.${like},book_code.ilike.${like}`)
@@ -1553,7 +1563,7 @@ route("POST", "/chat", async ({ body, ip }) => {
   const model = settings?.chat_model || "";
   const site = settings?.site_name || "Livraria Adventista";
   const shipping = Number(settings?.shipping_free_threshold) || 20000;
-  const catalog = books.map((b) => `- [${b.id}] ${b.title}${b.book_code ? ` (${b.book_code})` : ""} | ${b.author} | ${b.price} | stock:${b.stock}\n`).join("");
+  const catalog = books.map((b) => `- [${b.id}] ${b.title}${b.book_code ? ` (${b.book_code})` : ""} | ${b.author} | ${effectivePrice(b)} | stock:${b.stock}\n`).join("");
   const system = [
     `Assistente da ${site}. Responde em português de Portugal.`,
     "Só recomende livros do catálogo listado. Não invente títulos.",

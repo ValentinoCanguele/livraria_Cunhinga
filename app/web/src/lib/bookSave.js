@@ -1,4 +1,5 @@
 import { sanitizeImageUrlForSave } from '@/lib/imageUrl';
+import { fromLocalInput } from '@/lib/pricing';
 
 /** Prepara payload de livro para PocketBase — evita blob: e URLs inválidas. */
 export function sanitizeBookPayload(data) {
@@ -40,6 +41,12 @@ export function sanitizeBookPayload(data) {
   out.pages = Number(out.pages) || 0;
   out.year = Number(out.year) || new Date().getFullYear();
   out.featured = !!out.featured;
+  out.active = out.active !== false;
+  // Promoção: sem preço promocional, as datas não servem para nada.
+  out.sale_price = out.sale_price === '' || out.sale_price == null ? null : Number(out.sale_price);
+  if (!(out.sale_price > 0)) out.sale_price = null;
+  out.sale_starts_at = out.sale_price ? fromLocalInput(out.sale_starts_at) : null;
+  out.sale_ends_at = out.sale_price ? fromLocalInput(out.sale_ends_at) : null;
   out.preview_enabled = !!out.preview_enabled;
 
   if (!out.description) out.description = '';

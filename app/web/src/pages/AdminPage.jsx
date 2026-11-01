@@ -29,6 +29,7 @@ import SalesReportsPanel from '@/components/admin/SalesReportsPanel';
 import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_METHODS, ORDER_STATUS, getPaymentStatusLabel, getDeliveryStatusLabel, getDeliveryStatusColor } from '@/lib/orderUtils';
 import { displayAngolaPhone } from '@/lib/angolaPhone';
 import { getLowStockBooks } from '@/api/EcommerceApi';
+import { isBookVisible, isSaleActive, isSaleScheduled } from '@/lib/pricing';
 
 // O painel de vendas traz o d3; só é carregado quando se abre o separador.
 const VendasHuamboTab = lazy(() => import('@/components/admin/VendasHuamboTab'));
@@ -101,6 +102,12 @@ const AdminPage = () => {
       if (!(payload.price > 0)) {
         throw new Error('Indique um preço maior que zero; sem preço o livro não pode ser comprado.');
       }
+      if (payload.sale_price && payload.sale_price >= payload.price) {
+        throw new Error('O preço promocional tem de ser menor do que o preço normal.');
+      }
+      if (payload.sale_starts_at && payload.sale_ends_at && payload.sale_ends_at <= payload.sale_starts_at) {
+        throw new Error('A promoção tem de terminar depois de começar.');
+      }
       if (editingBook) {
         await pb.collection('stock_books').update(editingBook.id, payload);
         toast({ title: 'Livro atualizado', description: `Código: ${payload.book_code || editingBook.book_code}` });
@@ -169,6 +176,8 @@ const AdminPage = () => {
     if (bookFilter === 'featured' && !b.featured) return false;
     if (bookFilter === 'low_stock' && !(b.stock_alert || b.stock_low)) return false;
     if (bookFilter === 'no_cover' && (b.cover || b.cover_image)) return false;
+    if (bookFilter === 'hidden' && isBookVisible(b)) return false;
+    if (bookFilter === 'promo' && !(isSaleActive(b) || isSaleScheduled(b))) return false;
     const q = bookSearch.trim().toLowerCase();
     if (!q) return true;
     return [b.title, b.author, b.book_code, b.sku, b.isbn, b.genre].filter(Boolean).join(' ').toLowerCase().includes(q);
@@ -404,6 +413,8 @@ const AdminPage = () => {
                         <SelectItem value="featured">Em destaque</SelectItem>
                         <SelectItem value="low_stock">Stock baixo ou esgotado</SelectItem>
                         <SelectItem value="no_cover">Sem capa</SelectItem>
+                        <SelectItem value="hidden">Ocultos da loja</SelectItem>
+                        <SelectItem value="promo">Em promoção</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -454,10 +465,25 @@ const AdminPage = () => {
                                 <span className="block text-[10px] text-muted-foreground font-mono">{b.sku}</span>
                               )}
                             </td>
-                            <td className="p-4 font-medium max-w-[180px] truncate">{b.title}</td>
+                            <td className="p-4 font-medium max-w-[180px]">
+                              <span className="block truncate">{b.title}</span>
+                              {!isBookVisible(b) && <span className="inline-block mt-0.5 text-[10px] font-semibold uppercase bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 px-1.5 py-0.5 rounded">Oculto</span>}
+                            </td>
                             <td className="p-4 text-muted-foreground hidden lg:table-cell">{b.author}</td>
                             <td className="p-4 text-muted-foreground hidden md:table-cell">{b.genre}</td>
-                            <td className="p-4 whitespace-nowrap">Kz {Number(b.price).toFixed(2)}</td>
+                            <td className="p-4 whitespace-nowrap">
+                              {isSaleActive(b) ? (
+                                <>
+                                  <span className="text-rose-600 font-medium">Kz {Number(b.sale_price).toFixed(2)}</span>
+                                  <span className="block text-[10px] text-muted-foreground line-through">Kz {Number(b.price).toFixed(2)}</span>
+                                </>
+                              ) : (
+                                <>
+                                  Kz {Number(b.price).toFixed(2)}
+                                  {isSaleScheduled(b) && <span className="block text-[10px] text-rose-600">promoção agendada</span>}
+                                </>
+                              )}
+                            </td>
                             <td className="p-4">
                               <span className={Number(b.stock) <= 5 ? 'text-red-600 font-medium' : ''}>{b.stock}</span>
                               {(b.stock_alert || b.stock_low) && (

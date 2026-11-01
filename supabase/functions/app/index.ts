@@ -989,10 +989,14 @@ route("GET", "/push/config", async () => {
   return json({ enabled: true, publicKey: rec.vapid_public_key || "" });
 });
 
-route("POST", "/push/subscribe", async ({ auth, body }) => {
+route("POST", "/push/subscribe", async ({ auth, body, ip }) => {
+  if (!checkRateLimit("push-subscribe", ip, 10)) throw bad("Demasiados pedidos. Aguarde um minuto.");
   const endpoint = String(body.endpoint || "").trim();
-  if (!endpoint) throw bad("Endpoint obrigatório.");
-  const rec: Row = { endpoint, keys: body.keys || {}, user_agent: body.user_agent || "" };
+  if (!/^https:\/\/[^\s]{8,1000}$/.test(endpoint)) throw bad("Endpoint inválido.");
+  const keys = body.keys && typeof body.keys === "object"
+    ? { p256dh: String(body.keys.p256dh || "").slice(0, 200), auth: String(body.keys.auth || "").slice(0, 100) }
+    : {};
+  const rec: Row = { endpoint, keys, user_agent: String(body.user_agent || "").slice(0, 300) };
   if (auth?.id) rec.user = auth.id;
   const { error } = await db.from("push_subscriptions").upsert(rec, { onConflict: "endpoint" });
   if (error) throw error;

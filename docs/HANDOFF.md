@@ -104,3 +104,9 @@ Ainda não publicada; vai no deploy depois do merge.
 - `/track` e `/confirm-delivery`: limite de pedidos por IP; a assinatura fica limitada a cerca de 600 KB.
 - `/contacts/*`: exige `manage_users` ou `manage_marketing`. `/admin/email/test` e `/admin/whatsapp/test`: exigem `manage_settings`. `requireStaff` foi removida.
 - `/settings`, `/messaging/status`, `/push/config` e `/integrations` só devolvem dados públicos (verificado).
+- `/checkout`:
+  - o método de pagamento tem de estar activo em `payment_methods`, e a encomenda guarda `payment_method_name`;
+  - o número de encomenda passa a `ENC-` + hora + 3 caracteres aleatórios;
+  - o envio fica limitado a `delivery`/`express`/`pickup`, e todos os textos têm tamanho máximo.
+- `/push/subscribe`: limite de pedidos, endpoint `https` obrigatório e chaves validadas.
+- Dados: `payment_methods` tem 3 linhas `unitel_money` repetidas (todas desactivadas). Limpar no painel antes de as activar.

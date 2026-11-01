@@ -155,3 +155,11 @@ Ainda não publicada; vai no deploy depois do merge.
   - confirmar que o utilizador "Rodrigues" é `admin`;
   - publicar a Edge Function. Na produção, `/admin/users` ainda responde "Rota não encontrada".
   - O plano detalhado está em `docs/PROMPT_REFINAMENTO.md`.
+
+## Painel de vendas por loja (2026-11-01, sessão local)
+
+- O separador "Vendas por loja" (antes "Vendas Huambo") calcula em cêntimos, exporta em Excel, PDF, PNG, vídeo, CSV e JSON, e lê as vendas registadas no sistema (encomendas) por loja e por mês. A introdução manual continua igual.
+- **Por aplicar, em `docs/migracoes-pendentes/` (ver o README de lá):**
+  1. passar a loja de Talatona para o Huambo (pedido do dono);
+  2. a migração `painel_vendas_por_loja`.
+- O painel funciona antes e depois da migração.

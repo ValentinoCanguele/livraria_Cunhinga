@@ -820,10 +820,16 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
 
   const paymentCode = clip(data.paymentMethodCode || data.paymentMethod || "entrega", 60);
   // Só os métodos de pagamento que o admin tem activos. Se nenhum estiver activo, aceita "entrega".
-  const { data: activeMethods } = await db.from("payment_methods").select("code, name").eq("enabled", true);
+  const { data: activeMethods } = await db.from("payment_methods").select("code, name, type, requires_reference").eq("enabled", true);
   const paymentMethodRow = (activeMethods || []).find((m: Row) => m.code === paymentCode);
   if (!paymentMethodRow && !(paymentCode === "entrega" && !(activeMethods || []).length)) throw bad("Método de pagamento indisponível.");
-  const isP2P = paymentCode !== "entrega" && paymentCode !== "transferencia";
+  // Pelo tipo configurado em Pagamentos: P2P e transferência são pagos antes da entrega, por isso
+  // exigem referência e ficam "a aguardar confirmação"; os métodos offline (entrega, balcão) ficam pendentes.
+  const paidUpfront = ["p2p", "transfer"].includes(paymentMethodRow?.type);
+  if ((paidUpfront || paymentMethodRow?.requires_reference) && !clip(data.paymentReference, 120)) {
+    throw bad("Indique a referência ou o comprovativo do pagamento.");
+  }
+  const isP2P = paidUpfront;
   const saleChannel = clip(data.saleChannel || data.orderType || "web_purchase", 40);
   const isWhatsApp = saleChannel === "whatsapp";
   const deliveryAddress = shippingMethod === "pickup" ? `Levantamento: ${pickupStore || "Loja física"}` : (clip(data.deliveryAddressFull, 600) || address);

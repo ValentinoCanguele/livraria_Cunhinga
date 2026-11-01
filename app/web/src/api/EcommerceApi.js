@@ -166,7 +166,10 @@ export async function getHeroSlides(placement = 'home') {
       filter: 'active = true',
       sort: 'sort_order',
     });
+    // Quem gere o catálogo também lê os slides agendados; a loja mostra só os que estão no ar.
+    const now = Date.now();
     const filtered = records
+      .filter((r) => (!r.starts_at || new Date(r.starts_at).getTime() <= now) && (!r.ends_at || new Date(r.ends_at).getTime() > now))
       .map(mapSlideRecord)
       .filter((s) => s.placement === placement || s.placement === 'both' || (!s.placement && placement === 'home'));
     return sortSlidesList(filtered);

@@ -96,7 +96,11 @@ export const AuthProvider = ({ children }) => {
     changePassword: async (oldPassword, newPassword) => {
       const email = pb.authStore.record?.email;
       if (!email) throw new Error('Não autenticado');
-      await pb.collection('users').authWithPassword(email, oldPassword);
+      try {
+        await pb.collection('users').authWithPassword(email, oldPassword);
+      } catch {
+        throw new Error('A palavra-passe actual está incorrecta. Se entrou com a Google e nunca definiu uma, use "Esqueceu?" no ecrã de entrada.');
+      }
       await pb.collection('users').update(pb.authStore.record.id, {
         oldPassword,
         password: newPassword,

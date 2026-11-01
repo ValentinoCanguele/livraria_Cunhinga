@@ -31,8 +31,9 @@ import { isPushSupported, subscribeToPush, requestPushPermission } from '@/lib/p
 
 
 const ProfilePage = () => {
-  const { user, isAuthed, isAdmin, hasPermission, logout, updateProfile, changePassword, fetchUserOrders, updateAvatar } = useAuth();
-  const canManageContacts = isAdmin || hasPermission('manage_marketing') || (user?.role === 'manager');
+  const { user, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout, updateProfile, changePassword, fetchUserOrders, updateAvatar } = useAuth();
+  // As mesmas permissões que o servidor exige em /contacts/*.
+  const canManageContacts = isAdmin || hasPermission('manage_marketing') || hasPermission('manage_users');
   const { wishlist, loading: loadingWishlist, removeFromWishlist } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
@@ -127,9 +128,18 @@ const ProfilePage = () => {
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
+    const emailChanged = email.trim().toLowerCase() !== (user?.email || '').toLowerCase();
     try {
       await updateProfile({ name, email, phone });
-      toast({ title: 'Perfil atualizado' });
+      if (emailChanged) {
+        setEmail(user?.email || '');
+        toast({
+          title: 'Confirme o novo email',
+          description: `Enviámos um link para ${email.trim()}. Até o confirmar, a conta e as encomendas continuam no email actual.`,
+        });
+      } else {
+        toast({ title: 'Perfil actualizado' });
+      }
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
     } finally {
@@ -140,17 +150,17 @@ const ProfilePage = () => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast({ variant: 'destructive', title: 'As passwords não coincidem' });
+      toast({ variant: 'destructive', title: 'As palavras-passe não coincidem' });
       return;
     }
     if (newPassword.length < 8) {
-      toast({ variant: 'destructive', title: 'Password deve ter pelo menos 8 caracteres' });
+      toast({ variant: 'destructive', title: 'A palavra-passe deve ter pelo menos 8 caracteres' });
       return;
     }
     setSaving(true);
     try {
       await changePassword(currentPassword, newPassword);
-      toast({ title: 'Password alterada com sucesso' });
+      toast({ title: 'Palavra-passe alterada' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -163,7 +173,12 @@ const ProfilePage = () => {
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ variant: 'destructive', title: 'Imagem demasiado grande', description: 'Escolha uma foto com até 2 MB.' });
+      return;
+    }
     setAvatarUploading(true);
     try {
       await updateAvatar(file);
@@ -271,7 +286,7 @@ const ProfilePage = () => {
                 <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-2" />Definições</TabsTrigger>
                 <TabsTrigger value="security"><Lock className="h-4 w-4 mr-2" />Segurança</TabsTrigger>
                 <TabsTrigger value="wishlist"><Heart className="h-4 w-4 mr-2" />Lista de Desejos</TabsTrigger>
-                <TabsTrigger value="workspace"><LayoutDashboard className="h-4 w-4 mr-2" />Google Workspace</TabsTrigger>
+                {canAccessAdmin && <TabsTrigger value="workspace"><LayoutDashboard className="h-4 w-4 mr-2" />Google Workspace</TabsTrigger>}
                 {canManageContacts && <TabsTrigger value="crm"><Users className="h-4 w-4 mr-2" />CRM Contactos</TabsTrigger>}
               </TabsList>
 
@@ -525,9 +540,11 @@ const ProfilePage = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="workspace">
-                <GoogleWorkspaceHub />
-              </TabsContent>
+              {canAccessAdmin && (
+                <TabsContent value="workspace">
+                  <GoogleWorkspaceHub />
+                </TabsContent>
+              )}
 
               {canManageContacts && (
                 <TabsContent value="crm">

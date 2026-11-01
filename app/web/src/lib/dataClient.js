@@ -547,7 +547,9 @@ async function updateUser(id, data) {
     const { data: current } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
     row = current;
   }
-  const record = decorate('users', { ...row, email: isSelf ? (body.email || authStore.record?.email || row?.email) : row?.email });
+  // O email novo só passa a valer depois de confirmado no link que o Supabase envia;
+  // até lá a conta (e as encomendas) continuam no email actual.
+  const record = decorate('users', { ...row, email: isSelf ? (authStore.record?.email || row?.email) : row?.email });
   if (isSelf) setAuth(authStore.token, record);
   return record;
 }

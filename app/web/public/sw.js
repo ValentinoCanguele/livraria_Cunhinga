@@ -1,4 +1,4 @@
-const CACHE_NAME = 'livraria-v4';
+const CACHE_NAME = 'livraria-v5';
 const PRECACHE = ['/', '/shop', '/manifest.webmanifest', '/icons/icon-192.svg'];
 
 self.addEventListener('install', (event) => {
@@ -89,7 +89,48 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Stale-While-Revalidate for other static assets (HTML, JS, CSS, fonts, etc.)
+  // 2. Navegação (o HTML): rede primeiro, cache só se a rede falhar.
+  //
+  // Com stale-while-revalidate, depois de cada publicação o browser recebia o index.html
+  // antigo, que aponta para ficheiros /assets/<hash> já substituídos — página em branco até
+  // um segundo recarregamento. O HTML é pequeno e tem de ser sempre o actual; o que é grande
+  // (os assets com hash no nome) é que vale a pena servir da cache.
+  const isNavigation = event.request.mode === 'navigate' ||
+                       event.request.destination === 'document' ||
+                       (event.request.headers.get('accept') || '').includes('text/html');
+
+  if (isNavigation) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        if (response.ok && url.origin === self.location.origin) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() =>
+        // Sem rede: a última versão vista desta página, ou a raiz (a aplicação trata a rota).
+        caches.match(event.request).then((cached) => cached || caches.match('/'))
+      )
+    );
+    return;
+  }
+
+  // 3. Ficheiros com hash no nome (/assets/index-ab12cd34.js): o conteúdo nunca muda para o
+  // mesmo nome, por isso a cache serve primeiro e não há nada a revalidar.
+  if (url.origin === self.location.origin && /^\/assets\/.+-[A-Za-z0-9_-]{8}\./.test(url.pathname)) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      }))
+    );
+    return;
+  }
+
+  // 4. O resto (manifest, ícones, tipos de letra): stale-while-revalidate.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetched = fetch(event.request).then((response) => {

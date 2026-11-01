@@ -1278,7 +1278,11 @@ function safeOrigin(origin: unknown) {
   }
 }
 
-async function loadTarget(id: unknown) {
+async function loadTarget(auth: Auth, id: unknown) {
+  // A permissão é verificada antes de ir à base de dados: a ordem inversa respondia 404 para
+  // um id inexistente e 403 para um existente, o que dizia a qualquer pessoa quais os ids de
+  // conta que existem — e fazia o servidor trabalhar para quem não tem acesso.
+  requirePermission(auth, "manage_users");
   const targetId = cleanText(id, 64);
   if (!targetId) throw bad("id obrigatório.");
   const { data } = await db.from("profiles").select("id, role, name").eq("id", targetId).maybeSingle();
@@ -1396,7 +1400,7 @@ route("POST", "/admin/users/create", async ({ auth, body }) => {
 });
 
 route("POST", "/admin/users/update", async ({ auth, body }) => {
-  const target = await loadTarget(body.id);
+  const target = await loadTarget(auth, body.id);
   assertCanManage(auth, target);
   const patch: Row = {};
   if (body.name !== undefined) patch.name = cleanText(body.name);
@@ -1436,7 +1440,7 @@ route("POST", "/admin/users/update", async ({ auth, body }) => {
 });
 
 route("POST", "/admin/users/status", async ({ auth, body }) => {
-  const target = await loadTarget(body.id);
+  const target = await loadTarget(auth, body.id);
   assertCanManage(auth, target);
   const suspend = body.suspended === true;
   if (suspend && target.id === auth!.id) throw bad("Não pode suspender a sua própria conta.");
@@ -1449,7 +1453,7 @@ route("POST", "/admin/users/status", async ({ auth, body }) => {
 });
 
 route("POST", "/admin/users/access-link", async ({ auth, body }) => {
-  const target = await loadTarget(body.id);
+  const target = await loadTarget(auth, body.id);
   assertCanManage(auth, target);
   if (!target.email) throw bad("Esta conta não tem email.");
   const access = await sendAccessLink(target.email, target.name, "reset", body.origin);
@@ -1457,7 +1461,7 @@ route("POST", "/admin/users/access-link", async ({ auth, body }) => {
 });
 
 route("POST", "/admin/users/delete", async ({ auth, body }) => {
-  const target = await loadTarget(body.id);
+  const target = await loadTarget(auth, body.id);
   assertCanManage(auth, target);
   if (target.id === auth!.id) throw bad("Não pode apagar a sua própria conta.");
   if (target.role === "admin" && await activeAdminCount(target.id) === 0) {

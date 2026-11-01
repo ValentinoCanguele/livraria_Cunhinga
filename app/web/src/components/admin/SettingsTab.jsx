@@ -272,7 +272,8 @@ export default function SettingsTab() {
         shop_per_page: Number(form.shop_per_page) || 24,
         shop_grid_columns: Number(form.shop_grid_columns) || 4,
         ui_glass_opacity: Number(form.ui_glass_opacity) || 0.72,
-        shop_bg_overlay: Number(form.shop_bg_overlay) || 0.55,
+        // 0 é válido (sem escurecimento); só o campo vazio volta ao valor por omissão.
+        shop_bg_overlay: form.shop_bg_overlay === '' || Number.isNaN(Number(form.shop_bg_overlay)) ? 0.55 : Number(form.shop_bg_overlay),
         smtp_port: Number(form.smtp_port) || 587,
         shop_bg_mode: form.shop_bg_mode || 'gradient',
         primary_color: form.primary_color || '#0ea5c9',

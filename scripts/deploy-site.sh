@@ -44,7 +44,7 @@ npm run lint --silent
 npm run build --silent
 
 target="main"
-[ "$mode" = "preview" ] && target="$branch"
+[ "$mode" = "preview" ] && target="${upstream#origin/}"
 echo "→ a publicar em $PROJECT (ramo Pages: $target)"
 npx --yes wrangler@4 pages deploy dist/app/web \
   --project-name="$PROJECT" --branch="$target" \

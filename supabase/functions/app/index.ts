@@ -52,6 +52,20 @@ const likeExact = (value: string) => value.replace(/[\\%_]/g, (c) => "\\" + c);
 const normalizePhone = (phone: string) => (phone || "").replace(/\D/g, "");
 const fmtMoneyKz = (amount: unknown) =>
   Number(amount || 0).toLocaleString("pt-AO", { minimumFractionDigits: 2 }) + " Kz";
+const escapeHtml = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+
+type NotifyMeta = { context?: string; customer_name?: string; order_number?: string };
+
+/** Regista o resultado real de cada envio em notification_logs (visível no admin → Integrações). */
+async function logNotification(entry: Row) {
+  const { error } = await db.from("notification_logs").insert({
+    ...entry,
+    content: String(entry.content || "").slice(0, 20000),
+    detail: String(entry.detail || "").slice(0, 2000),
+  });
+  if (error) console.log("notification_logs:", error.message);
+}
+
 const timelineEvent = (status: string, title: string, description = "", location = "Luanda") =>
   ({ status, title, description, location: location || "Luanda", at: nowISO() });
 
@@ -86,15 +100,23 @@ async function getIntegration(code: string): Promise<Row | null> {
 // ---------------------------------------------------------------------------
 // Email
 // ---------------------------------------------------------------------------
-async function sendTransactionalEmail(settings: Row | null, to: string, subject: string, html: string) {
-  if (!settings || !to) return false;
+async function sendTransactionalEmail(settings: Row | null, to: string, subject: string, html: string, meta: NotifyMeta = {}) {
+  if (!to) return false;
+  const base = { type: "email", context: meta.context || "order", recipient: to, customer_name: meta.customer_name || "", order_number: meta.order_number || "", subject, content: html };
+  if (!settings) {
+    await logNotification({ ...base, status: "skipped", detail: "Configurações do site em falta." });
+    return false;
+  }
   const siteName = settings.site_name || "Livraria Adventista";
   const provider = settings.email_provider || "smtp";
   const fromEmail = settings.smtp_from_email || settings.contact_email || "noreply@livraria.ao";
   const fromName = settings.smtp_from_name || siteName;
   try {
     if (provider === "sendgrid") {
-      if (!settings.sendgrid_api_key) return false;
+      if (!settings.sendgrid_api_key) {
+        await logNotification({ ...base, status: "skipped", provider, detail: "Chave SendGrid em falta." });
+        return false;
+      }
       const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: { Authorization: `Bearer ${settings.sendgrid_api_key}`, "Content-Type": "application/json" },
@@ -105,9 +127,14 @@ async function sendTransactionalEmail(settings: Row | null, to: string, subject:
           content: [{ type: "text/html", value: html }],
         }),
       });
+      const detail = res.ok ? `SendGrid ${res.status}` : `SendGrid ${res.status}: ${await res.text()}`;
+      await logNotification({ ...base, status: res.ok ? "sent" : "failed", provider, detail });
       return res.ok;
     }
-    if (!settings.smtp_host) return false;
+    if (!settings.smtp_host) {
+      await logNotification({ ...base, status: "skipped", provider: "smtp", detail: "Servidor SMTP não configurado." });
+      return false;
+    }
     const port = Number(settings.smtp_port) || 465;
     const transport = nodemailer.createTransport({
       host: settings.smtp_host,
@@ -115,10 +142,12 @@ async function sendTransactionalEmail(settings: Row | null, to: string, subject:
       secure: port === 465,
       auth: settings.smtp_user ? { user: settings.smtp_user, pass: settings.smtp_password || "" } : undefined,
     });
-    await transport.sendMail({ from: { name: fromName, address: fromEmail }, to, subject, html });
+    const info = await transport.sendMail({ from: { name: fromName, address: fromEmail }, to, subject, html });
+    await logNotification({ ...base, status: "sent", provider: "smtp", detail: `${settings.smtp_host}:${port} · ${info?.response || "aceite"}` });
     return true;
   } catch (err) {
     console.log("Transactional email error:", err);
+    await logNotification({ ...base, status: "failed", provider, detail: (err as Error)?.message || String(err) });
     return false;
   }
 }
@@ -126,14 +155,14 @@ async function sendTransactionalEmail(settings: Row | null, to: string, subject:
 function buildOrderEmailHtml(order: Row, siteName: string) {
   const rows = (order.items || []).map((it: Row) => {
     const line = (Number(it.quantity) || 1) * (Number(it.price) || 0);
-    return `<tr><td style="padding:8px;border-bottom:1px solid #eee">${it.quantity || 1}× ${it.title || "Livro"}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${fmtMoneyKz(line)}</td></tr>`;
+    return `<tr><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(it.quantity || 1)}× ${escapeHtml(it.title || "Livro")}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${fmtMoneyKz(line)}</td></tr>`;
   }).join("");
   return [
     '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">',
     '<h2 style="color:#0ea5c9">Encomenda Confirmada</h2>',
-    `<p>Olá <strong>${order.customer_name || ""}</strong>,</p>`,
-    `<p>Obrigado pela sua compra na <strong>${siteName || "Livraria Adventista"}</strong>.</p>`,
-    `<p><strong>Nº:</strong> ${order.order_number || order.id}</p>`,
+    `<p>Olá <strong>${escapeHtml(order.customer_name)}</strong>,</p>`,
+    `<p>Obrigado pela sua compra na <strong>${escapeHtml(siteName || "Livraria Adventista")}</strong>.</p>`,
+    `<p><strong>Nº:</strong> ${escapeHtml(order.order_number || order.id)}</p>`,
     '<table style="width:100%;border-collapse:collapse;margin:16px 0">',
     '<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #0ea5c9">Livro</th><th style="text-align:right;padding:8px;border-bottom:2px solid #0ea5c9">Total</th></tr></thead>',
     "<tbody>", rows, "</tbody>",
@@ -147,11 +176,13 @@ function buildOrderEmailHtml(order: Row, siteName: string) {
 async function sendOrderConfirmationEmail(order: Row, settings: Row | null) {
   if (!settings?.order_email_enabled || !order.customer_email) return false;
   const siteName = settings.site_name || "Livraria Adventista";
-  return sendTransactionalEmail(settings, order.customer_email, `Confirmação de encomenda ${order.order_number || ""}`, buildOrderEmailHtml(order, siteName));
+  return sendTransactionalEmail(settings, order.customer_email, `Confirmação de encomenda ${order.order_number || ""}`, buildOrderEmailHtml(order, siteName), {
+    context: "order", customer_name: order.customer_name, order_number: order.order_number,
+  });
 }
 
 const plainHtml = (body: string) =>
-  `<div style="font-family:sans-serif;line-height:1.6">${String(body).replace(/\n/g, "<br>")}</div>`;
+  `<div style="font-family:sans-serif;line-height:1.6">${escapeHtml(body).replace(/\n/g, "<br>")}</div>`;
 
 // ---------------------------------------------------------------------------
 // WhatsApp Business (Meta Cloud API)
@@ -196,8 +227,23 @@ function sendWhatsAppTemplate(phone: string, config: Row, bodyParams: unknown[])
   return metaSend(config, { messaging_product: "whatsapp", to: waNumber(phone), type: "template", template });
 }
 
-async function sendWhatsAppMessage(phone: string, text: string, config: Row | null, templateParams?: Row) {
-  if (!phone || !config) return { ok: false, error: "missing_config" } as Row;
+async function sendWhatsAppMessage(phone: string, text: string, config: Row | null, templateParams?: Row, meta: NotifyMeta = {}) {
+  const base = { type: "whatsapp", context: meta.context || "order", recipient: phone, customer_name: meta.customer_name || "", order_number: meta.order_number || "", content: text, provider: "meta" };
+  if (!phone || !config) {
+    if (phone) await logNotification({ ...base, status: "skipped", detail: "WhatsApp Business API não configurada." });
+    return { ok: false, error: "missing_config" } as Row;
+  }
+  const result = await sendWhatsAppMessageRaw(phone, text, config, templateParams);
+  await logNotification({
+    ...base,
+    status: result.ok ? "sent" : "failed",
+    subject: config.use_template && config.template_name ? `Modelo: ${config.template_name}` : "Mensagem de texto",
+    detail: result.ok ? "Aceite pela Meta Cloud API" : `${result.status || ""} ${result.error || ""}`.trim(),
+  });
+  return result;
+}
+
+async function sendWhatsAppMessageRaw(phone: string, text: string, config: Row, templateParams?: Row) {
   if (config.use_template && config.template_name) {
     const params = templateParams?.bodyParams || [
       templateParams?.customerName || "Cliente", templateParams?.orderNumber || "", templateParams?.total || "",
@@ -211,10 +257,10 @@ async function sendWhatsAppMessage(phone: string, text: string, config: Row | nu
 const buildWhatsAppNotifyUrl = (phone: string, message: string) =>
   `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(message || "")}`;
 
-async function sendContactWhatsApp(phone: string, body: string) {
+async function sendContactWhatsApp(phone: string, body: string, meta: NotifyMeta = {}) {
   const config = await getWhatsAppConfig();
   if (config) {
-    const result = await sendWhatsAppMessage(phone, body, config);
+    const result = await sendWhatsAppMessage(phone, body, config, undefined, meta);
     return { apiSent: !!result.ok, waUrl: "" };
   }
   return { apiSent: false, waUrl: buildWhatsAppNotifyUrl(phone, body) };
@@ -232,7 +278,7 @@ async function sendOrderWhatsAppConfirmation(order: Row, settings: Row | null) {
   ];
   const result = await sendWhatsAppMessage(order.phone, lines.join("\n"), config, {
     bodyParams: [order.customer_name || "Cliente", order.order_number || "", fmtMoneyKz(order.total)],
-  });
+  }, { context: "order", customer_name: order.customer_name, order_number: order.order_number });
   if (!result.ok) return false;
   const storePhone = settings?.whatsapp || settings?.contact_phone || "";
   if (storePhone && order.sale_channel === "whatsapp") {
@@ -369,7 +415,7 @@ async function notifyContact(contact: Row, opts: Row) {
 
   if (channel === "whatsapp" || channel === "both") {
     if (hasPhone) {
-      const wa = await sendContactWhatsApp(contact.phone, body);
+      const wa = await sendContactWhatsApp(contact.phone, body, { context: opts.campaignId ? "campaign" : "contact", customer_name: contact.name });
       waUrl = wa.waUrl;
       whatsappApiSent = wa.apiSent;
       if (waUrl) notif.whatsapp_url = waUrl;
@@ -378,7 +424,7 @@ async function notifyContact(contact: Row, opts: Row) {
   }
   if (channel === "email" || channel === "both") {
     if (hasEmail && settings) {
-      emailSent = await sendTransactionalEmail(settings, contact.email, subject, plainHtml(body));
+      emailSent = await sendTransactionalEmail(settings, contact.email, subject, plainHtml(body), { context: opts.campaignId ? "campaign" : "contact", customer_name: contact.name });
       if (channel === "email") status = emailSent ? "sent" : "failed";
       else if (emailSent) status = "sent";
     } else if (channel === "email") {
@@ -540,18 +586,19 @@ route("GET", "/admin/drive-images", async ({ auth, url }) => {
 });
 
 route("GET", "/stores", async () => {
-  const { data } = await db.from("physical_stores").select("*").eq("active", true).order("sort_order");
+  const { data } = await db.from("physical_stores").select("*").eq("active", true).order("sort_order").order("name");
   return json({
     stores: (data || []).map((r) => ({
       id: r.id, name: r.name, province: r.province, address: r.address, phone: r.phone || "",
       hours: r.hours || "", image_url: r.image_url || fileUrl("physical_stores", r, "image"),
       latitude: r.latitude, longitude: r.longitude, maps_url: r.maps_url || "",
+      email: r.email || "", whatsapp: r.whatsapp || "", pickup_enabled: r.pickup_enabled !== false,
     })),
   });
 });
 
 route("GET", "/book-collections", async () => {
-  const { data } = await db.from("book_collections").select("*").eq("active", true).order("sort_order");
+  const { data } = await db.from("book_collections").select("*").eq("active", true).order("sort_order").order("created");
   return json({
     collections: (data || []).map((r) => ({
       id: r.id, title: r.title, slug: r.slug || "", description: r.description || "",
@@ -868,7 +915,7 @@ route("POST", "/whatsapp/receipt", async ({ body, ip }) => {
   if (orderEmail && reqEmail && orderEmail !== reqEmail) throw bad("Email não corresponde à encomenda.");
   const config = await getWhatsAppConfig();
   if (!config) return json({ sent: false, fallback: true, message: "API WhatsApp não configurada — use link manual." });
-  const result = await sendWhatsAppMessage(phone, text, config);
+  const result = await sendWhatsAppMessage(phone, text, config, undefined, { context: "receipt", order_number: orderNumber });
   return json({
     sent: !!result.ok,
     fallback: !result.ok,
@@ -883,9 +930,20 @@ route("POST", "/admin/whatsapp/test", async ({ auth, body }) => {
   const config = await getWhatsAppConfig();
   if (!config) throw bad("WhatsApp Business API não está activa ou configurada.");
   const text = "✅ Teste — Livraria Adventista\n\nA integração WhatsApp Business API está funcional. Mensagens automáticas activas.";
-  const result = await sendWhatsAppMessage(phone, text, config, { bodyParams: ["Teste", "OK", "0 Kz"] });
+  const result = await sendWhatsAppMessage(phone, text, config, { bodyParams: ["Teste", "OK", "0 Kz"] }, { context: "test" });
   if (!result.ok) throw bad(`Falha Meta API (${result.status || ""}): ${result.error || "erro desconhecido"}`);
   return json({ message: `Mensagem de teste enviada para ${phone}.` });
+});
+
+route("POST", "/admin/email/test", async ({ auth, body }) => {
+  requireStaff(auth);
+  const to = normalizeEmail(body.to || auth?.email || "");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) throw bad("Indique um email de teste válido.");
+  const settings = await getSettings();
+  const html = plainHtml("✅ Teste — Livraria Adventista\n\nSe recebeu este email, o envio automático de confirmações de encomenda está a funcionar.");
+  const ok = await sendTransactionalEmail(settings, to, "Teste de email — Livraria Adventista", html, { context: "test" });
+  if (!ok) throw bad("O email não foi enviado. Veja o motivo no registo de comunicações.");
+  return json({ message: `Email de teste enviado para ${to}.` });
 });
 
 route("GET", "/push/config", async () => {

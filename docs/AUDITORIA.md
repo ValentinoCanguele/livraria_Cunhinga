@@ -11,18 +11,18 @@ Gravidade: **Crítica · Alta · Média · Baixa**. Estado: ✅ corrigido nesta 
 | 1 | Sanitização de HTML contornável (injecção de código nas descrições e slides) | Crítica | ✅ |
 | 2 | Edge Function publicada desactualizada: módulo de utilizadores partido em produção | Alta | ✅ publicada (2026-11-01 23:21) |
 | 3 | GitHub Actions bloqueado por pagamento (CI e deploys automáticos não correm) | Alta | ⏳ dono da conta |
-| 4 | Service worker serve HTML antigo depois de cada deploy (risco de ecrã branco) | Alta | ⏳ |
+| 4 | Service worker serve HTML antigo depois de cada deploy (risco de ecrã branco) | Alta | ✅ |
 | 5 | 100 de 102 livros sem descrição; 17 capas em branco; capas trocadas | Alta (negócio) | ⏳ conteúdo |
 | 6 | Carregamento inicial pesado (Firebase e Recharts em todas as páginas) | Média | ✅ 580 → 331 KB |
 | 7 | Contactos provisórios no site (telefone `+244 923 000 000`, WhatsApp vazio) | Média | ⏳ Configurações |
 | 8 | Emails de confirmação de encomenda desligados (sem SMTP) | Média | ⏳ Configurações |
-| 9 | Sem `robots.txt`, `sitemap.xml`, `favicon.ico`, etiquetas `og:` | Média | ⏳ |
-| 10 | Sem cabeçalhos de segurança (CSP, X-Frame-Options, HSTS) | Média | ⏳ |
+| 9 | Sem `robots.txt`, `sitemap.xml`, `favicon.ico`, etiquetas `og:` | Média | ✅ (falta só o `favicon.ico`) |
+| 10 | Sem cabeçalhos de segurança (CSP, X-Frame-Options, HSTS) | Média | ✅ excepto CSP |
 | 11 | 11 vulnerabilidades em dependências (10 altas, impacto prático baixo) | Média | ⏳ |
 | 12 | Stock: 96 de 102 livros esgotados ou com 1–4 unidades | Média (negócio) | ⏳ conferir |
 | 13 | API lenta (0,85–1,5 s por pedido, Supabase em Estocolmo, sem cache) | Média | ⏳ |
 | 14 | 53 botões só com ícone sem nome acessível | Baixa | ✅ |
-| 15 | Rotas de utilizadores procuram o id antes de verificar a permissão | Baixa | ⏳ |
+| 15 | Rotas de utilizadores procuram o id antes de verificar a permissão | Baixa | ✅ |
 | 16 | Loja Talatona → Huambo e painel por loja (SQL pronto) | — | ⏳ `docs/migracoes-pendentes` |
 | 17 | Gate de qualidade inexistente: ESLint com `no-undef`/`no-unused-vars` em `off` e `--quiet`; zero testes | Crítica | ✅ |
 | 18 | Três bugs de runtime que o gate desligado escondia (criar livro no painel rebentava) | Alta | ✅ |
@@ -187,6 +187,33 @@ Gravidade: **Crítica · Alta · Média · Baixa**. Estado: ✅ corrigido nesta 
   `/contacts/stats` respondem 403 ("Sem permissão") em vez de 404 ("Rota não encontrada"),
   ou seja **o módulo de utilizadores deixou de estar partido**.
 
+### Terceira leva (achados 4, 9, 10 e 15), verificada em produção
+
+- **Service worker** (achado 4). A navegação passa a rede primeiro, com a cache só quando
+  não há rede; os ficheiros com hash no nome passam a cache primeiro. `CACHE_NAME` subiu
+  para `livraria-v5`, por isso o `activate` apaga o HTML velho já guardado nos browsers.
+  Confirmado em produção: `sw.js` servido com `no-cache` e já na v5.
+
+- **Cabeçalhos** (achado 10). Novo `app/web/public/_headers`. Confirmado em produção:
+  `x-frame-options: SAMEORIGIN`, `strict-transport-security: max-age=15552000`,
+  `cross-origin-opener-policy: same-origin-allow-popups`,
+  `permissions-policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()`,
+  `/assets/*` com `immutable` e o `index.html` com `must-revalidate`.
+  **O CSP continua em falta por opção:** tem de cobrir o `<script>` inline do `index.html`,
+  os pop-ups do Google, os embeds do Maps e `img-src https:` para as capas em URLs externos.
+  Um CSP errado parte a loja em silêncio, e isso precisa de uma passagem com o browser.
+
+- **SEO** (achado 9). `robots.txt` e `sitemap.xml` (ambos 200 em produção), `canonical` e
+  etiquetas `og:`/`twitter:` no `index.html`. Os caminhos do sitemap foram conferidos contra
+  as rotas do `App.jsx` — três dos que tinha escrito não existiam (`/sobre`, `/contacto`,
+  `/envios-devolucoes`; são `/about`, `/contact`, `/shipping-returns`). Falta o
+  `favicon.ico` (há `logo-icon.svg`, que cobre os browsers actuais).
+
+- **Permissão antes da consulta** (achado 15). As rotas `/admin/users/*` iam à base de dados
+  antes de verificar a permissão, logo respondiam 404 para um id inexistente e 403 para um
+  existente — um oráculo de ids de conta. Confirmado em produção: agora ambos os casos dão
+  403.
+
 ### Por fazer
 
 - **Limite de pedidos partilhado** (achado 21). O limite vivia num objecto em memória de
@@ -209,7 +236,9 @@ Gravidade: **Crítica · Alta · Média · Baixa**. Estado: ✅ corrigido nesta 
 
 1. Aplicar a migração `limites_pedidos` e o SQL de `docs/migracoes-pendentes/`. (A Edge Function já está publicada e os advisors já correram: ver 9.1.)
 2. Desbloquear o GitHub (pagamento) → CI e deploys automáticos.
-3. Service worker: network-first no HTML.
-4. Conteúdo: descrições, capas em branco ou trocadas, stock real, contactos, SMTP.
-5. `_headers` com cabeçalhos de segurança, `robots.txt`, `sitemap.xml`, `favicon.ico` e etiquetas `og:`.
-6. `npm audit fix`, remover as dependências sem uso, e acrescentar `aria-label` aos botões de ícone.
+3. Conteúdo: descrições, capas em branco ou trocadas, stock real, contactos, SMTP.
+4. Content-Security-Policy, com o browser aberto para confirmar cada fluxo (ver 9.1).
+5. `npm audit fix` e remover as dependências sem uso.
+6. Decisões do dono: o scope `https://mail.google.com/` (acesso total ao Gmail) pedido no
+   login Google, e o link de recuperação devolvido na resposta de `/admin/users/access-link`
+   (quem tem `manage_users` pode ler o link de qualquer cliente).

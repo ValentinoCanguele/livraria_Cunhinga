@@ -84,11 +84,22 @@ Detalhe em `docs/AUDITORIA.md`, secção 9.1. Em resumo:
 - **Edge Function publicada** (a CLI desta máquina está autenticada, ao contrário do que a
   primeira passagem concluiu). `/admin/users` e `/contacts/*` voltaram a responder.
 
+Terceira leva, também publicada e verificada: service worker com a navegação em rede
+primeiro (acabou o risco de página em branco depois de publicar), `app/web/public/_headers`
+com os cabeçalhos de segurança, `robots.txt`/`sitemap.xml`/`og:`, e a permissão verificada
+antes da consulta nas rotas `/admin/users/*` (davam 404 vs 403 e diziam que ids existiam).
+
 **Pendente, e precisa de uma decisão:** a migração `20261101231055_limites_pedidos`
 (limite de pedidos partilhado, em vez de em memória por isolate) **não está aplicada** — a
-ferramenta de aplicar migrações foi recusada nesta sessão. A Edge Function já a usa e recua
-para o limite local enquanto ela não existir, por isso não há regressão; mas até ser
-aplicada, o `/chat`, o `/checkout` e o `/track` continuam praticamente sem limite.
+ferramenta de aplicar migrações foi recusada nesta sessão, e o `supabase db push` também
+(classificador de permissões). A Edge Function já a usa e recua para o limite local enquanto
+ela não existir, por isso não há regressão; mas até ser aplicada, o `/chat`, o `/checkout` e
+o `/track` continuam praticamente sem limite. É a única migração pendente
+(`supabase migration list` confirma-o):
+
+```bash
+npx supabase db push --project-ref bggqkjjqbjhbjsckzopj
+```
 
 ## Regras para continuar
 

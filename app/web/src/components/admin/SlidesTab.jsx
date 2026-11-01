@@ -19,6 +19,7 @@ import ImageField from '@/components/admin/ImageField';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { pbErrorMessage, sanitizeUrlField } from '@/lib/mediaSave';
 import { isUploadPending } from '@/lib/mediaUpload';
+import { effectivePrice, isBookVisible, isSaleActive, toLocalInput, fromLocalInput } from '@/lib/pricing';
 
 const emptySlide = {
   title: '',
@@ -47,16 +48,6 @@ const emptySlide = {
 };
 
 const PLACEMENT_LABELS = { home: 'Homepage', shop: 'Loja', both: 'Homepage e loja' };
-
-// <input type="datetime-local"> trabalha na hora local, sem fuso.
-function toLocalInput(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-const fromLocalInput = (value) => (value ? new Date(value).toISOString() : null);
 
 /** Estado de publicação de um slide, tendo em conta o agendamento. */
 function slideStatus(s, now = Date.now()) {
@@ -121,8 +112,8 @@ export default function SlidesTab({ onChange }) {
       image: f.image || book.cover || '',
       cta_link: `/product/${book.id}`,
       cta_text: f.cta_text || 'Ver Livro',
-      promo_price: book.price ?? '',
-      promo_badge: book.urgency_text || (book.featured ? 'Destaque' : 'Promoção'),
+      promo_price: effectivePrice(book),
+      promo_badge: isSaleActive(book) ? 'Promoção' : (book.urgency_text || (book.featured ? 'Destaque' : '')),
       template: f.template === 'classic' ? 'book_promo' : f.template,
     }));
   };
@@ -302,7 +293,7 @@ export default function SlidesTab({ onChange }) {
 
   const linkedBook = books.find((b) => b.id === form.book_id);
   const priceMismatch = linkedBook && form.promo_price !== '' && form.promo_price != null
-    && Number(form.promo_price) !== Number(linkedBook.price);
+    && Number(form.promo_price) !== effectivePrice(linkedBook);
   const bookOptions = (() => {
     const q = bookQuery.trim().toLowerCase();
     const list = q
@@ -371,6 +362,15 @@ export default function SlidesTab({ onChange }) {
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${status.className}`}>{status.label}</span>
                   <span className="text-[10px] text-muted-foreground">{PLACEMENT_LABELS[s.placement || 'home'] || s.placement}</span>
                   {s.book_id && <span className="text-[10px] text-[#0ea5c9] flex items-center gap-1"><BookOpen className="h-3 w-3" /> Livro ligado</span>}
+                  {s.book_id && books.some((b) => b.id === s.book_id && !isBookVisible(b)) && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">Livro oculto</span>
+                  )}
+                  {s.book_id && (() => {
+                    const b = books.find((x) => x.id === s.book_id);
+                    return b && s.promo_price != null && s.promo_price !== '' && Number(s.promo_price) !== effectivePrice(b)
+                      ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400">Preço diferente do livro</span>
+                      : null;
+                  })()}
                 </div>
               </div>
               <div className="flex flex-wrap justify-end gap-0.5">
@@ -471,13 +471,19 @@ export default function SlidesTab({ onChange }) {
                       <Input type="number" min={0} value={form.promo_price} onChange={(e) => set('promo_price', e.target.value)} />
                     </div>
                   </div>
+                  {linkedBook && !isBookVisible(linkedBook) && (
+                    <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span>Este livro está oculto na loja: o botão do slide leva os clientes a uma página que não abre.</span>
+                    </div>
+                  )}
                   {priceMismatch && (
                     <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
                       <AlertTriangle className="h-4 w-4 shrink-0" />
                       <span>
-                        O checkout cobra o preço do livro (Kz {Number(linkedBook.price).toLocaleString('pt-AO')}), não o do slide.
-                        Para baixar o preço, altere-o no livro.
-                        <button type="button" className="underline ml-1" onClick={() => set('promo_price', linkedBook.price)}>Usar o preço do livro</button>
+                        O checkout cobra o preço em vigor do livro (Kz {effectivePrice(linkedBook).toLocaleString('pt-AO')}), não o do slide.
+                        Para baixar o preço, crie uma promoção no livro.
+                        <button type="button" className="underline ml-1" onClick={() => set('promo_price', effectivePrice(linkedBook))}>Usar o preço do livro</button>
                       </span>
                     </div>
                   )}

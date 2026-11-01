@@ -18,6 +18,7 @@ import {
 import ImageField from '@/components/admin/ImageField';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { pbErrorMessage, saveRecordWithMedia } from '@/lib/mediaSave';
+import { isBookVisible } from '@/lib/pricing';
 
 const emptyCollection = {
   title: '',
@@ -400,6 +401,7 @@ export default function CollectionsTab({ books = [], onBooksChange }) {
                       <span className="truncate flex items-center gap-2">
                         <BookOpen className="h-3.5 w-3.5 text-[#0ea5c9] shrink-0" />
                         <span className="truncate">{b.title}</span>
+                        {!isBookVisible(b) && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">oculto</span>}
                       </span>
                       <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => assignBook(b.id, '')}>
                         Remover

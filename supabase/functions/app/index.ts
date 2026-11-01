@@ -1187,7 +1187,7 @@ route("POST", "/newsletter", async ({ body, ip }) => {
 
 route("GET", "/catalog/summary", async () => {
   const { data: books } = await db.from("stock_books")
-    .select("id, title, book_code, stock, genre, featured, cover, cover_image, sales_count").eq("active", true).order("title").limit(500);
+    .select("id, title, book_code, stock, stock_low, genre, featured, cover, cover_image, sales_count").eq("active", true).order("title").limit(500);
   const genres: Record<string, Row> = {};
   let inStock = 0, featured = 0, lowStock = 0, outOfStock = 0, withCover = 0;
   const topSellers = [];
@@ -1198,7 +1198,8 @@ route("GET", "/catalog/summary", async () => {
     genres[genre].total++;
     if (stock > 0) { genres[genre].in_stock++; inStock++; } else outOfStock++;
     if (b.featured) featured++;
-    if (stock > 0 && stock <= 5) lowStock++;
+    // Marca da base de dados, com o limite de Configurações → Regras da loja.
+    if (stock > 0 && b.stock_low) lowStock++;
     if (b.cover || b.cover_image) withCover++;
     topSellers.push({ id: b.id, title: b.title || "", book_code: b.book_code || "", sales_count: Number(b.sales_count) || 0, stock });
   }

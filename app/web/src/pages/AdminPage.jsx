@@ -176,18 +176,7 @@ const AdminPage = () => {
 
   const handleOrderStatus = async (order, newStatus) => {
     try {
-      if (newStatus === 'cancelled' && order.status !== 'cancelled') {
-        for (const item of order.items || []) {
-          if (item.book_id) {
-            try {
-              const book = await pb.collection('stock_books').getOne(item.book_id);
-              await pb.collection('stock_books').update(book.id, {
-                stock: (Number(book.stock) || 0) + (Number(item.quantity) || 0),
-              });
-            } catch { /* ignore */ }
-          }
-        }
-      }
+      // Ao cancelar, o trigger orders_before_update devolve o stock (uma só vez, via stock_restored).
       await pb.collection('orders').update(order.id, { status: newStatus });
       toast({ title: 'Estado atualizado', description: getOrderStatusLabel(newStatus) });
       loadAll();

@@ -467,7 +467,7 @@ export default function AppsTab() {
                 {testingType === 'whatsapp' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
                 Testar WhatsApp API
               </Button>
-              <Button variant="outline" size="icon" onClick={loadLogs} className="h-8 w-8" title="Recarregar logs">
+              <Button variant="outline" size="icon" onClick={loadLogs} className="h-8 w-8" title="Recarregar registo" aria-label="Recarregar registo">
                 <RefreshCw className={`h-4 w-4 ${loadingLogs ? 'animate-spin' : ''}`} />
               </Button>
               <Button variant="destructive" size="sm" onClick={clearAllLogs} className="text-xs h-8">

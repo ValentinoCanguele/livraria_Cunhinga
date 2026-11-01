@@ -409,7 +409,7 @@ export default function SlidesTab({ onChange }) {
           <div className="bg-background rounded-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-xl">
             <div className="sticky top-0 bg-background border-b px-6 py-4 flex justify-between items-center z-10">
               <h2 className="text-xl font-bold">{editing ? 'Editar slide' : 'Novo slide'}</h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)}>×</Button>
+              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)} aria-label="Fechar">×</Button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-6">
               <Tabs defaultValue="content">

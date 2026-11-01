@@ -815,8 +815,8 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
                         {g.description && <p className="text-xs text-muted-foreground mt-1">{g.description}</p>}
                       </div>
                       <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditGroup(g)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteGroup(g.id, g.name)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditGroup(g)} aria-label="Editar grupo" title="Editar grupo"><Edit2 className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleDeleteGroup(g.id, g.name)} aria-label="Eliminar grupo" title="Eliminar grupo"><Trash2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>
                     {members.length > 0 && (
@@ -878,8 +878,8 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
                       <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleToggleCampaign(c)}>
                         {c.is_active ? 'Pausar' : 'Activar'}
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditCampaign(c)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteCampaign(c.id, c.name)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditCampaign(c)} aria-label="Editar campanha" title="Editar campanha"><Edit2 className="h-3.5 w-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteCampaign(c.id, c.name)} aria-label="Eliminar campanha" title="Eliminar campanha"><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   </div>
                 );
@@ -907,7 +907,7 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
                     <Badge variant="outline" className="text-[10px]">{CHANNEL_LABELS[n.channel]}</Badge>
                     <Badge variant={n.status === 'sent' ? 'default' : n.status === 'failed' ? 'destructive' : 'secondary'} className="text-[10px]">{STATUS_LABELS[n.status] || n.status}</Badge>
                     {n.whatsapp_url && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => window.open(n.whatsapp_url, '_blank')}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => window.open(n.whatsapp_url, '_blank', 'noopener,noreferrer')} aria-label="Abrir no WhatsApp" title="Abrir no WhatsApp">
                         <MessageCircle className="h-3.5 w-3.5" />
                       </Button>
                     )}

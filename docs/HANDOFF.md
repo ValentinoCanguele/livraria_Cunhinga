@@ -182,3 +182,10 @@ Ainda não publicada; vai no deploy depois do merge.
   - Testado na base de dados (transacção anulada): o visitante só vê o slide no ar; um período inválido é recusado.
 - **Integrações** (`AppsTab.jsx`): ficam só o Google Drive e o WhatsApp Business, os únicos que o servidor lê. Os interruptores sem efeito (OAuth, Maps, Contactos, Newsletter, PWA, Rastreio, SMTP) passam a uma lista com o separador onde cada um se configura. As linhas antigas em `app_integrations` continuam na base de dados, sem uso.
 - **Lojas:** revistas; já tinham pesquisa, filtros, ordem e confirmação ao eliminar.
+- **Contactos e campanhas** (`ContactsManager.jsx` e `/contacts/*` na Edge Function):
+  - abrir o separador corria as campanhas pendentes e enviava mensagens; agora só correm com o botão "Enviar pendentes (N)", com confirmação;
+  - "Não contactar" (etiqueta `nao-contactar`): fica fora dos envios manuais, das campanhas e do WhatsApp rápido, no painel e no servidor;
+  - `/contacts/notify`: no máximo 300 contactos, mensagem obrigatória, canal válido e textos limitados;
+  - sem a API do WhatsApp, o envio fica como "Link manual" em vez de "Enviado".
+  - Pendente: a Edge Function publicada ainda é a antiga. Até ao deploy, o painel já filtra os "não contactar", mas o servidor ainda marca como "Enviado" os envios que só têm link.
+- **Página pública das lojas:** revista; sem alterações.

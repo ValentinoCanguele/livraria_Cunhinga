@@ -1,4 +1,5 @@
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+
+import { APP_API_URL } from '@/lib/supabaseClient';
 
 let statusCache = null;
 let statusCacheAt = 0;
@@ -7,7 +8,7 @@ export async function fetchMessagingStatus(force = false) {
   const now = Date.now();
   if (!force && statusCache && now - statusCacheAt < 60000) return statusCache;
   try {
-    const res = await fetch(`${PB_URL}/api/app/messaging/status`);
+    const res = await fetch(`${APP_API_URL}/messaging/status`);
     statusCache = res.ok ? await res.json() : null;
     statusCacheAt = now;
     return statusCache;
@@ -26,7 +27,7 @@ export function isWhatsAppApiActive(statusOrIntegrations) {
 }
 
 export async function sendReceiptViaWhatsAppApi({ phone, text, orderNumber, email }) {
-  const res = await fetch(`${PB_URL}/api/app/whatsapp/receipt`, {
+  const res = await fetch(`${APP_API_URL}/whatsapp/receipt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -42,7 +43,7 @@ export async function sendReceiptViaWhatsAppApi({ phone, text, orderNumber, emai
 }
 
 export async function testWhatsAppApi(phone, token) {
-  const res = await fetch(`${PB_URL}/api/app/admin/whatsapp/test`, {
+  const res = await fetch(`${APP_API_URL}/admin/whatsapp/test`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

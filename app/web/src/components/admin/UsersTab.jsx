@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Shield, User, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';

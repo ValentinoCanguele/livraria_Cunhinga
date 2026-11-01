@@ -1,6 +1,6 @@
 import { db } from '@/lib/firebaseClient';
 import { collection, addDoc } from 'firebase/firestore';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 
 // Helper to get SMTP / WhatsApp Business configurations from app_integrations in PocketBase
 export async function getNotificationConfigs() {

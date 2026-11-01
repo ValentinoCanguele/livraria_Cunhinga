@@ -1,6 +1,5 @@
-import pb from '@/lib/pocketbaseClient';
-
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+import pb from '@/lib/dataClient';
+import { APP_API_URL } from '@/lib/supabaseClient';
 
 function getSessionId() {
   const key = 'livraria_chat_session';
@@ -18,7 +17,7 @@ function getSessionId() {
 
 export async function fetchChatConfig() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/chat/config`);
+    const res = await fetch(`${APP_API_URL}/chat/config`);
     return res.ok ? await res.json() : { enabled: true, ai: false, provider: 'faq' };
   } catch {
     return { enabled: true, ai: false, provider: 'faq' };
@@ -29,7 +28,7 @@ export async function fetchChatConfig() {
  * @param {{ message: string, history?: Array<{role:string,content:string}>, page?: string }} payload
  */
 export async function sendChatMessage({ message, history = [], page = '/' }) {
-  const res = await fetch(`${PB_URL}/api/app/chat`, {
+  const res = await fetch(`${APP_API_URL}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

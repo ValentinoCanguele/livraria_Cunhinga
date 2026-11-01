@@ -1,7 +1,6 @@
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { escapeFilterValue } from '@/lib/sanitizeHtml';
-
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+import { APP_API_URL } from '@/lib/supabaseClient';
 
 function getAuthHeaders() {
   return {
@@ -12,9 +11,9 @@ function getAuthHeaders() {
 
 async function apiPost(path, body) {
   if (!pb.authStore.isValid) {
-    throw new Error('Sessão PocketBase expirada. Inicie sessão com email e palavra-passe.');
+    throw new Error('Sessão expirada. Inicie sessão com email e palavra-passe.');
   }
-  const res = await fetch(`${PB_URL}${path}`, {
+  const res = await fetch(`${APP_API_URL}${path.replace(/^\/api\/app/, '')}`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(body),
@@ -26,9 +25,9 @@ async function apiPost(path, body) {
 
 async function apiGet(path) {
   if (!pb.authStore.isValid) {
-    throw new Error('Sessão PocketBase expirada. Inicie sessão com email e palavra-passe.');
+    throw new Error('Sessão expirada. Inicie sessão com email e palavra-passe.');
   }
-  const res = await fetch(`${PB_URL}${path}`, {
+  const res = await fetch(`${APP_API_URL}${path.replace(/^\/api\/app/, '')}`, {
     headers: { Authorization: pb.authStore.token ? `Bearer ${pb.authStore.token}` : '' },
   });
   const data = await res.json().catch(() => ({}));

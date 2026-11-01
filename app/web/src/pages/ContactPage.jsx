@@ -11,8 +11,7 @@ import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import { pageTitle, BRAND } from '@/lib/brand';
-
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+import { APP_API_URL } from '@/lib/supabaseClient';
 
 const ContactPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -29,7 +28,7 @@ const ContactPage = () => {
     e.preventDefault();
     setSending(true);
     try {
-      const res = await fetch(`${PB_URL}/api/app/contact-message`, {
+      const res = await fetch(`${APP_API_URL}/contact-message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

@@ -1,7 +1,6 @@
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { resolveShopBgMode } from '@/lib/shopTheme';
-
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+import { APP_API_URL } from '@/lib/supabaseClient';
 
 const DEFAULT_SETTINGS = {
   site_name: 'Livraria Adventista',
@@ -48,7 +47,7 @@ const DEFAULT_SETTINGS = {
 
 export async function getSiteSettings() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/settings`);
+    const res = await fetch(`${APP_API_URL}/settings`);
     if (!res.ok) return DEFAULT_SETTINGS;
     const merged = { ...DEFAULT_SETTINGS, ...await res.json() };
     merged.shop_bg_mode = resolveShopBgMode(merged);
@@ -60,7 +59,7 @@ export async function getSiteSettings() {
 
 export async function getPhysicalStores() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/stores`);
+    const res = await fetch(`${APP_API_URL}/stores`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.stores || [];
@@ -71,7 +70,7 @@ export async function getPhysicalStores() {
 
 export async function getCollections() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/book-collections`);
+    const res = await fetch(`${APP_API_URL}/book-collections`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.collections || [];
@@ -82,7 +81,7 @@ export async function getCollections() {
 
 export async function getPaymentMethods() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/payment-methods`);
+    const res = await fetch(`${APP_API_URL}/payment-methods`);
     if (!res.ok) return { methods: [] };
     return await res.json();
   } catch {
@@ -91,7 +90,7 @@ export async function getPaymentMethods() {
 }
 
 export async function trackOrder(orderNumber, email) {
-  const res = await fetch(`${PB_URL}/api/app/track`, {
+  const res = await fetch(`${APP_API_URL}/track`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ orderNumber, email }),
@@ -102,7 +101,7 @@ export async function trackOrder(orderNumber, email) {
 }
 
 export async function getGeoProvinces() {
-  const res = await fetch(`${PB_URL}/api/app/geo/provinces`);
+  const res = await fetch(`${APP_API_URL}/geo/provinces`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.provinces || [];
@@ -110,7 +109,7 @@ export async function getGeoProvinces() {
 
 export async function getGeoMunicipalities(provinceId) {
   if (!provinceId) return [];
-  const res = await fetch(`${PB_URL}/api/app/geo/municipalities?province=${encodeURIComponent(provinceId)}`);
+  const res = await fetch(`${APP_API_URL}/geo/municipalities?province=${encodeURIComponent(provinceId)}`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.municipalities || [];
@@ -118,14 +117,14 @@ export async function getGeoMunicipalities(provinceId) {
 
 export async function getGeoLocalities(municipalityId) {
   if (!municipalityId) return [];
-  const res = await fetch(`${PB_URL}/api/app/geo/localities?municipality=${encodeURIComponent(municipalityId)}`);
+  const res = await fetch(`${APP_API_URL}/geo/localities?municipality=${encodeURIComponent(municipalityId)}`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.localities || [];
 }
 
 export async function confirmDelivery({ orderNumber, email, recipientName, recipientId, signature }) {
-  const res = await fetch(`${PB_URL}/api/app/confirm-delivery`, {
+  const res = await fetch(`${APP_API_URL}/confirm-delivery`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -142,7 +141,7 @@ export async function confirmDelivery({ orderNumber, email, recipientName, recip
 }
 
 export async function addDeliveryEvent(orderId, event, token) {
-  const res = await fetch(`${PB_URL}/api/app/delivery-event`, {
+  const res = await fetch(`${APP_API_URL}/delivery-event`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

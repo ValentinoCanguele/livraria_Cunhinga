@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
+import { APP_API_URL } from '@/lib/supabaseClient';
 
 const IntegrationsContext = createContext({
   integrations: {},
@@ -8,7 +9,6 @@ const IntegrationsContext = createContext({
   refresh: async () => {},
 });
 
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
 
 export function IntegrationsProvider({ children }) {
   const [integrations, setIntegrations] = useState({});
@@ -17,7 +17,7 @@ export function IntegrationsProvider({ children }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`${PB_URL}/api/app/integrations`);
+      const res = await fetch(`${APP_API_URL}/integrations`);
       const data = res.ok ? await res.json() : {};
       setIntegrations(data.integrations || {});
 

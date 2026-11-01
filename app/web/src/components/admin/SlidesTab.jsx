@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Plus, Pencil, Trash2, BookOpen, Eye } from 'lucide-react';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -1,7 +1,7 @@
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
+import { APP_API_URL, mediaUrl } from '@/lib/supabaseClient';
 
 const CURRENCY = { code: 'AOA', symbol: 'Kz' };
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
 
 function resolveBookCover(book) {
   if (book.cover) return book.cover;
@@ -9,7 +9,7 @@ function resolveBookCover(book) {
     try {
       return pb.files.getURL(book, book.cover_image);
     } catch {
-      return `${PB_URL}/api/files/stock_books/${book.id}/${book.cover_image}`;
+      return mediaUrl('stock_books', book.id, book.cover_image);
     }
   }
   return '';
@@ -283,7 +283,7 @@ export async function initializeCheckout({
   deliveryLocality, deliveryLocalityId, deliveryStreet, deliveryReference, deliveryAddressFull,
   deliveryRelativeName, deliveryRelativePhone, checkoutSignature,
 }) {
-  const res = await fetch(`${PB_URL}/api/app/checkout`, {
+  const res = await fetch(`${APP_API_URL}/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -309,7 +309,7 @@ export async function initializeCheckout({
 }
 
 export async function subscribeNewsletter(email) {
-  const res = await fetch(`${PB_URL}/api/app/newsletter`, {
+  const res = await fetch(`${APP_API_URL}/newsletter`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),

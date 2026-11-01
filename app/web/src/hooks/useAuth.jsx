@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { canAccessAdmin, hasPermission, getUserPermissions } from '@/lib/permissions';
 import { escapeFilterValue } from '@/lib/sanitizeHtml';
 import { auth, db, loginWithGoogleFirebase, logoutFirebase } from '@/lib/firebaseClient';

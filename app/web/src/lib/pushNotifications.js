@@ -1,6 +1,5 @@
-import pb from '@/lib/pocketbaseClient';
-
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+import pb from '@/lib/dataClient';
+import { APP_API_URL } from '@/lib/supabaseClient';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -44,7 +43,7 @@ export async function subscribeToPush(vapidPublicKey) {
     user: pb.authStore.model?.id || '',
   };
 
-  await fetch(`${PB_URL}/api/app/push/subscribe`, {
+  await fetch(`${APP_API_URL}/push/subscribe`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

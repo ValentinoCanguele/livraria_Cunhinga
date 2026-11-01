@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { sanitizeImageUrlForSave } from '@/lib/imageUrl';
 import { uploadImageToRecord, removeImageFromRecord, syncUploadedImageUrl } from '@/components/admin/ImageField';
 

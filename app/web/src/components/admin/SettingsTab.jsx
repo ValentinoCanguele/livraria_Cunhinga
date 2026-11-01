@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Save, Palette, Smartphone, Truck, MessageSquare, LayoutTemplate, Store, Mail, Bell, Sparkles } from 'lucide-react';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { useToast } from '@/hooks/use-toast';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { useIntegrations } from '@/hooks/useIntegrations';
@@ -65,7 +65,7 @@ const empty = {
   shop_bg_overlay: 0.55,
   google_maps_embed_key: '',
   order_email_enabled: false,
-  email_provider: 'pocketbase',
+  email_provider: 'smtp',
   sendgrid_api_key: '',
   smtp_from_email: '',
   smtp_from_name: '',
@@ -161,7 +161,7 @@ export default function SettingsTab() {
           shop_bg_overlay: r.shop_bg_overlay ?? empty.shop_bg_overlay,
           google_maps_embed_key: r.google_maps_embed_key || '',
           order_email_enabled: !!r.order_email_enabled,
-          email_provider: r.email_provider || 'pocketbase',
+          email_provider: !r.email_provider || r.email_provider === 'pocketbase' ? 'smtp' : r.email_provider,
           sendgrid_api_key: r.sendgrid_api_key || '',
           smtp_from_email: r.smtp_from_email || '',
           smtp_from_name: r.smtp_from_name || '',
@@ -309,7 +309,7 @@ export default function SettingsTab() {
             <Switch checked={form.google_oauth_enabled} onCheckedChange={(v) => set('google_oauth_enabled', v)} />
             <div>
               <Label>Login com Google</Label>
-              <p className="text-xs text-muted-foreground">Requer configurar OAuth no PocketBase Admin → Settings → Auth providers</p>
+              <p className="text-xs text-muted-foreground">Feito pelo Firebase Authentication (adicione o domínio do site em Authorized domains)</p>
             </div>
           </div>
         </TabsContent>
@@ -377,7 +377,7 @@ export default function SettingsTab() {
         <TabsContent value="messaging" className="space-y-6 max-w-xl">
           <div>
             <h3 className="font-semibold flex items-center gap-2"><Mail className="h-4 w-4 text-[#0ea5c9]" /> Email de confirmação de encomenda</h3>
-            <p className="text-xs text-muted-foreground mt-1">Enviado automaticamente após checkout (SendGrid ou SMTP do PocketBase).</p>
+            <p className="text-xs text-muted-foreground mt-1">Enviado automaticamente após checkout (SendGrid ou SMTP).</p>
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg border">
             <Switch checked={form.order_email_enabled} onCheckedChange={(v) => set('order_email_enabled', v)} />
@@ -385,10 +385,9 @@ export default function SettingsTab() {
           </div>
           <div className="space-y-2">
             <Label>Provedor de email</Label>
-            <Select value={form.email_provider || 'pocketbase'} onValueChange={(v) => set('email_provider', v)}>
+            <Select value={form.email_provider || 'smtp'} onValueChange={(v) => set('email_provider', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="pocketbase">SMTP do PocketBase (Admin)</SelectItem>
                 <SelectItem value="sendgrid">SendGrid API</SelectItem>
                 <SelectItem value="smtp">SMTP personalizado (Hostinger, Brevo, etc.)</SelectItem>
               </SelectContent>
@@ -396,7 +395,7 @@ export default function SettingsTab() {
           </div>
           {form.email_provider === 'smtp' && (
             <div className="space-y-3 p-3 rounded-lg border bg-muted/20">
-              <p className="text-xs text-muted-foreground">Credenciais SMTP do seu provedor (ex.: smtp.hostinger.com, smtp-relay.brevo.com). Também configure em PocketBase Admin → Settings → Mailer com os mesmos dados.</p>
+              <p className="text-xs text-muted-foreground">Credenciais SMTP do seu provedor (ex.: smtp.hostinger.com, smtp-relay.brevo.com). Use a porta 465 (SSL): o Supabase bloqueia as portas 25 e 587.</p>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Servidor SMTP</Label>

@@ -15,7 +15,7 @@ import PaymentsTab from '@/components/admin/PaymentsTab';
 import AppsTab from '@/components/admin/AppsTab';
 import ContactsManager from '@/components/ContactsManager';
 import { pageTitle } from '@/lib/brand';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';

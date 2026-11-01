@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, Pencil, Trash2, CreditCard } from 'lucide-react';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -110,7 +110,7 @@ export default function PaymentsTab() {
           </div>
         ))}
         {methods.length === 0 && (
-          <p className="text-center text-muted-foreground py-8">Nenhum método configurado. Reinicie o PocketBase para aplicar migrations.</p>
+          <p className="text-center text-muted-foreground py-8">Nenhum método configurado.</p>
         )}
       </div>
 

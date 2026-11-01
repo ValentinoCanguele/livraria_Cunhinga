@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BOOK_GENRES, BOOK_LANGUAGES, emptyBookForm, previewBookCode, bookToForm } from '@/lib/bookConstants';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { Megaphone, User, BookMarked, Layers, TrendingUp } from 'lucide-react';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import ImageField from '@/components/admin/ImageField';

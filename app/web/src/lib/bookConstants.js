@@ -1,4 +1,4 @@
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 
 export const BOOK_GENRES = [
   'Catálogo Geral',

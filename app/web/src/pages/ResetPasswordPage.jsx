@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import BrandLogo from '@/components/BrandLogo';
 import { pageTitle } from '@/lib/brand';
+import { IS_PASSWORD_RECOVERY_REDIRECT } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,8 @@ import { Label } from '@/components/ui/label';
 export default function ResetPasswordPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const token = params.get('token') || '';
+  // O link do Supabase Auth chega com #type=recovery e abre uma sessão de recuperação.
+  const token = params.get('token') || (IS_PASSWORD_RECOVERY_REDIRECT ? 'recovery' : '');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);

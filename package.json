@@ -4,13 +4,12 @@
   "private": true,
   "scripts": {
     "setup": "npm install",
-    "dev": "concurrently --kill-others --raw \"npm run dev --prefix app/web\" \"npm run dev --prefix app/pocketbase\"",
-    "seed": "npm run seed --prefix app/pocketbase",
-    "seed:books": "npm run seed:books --prefix app/pocketbase",
-    "import:catalog": "npm run import:catalog --prefix app/pocketbase",
+    "dev": "npm run dev --prefix app/web",
     "build": "npm run build --prefix app/web",
-    "start": "concurrently --kill-others --raw \"npm run start --prefix app/pocketbase\" \"npm run start --prefix app/web\"",
-    "lint": "npm run lint --prefix app/web"
+    "start": "npm run start --prefix app/web",
+    "lint": "npm run lint --prefix app/web",
+    "dev:pocketbase": "npm run dev --prefix app/pocketbase",
+    "migrate:supabase": "node scripts/migrar-pocketbase-supabase.mjs"
   },
   "devDependencies": {
     "concurrently": "^10.0.3",

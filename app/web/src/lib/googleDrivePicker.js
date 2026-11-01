@@ -1,5 +1,5 @@
 import { normalizeImageUrl } from '@/lib/imageUrl';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const GAPI_SRC = 'https://apis.google.com/js/api.js';

@@ -57,7 +57,7 @@ const LoginPage = () => {
     e.preventDefault();
     if (serverOk === false) {
       toast.error('Servidor offline', {
-        description: 'Inicie o PocketBase: npm run dev (porta 8090).',
+        description: 'Não foi possível contactar o servidor. Verifique a ligação à internet.',
       });
       return;
     }
@@ -149,7 +149,7 @@ const LoginPage = () => {
               {serverOk === false && (
                 <div className="mb-4 flex gap-2 text-xs text-amber-900 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <p>Execute <code className="font-mono bg-background/60 px-1 rounded">npm run dev</code> na pasta do projecto para iniciar o PocketBase.</p>
+                  <p>Não foi possível contactar o servidor. Verifique a ligação à internet e tente novamente.</p>
                 </div>
               )}
 

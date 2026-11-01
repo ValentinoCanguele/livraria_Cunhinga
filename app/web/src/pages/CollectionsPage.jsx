@@ -11,7 +11,7 @@ import QuickViewModal from '@/components/QuickViewModal';
 import FirestoreBooksList from '@/components/FirestoreBooksList';
 import { pageTitle } from '@/lib/brand';
 import { getCollections } from '@/api/PlatformApi';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { escapeFilterValue } from '@/lib/sanitizeHtml';
 import { Button } from '@/components/ui/button';
 

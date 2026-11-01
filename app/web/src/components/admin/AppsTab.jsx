@@ -3,7 +3,7 @@ import {
   Loader2, Mail, MessageSquare, Terminal, CheckCircle2, 
   Trash2, RefreshCw, Search, Play, Check, Shield, Activity, Save, Key, Smartphone, BookOpen, ExternalLink
 } from 'lucide-react';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { db } from '@/lib/firebaseClient';
 import { collection, getDocs, query, orderBy, limit, deleteDoc, doc, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +18,7 @@ import PhoneInput from '@/components/PhoneInput';
 import { triggerOrderNotifications } from '@/lib/notifications';
 
 const DEFAULT_APPS = [
-  { name: 'Google OAuth', code: 'google_oauth', description: 'Login com conta Google — configurar em PocketBase Auth providers', icon: '🔐' },
+  { name: 'Google OAuth', code: 'google_oauth', description: 'Login com conta Google — feito pelo Firebase Authentication', icon: '🔐' },
   { name: 'Google Maps', code: 'google_maps', description: 'Mapas embutidos nas lojas físicas (requer API key em Tema UI)', icon: '🗺️' },
   { name: 'Google Contactos', code: 'google_contacts', description: 'Link rápido para contactos Google no perfil admin', icon: '👤' },
   {
@@ -502,8 +502,8 @@ export default function AppsTab() {
                 <div className="pt-2 border-t border-border mt-2 animate-fadeIn">
                   {app.code === 'google_oauth' && (
                     <p className="text-xs p-3 rounded-lg bg-amber-500/10 text-amber-800 border border-amber-500/20 max-w-2xl leading-relaxed">
-                      Configure no console administrativo do PocketBase → Settings → Auth providers → Google.<br />
-                      Insira o Redirect URL padrão: <code className="font-mono bg-amber-500/10 px-1 py-0.5 rounded">http://127.0.0.1:8090/api/oauth2-redirect</code>
+                      O login com Google é feito pelo Firebase Authentication.<br />
+                      Adicione o domínio do site em Firebase Console → Authentication → Settings → <code className="font-mono bg-amber-500/10 px-1 py-0.5 rounded">Authorized domains</code>.
                     </p>
                   )}
 

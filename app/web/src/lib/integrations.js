@@ -1,3 +1,5 @@
+import { APP_API_URL } from '@/lib/supabaseClient';
+
 const DEFAULT_INTEGRATIONS = {
   google_oauth: { enabled: true },
   google_maps: { enabled: true },
@@ -14,8 +16,7 @@ let cacheAt = 0;
 export async function fetchIntegrations() {
   if (cache && Date.now() - cacheAt < 30000) return cache;
   try {
-    const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
-    const res = await fetch(`${PB_URL}/api/app/integrations`);
+    const res = await fetch(`${APP_API_URL}/integrations`);
     if (!res.ok) return DEFAULT_INTEGRATIONS;
     const data = await res.json();
     cache = { ...DEFAULT_INTEGRATIONS, ...data.integrations };

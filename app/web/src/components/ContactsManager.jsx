@@ -32,7 +32,7 @@ import { buildWhatsAppUrl } from '@/lib/whatsapp';
 import { fetchMessagingStatus, isWhatsAppApiActive } from '@/lib/messaging';
 import { FloatingScrollTop } from '@/components/ui/FloatingScrollTop';
 import { useAuth } from '@/hooks/useAuth';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 
 const DEFAULT_NOTIFY_BODY = `Olá! 👋
 
@@ -113,7 +113,7 @@ const ContactsManager = ({ googleToken = null, onOpenGmail = null }) => {
       console.error(err);
       const msg = err?.message || 'Erro ao carregar contactos';
       setLoadError(msg.includes('collection') || msg.includes('404')
-        ? 'Base de dados CRM não encontrada. Reinicie o PocketBase para aplicar as migrações.'
+        ? 'Base de dados CRM não encontrada. Aplique as migrações do Supabase (supabase/migrations).'
         : msg);
     }
   }, [search, sourceFilter]);

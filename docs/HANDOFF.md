@@ -91,6 +91,33 @@ antes da consulta nas rotas `/admin/users/*` (davam 404 vs 403 e diziam que ids 
 
 **Resolvido (2026-11-02):** a migração `limites_pedidos` (limite de pedidos partilhado, em vez de em memória por isolate) foi aplicada pelo MCP e o ficheiro passou a `20261102013223_limites_pedidos.sql`, com o mesmo SQL (md5 igual ao de `schema_migrations`). Testado: com limite 2, o terceiro pedido é recusado, e `anon` não pode chamar `check_rate_limit`. A Edge Function passa a usar o limite partilhado quando a versão nova for publicada.
 
+## Galeria de imagens aplicada (2026-11-02)
+
+A galeria tem 41 imagens em 6 tipos, mas só 3 tipos tinham onde ser escolhidos, e o banner
+da loja nunca chegava a aparecer.
+
+- **Banner da loja aplicado.** `loja-banner.webp` era publicado com o site mas o fundo da
+  loja ficava em gradiente: a coluna `shop_bg_mode` estava nula e a Edge Function caía em
+  `"gradient"`. Passa a ser a predefinição (`DEFAULT_SHOP_BG`), com as predefinições do
+  frontend a condizer. Verificado em produção: a API devolve `shop_bg_mode: image` e o
+  banner aparece em `/shop`, com o texto e os indicadores legíveis por cima do véu.
+  Continua a poder ser mudado em Configurações → Fundo da loja.
+- **Tipo `capa`** ligado à "Capa do Livro" e à capa promocional dos slides.
+- **Página Sobre editável** (migração `20261102050825_imagens_sobre`, já aplicada): as duas
+  imagens estavam escritas no código. Agora vêm das definições, com as do site como
+  predefinição, e aparecem em Configurações com a galeria.
+  O `SettingsTab` só mostra e grava esses campos quando as colunas existem
+  (`'about_top_image_url' in r`): enviá-los sem a migração faria o PostgREST recusar o
+  registo inteiro e partir o gravar das Configurações. Manter essa verificação ao
+  acrescentar campos novos.
+- **Limite de pedidos partilhado confirmado a funcionar**: 22 pedidos seguidos ao `/track`
+  dão 20× 404 e 2× 400, ou seja corta exactamente no `trackRate` configurado, sem nenhum
+  500.
+
+Por escolher (são decisões de imagem, não de código): quais das opções da galeria ficam nos
+slides, nos banners e nas capas das colecções. As capas das 4 colecções ainda apontam para
+fotos genéricas do Unsplash.
+
 ## Regras para continuar
 
 - **Migrações novas:** aplicar com a ferramenta `apply_migration` do Supabase. Depois ler a versão atribuída em `supabase_migrations.schema_migrations` e guardar o ficheiro com esse nome e **exactamente** o mesmo SQL. Se as versões não coincidirem, `supabase db push` no CI falha.

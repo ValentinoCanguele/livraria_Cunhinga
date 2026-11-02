@@ -439,6 +439,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                 <TabsContent value="media" className="space-y-4 mt-0">
                   <ImageField
                     label="Capa do Livro"
+                    gallery="capa"
                     value={form.cover}
                     onChange={(v) => set('cover', v)}
                     aspect="3:4"

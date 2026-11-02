@@ -25,6 +25,8 @@ const empty = {
   logo_url: '',
   favicon_url: '',
   login_bg_url: '',
+  about_top_image_url: '',
+  about_side_image_url: '',
   contact_email: '',
   contact_phone: '',
   contact_address: '',
@@ -130,6 +132,10 @@ export default function SettingsTab() {
   const [faviconRemoved, setFaviconRemoved] = useState(false);
   const [hadLogoFile, setHadLogoFile] = useState(false);
   const [hadFaviconFile, setHadFaviconFile] = useState(false);
+  // As imagens da página Sobre dependem da migração `imagens_sobre`. Enquanto as colunas não
+  // existirem, os campos não aparecem e não são gravados: enviá-los faria o PostgREST
+  // recusar o registo inteiro e partir o gravar das Configurações.
+  const [hasAboutImages, setHasAboutImages] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -140,6 +146,7 @@ export default function SettingsTab() {
       if (list.length > 0) {
         const r = list[0];
         setRecordId(r.id);
+        setHasAboutImages('about_top_image_url' in r);
         setHadLogoFile(!!r.logo);
         setHadFaviconFile(!!r.favicon);
         setLogoRemoved(false);
@@ -155,6 +162,8 @@ export default function SettingsTab() {
           logo_url: logoFromFile || sanitizeImageUrlForSave(r.logo_url) || '',
           favicon_url: favFromFile || sanitizeImageUrlForSave(r.favicon_url) || '',
           login_bg_url: r.login_bg_url || '',
+          about_top_image_url: r.about_top_image_url || '',
+          about_side_image_url: r.about_side_image_url || '',
           contact_email: r.contact_email || '',
           contact_phone: r.contact_phone ? formatAngolaPhone(r.contact_phone) : '',
           contact_address: r.contact_address || '',
@@ -246,7 +255,7 @@ export default function SettingsTab() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (isUploadPending(form.login_bg_url, form.shop_bg_image_url)) {
+    if (isUploadPending(form.login_bg_url, form.shop_bg_image_url, form.about_top_image_url, form.about_side_image_url)) {
       toast({ title: 'A enviar imagem…', description: 'Aguarde que o envio termine e guarde de novo.' });
       return;
     }
@@ -257,6 +266,10 @@ export default function SettingsTab() {
         logo_url: form.logo_url?.startsWith('blob:') ? '' : sanitizeImageUrlForSave(form.logo_url),
         favicon_url: form.favicon_url?.startsWith('blob:') ? '' : sanitizeImageUrlForSave(form.favicon_url),
         login_bg_url: sanitizeImageUrlForSave(form.login_bg_url),
+        ...(hasAboutImages ? {
+          about_top_image_url: sanitizeImageUrlForSave(form.about_top_image_url),
+          about_side_image_url: sanitizeImageUrlForSave(form.about_side_image_url),
+        } : {}),
         shop_bg_image_url: sanitizeImageUrlForSave(form.shop_bg_image_url),
         shipping_free_threshold: Number(form.shipping_free_threshold),
         shipping_cost: Number(form.shipping_cost),
@@ -421,6 +434,32 @@ export default function SettingsTab() {
             driveConfig={driveImageConfig}
             uploadFolder="site_settings"
           />
+          {hasAboutImages && (
+          <>
+          <ImageField
+            label="Página Sobre — imagem do topo"
+            gallery="sobre-topo"
+            value={form.about_top_image_url}
+            onChange={(v) => set('about_top_image_url', v)}
+            aspect="16:9"
+            hint="Topo da página Sobre · 1920×1000px recomendado · vazio = a imagem que vem com o site"
+            previewClassName="h-24 w-40"
+            driveConfig={driveImageConfig}
+            uploadFolder="site_settings"
+          />
+          <ImageField
+            label="Página Sobre — imagem lateral"
+            gallery="sobre-lateral"
+            value={form.about_side_image_url}
+            onChange={(v) => set('about_side_image_url', v)}
+            aspect="4:3"
+            hint="Lateral da página Sobre · 1200×1000px recomendado · vazio = a imagem que vem com o site"
+            previewClassName="h-24 w-32"
+            driveConfig={driveImageConfig}
+            uploadFolder="site_settings"
+          />
+          </>
+          )}
         </TabsContent>
 
         <TabsContent value="contact" className="space-y-4 max-w-xl">

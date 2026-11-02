@@ -9,7 +9,7 @@ const THEME_DEFAULTS = {
   pwa_theme_color: '#0c4a6e',
   ui_glass_enabled: true,
   ui_glass_opacity: 0.72,
-  shop_bg_mode: 'gradient',
+  shop_bg_mode: 'image',
   shop_bg_overlay: 0.55,
 };
 

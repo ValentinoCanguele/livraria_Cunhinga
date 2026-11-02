@@ -6,6 +6,7 @@ import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import { pageTitle, BRAND } from '@/lib/brand';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 const values = [
   { icon: BookOpen, title: 'Literatura de Qualidade', description: 'Publicações cuidadosamente selecionadas para edificar, educar e inspirar leitores de todas as idades.' },
@@ -16,6 +17,11 @@ const values = [
 
 const AboutPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const { settings } = useSiteSettings();
+  // Escolhidas em Configurações → Página Sobre (galeria de imagens prontas). Vazio = a que
+  // vem com o site.
+  const topImage = settings.about_top_image_url || '/images/site/sobre-topo.webp';
+  const sideImage = settings.about_side_image_url || '/images/site/sobre-livros.webp';
 
   return (
     <>
@@ -30,7 +36,7 @@ const AboutPage = () => {
       <main>
         <section className="relative h-[60vh] min-h-[400px] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0">
-            <img src="/images/site/sobre-topo.webp" alt="Capas de livros do catálogo da livraria" className="w-full h-full object-cover" />
+            <img src={topImage} alt="Capas de livros do catálogo da livraria" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#0c4a6e]/80 to-[#0ea5c9]/40" />
           </div>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-10 container-custom text-center text-white">
@@ -57,7 +63,7 @@ const AboutPage = () => {
                 </p>
               </motion.div>
               <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="relative h-[500px] rounded-2xl overflow-hidden">
-                <img src="/images/site/sobre-livros.webp" alt="Livros do catálogo da livraria" loading="lazy" className="w-full h-full object-cover" />
+                <img src={sideImage} alt="Livros do catálogo da livraria" loading="lazy" className="w-full h-full object-cover" />
               </motion.div>
             </div>
           </div>

@@ -9,6 +9,11 @@ const db: SupabaseClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SER
   auth: { persistSession: false, autoRefreshToken: false },
 });
 const MEDIA = `${SUPABASE_URL}/storage/v1/object/public/media`;
+// Imagens entregues com o site (app/web/public/images/site), usadas quando o painel ainda
+// não escolheu nenhuma. Ficam na galeria de imagens prontas do painel.
+const DEFAULT_SHOP_BG = "/images/site/loja-banner.webp";
+const DEFAULT_ABOUT_TOP = "/images/site/sobre-topo.webp";
+const DEFAULT_ABOUT_SIDE = "/images/site/sobre-livros.webp";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -543,7 +548,8 @@ route("GET", "/settings", async () => {
       header_welcome_guest: "Envio em todo o país · Crie a sua conta para acompanhar encomendas",
       header_cta_text: "Explorar novidades", header_cta_link: "/shop", footer_tagline: "", footer_copyright: "",
       footer_columns: null, show_stores_in_footer: true, ui_glass_enabled: true, ui_glass_opacity: 0.72,
-      shop_bg_mode: "gradient", shop_bg_image_url: "", shop_bg_video_url: "", shop_bg_overlay: 0.55,
+      shop_bg_mode: "image", shop_bg_image_url: DEFAULT_SHOP_BG, shop_bg_video_url: "", shop_bg_overlay: 0.55,
+      about_top_image_url: DEFAULT_ABOUT_TOP, about_side_image_url: DEFAULT_ABOUT_SIDE,
     });
   }
   const brandImage = (urlField: string, fileField: string) => {
@@ -552,8 +558,13 @@ route("GET", "/settings", async () => {
     const url = rec[urlField] || "";
     return url && !url.startsWith("blob:") ? url : "";
   };
-  let bgMode = rec.shop_bg_mode || "gradient";
-  if (bgMode === "image" && !rec.shop_bg_image_url) bgMode = "gradient";
+  // O banner que vai no site (galeria: "Banner da loja · leque") é a predefinição quando
+  // ainda não foi escolhido nenhum: o ficheiro era publicado mas nunca aparecia, porque sem
+  // valor em `shop_bg_mode` o modo caía em "gradient". Continua a poder ser mudado em
+  // Configurações → Fundo da loja, e quem escolher "gradient" fica com o gradiente.
+  const shopBgImage = rec.shop_bg_image_url || DEFAULT_SHOP_BG;
+  let bgMode = rec.shop_bg_mode || "image";
+  if (bgMode === "image" && !shopBgImage) bgMode = "gradient";
   if (bgMode === "video" && !rec.shop_bg_video_url) bgMode = "gradient";
   if (!["gradient", "image", "video", "slides"].includes(bgMode)) bgMode = "gradient";
   const orTrue = (v: unknown) => (v == null ? true : !!v);
@@ -601,9 +612,12 @@ route("GET", "/settings", async () => {
     ui_glass_enabled: orTrue(rec.ui_glass_enabled),
     ui_glass_opacity: Number(rec.ui_glass_opacity) || 0.72,
     shop_bg_mode: bgMode,
-    shop_bg_image_url: rec.shop_bg_image_url || "",
+    shop_bg_image_url: shopBgImage,
     shop_bg_video_url: rec.shop_bg_video_url || "",
     shop_bg_overlay: Number(rec.shop_bg_overlay) || 0.55,
+    // Vazio (ou coluna ainda sem a migração `imagens_sobre`) = a imagem que vem com o site.
+    about_top_image_url: rec.about_top_image_url || DEFAULT_ABOUT_TOP,
+    about_side_image_url: rec.about_side_image_url || DEFAULT_ABOUT_SIDE,
     google_maps_embed_key: rec.google_maps_embed_key || "",
     order_email_enabled: !!rec.order_email_enabled,
     push_enabled: !!rec.push_enabled,

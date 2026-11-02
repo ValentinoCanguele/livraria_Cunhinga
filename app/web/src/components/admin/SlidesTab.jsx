@@ -579,6 +579,7 @@ export default function SlidesTab({ onChange }) {
                   {form.template === 'book_promo' && (
                     <ImageField
                       label="Capa do livro (promo)"
+                      gallery="capa"
                       value={form.book_cover}
                       onChange={(v) => set('book_cover', v)}
                       aspect="3:4"

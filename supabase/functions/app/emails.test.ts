@@ -10,6 +10,7 @@ import {
   paymentConfirmedLetter,
   testLetter,
   welcomeLetter,
+  PREVIEW_TEMPLATES,
 } from "./emailTemplates.ts";
 
 const SETTINGS = {
@@ -447,5 +448,49 @@ describe("emblemas", () => {
       expect(text.length, letter.subject).toBeGreaterThan(50);
       expect(html, letter.subject).toContain(letter.doc.title.slice(0, 10));
     }
+  });
+});
+
+describe("PREVIEW_TEMPLATES", () => {
+  const chaves = Object.keys(PREVIEW_TEMPLATES);
+
+  it("cobre as três áreas de mensagens", () => {
+    const grupos = new Set(Object.values(PREVIEW_TEMPLATES).map((t) => t.group));
+    expect(grupos).toContain("Conta");
+    expect(grupos).toContain("Encomenda");
+    expect(grupos).toContain("Entrega");
+    expect(chaves.length).toBeGreaterThanOrEqual(15);
+  });
+
+  it("todos constroem uma mensagem completa", () => {
+    // Vários usam `orderStatusLetter(...)!`, que devolve `null` num estado sem texto: uma
+    // chave errada no catálogo rebentaria a pré-visualização só quando alguém a abrisse.
+    for (const key of chaves) {
+      const letter = PREVIEW_TEMPLATES[key].build(brand);
+      expect(letter, key).toBeTruthy();
+      expect(letter.subject, key).toBeTruthy();
+      expect(letter.doc.title, key).toBeTruthy();
+      expect(letter.doc.reason, key).toBeTruthy();
+      const { html, text } = emailDocument(brand, letter.doc);
+      expect(html.startsWith("<!doctype html>"), key).toBe(true);
+      expect(text.length, key).toBeGreaterThan(50);
+    }
+  });
+
+  it("não leva dados de clientes reais nos exemplos", () => {
+    for (const key of chaves) {
+      const { html } = emailDocument(brand, PREVIEW_TEMPLATES[key].build(brand));
+      // Os endereços de exemplo são todos `exemplo.ao`: um domínio a sério aqui seria um
+      // email de teste a sair para alguém.
+      const emails = html.match(/[\w.+-]+@[\w.-]+\.\w+/g) || [];
+      for (const addr of emails) {
+        expect(addr.endsWith("exemplo.ao") || addr === brand.contactEmail, `${key}: ${addr}`).toBe(true);
+      }
+    }
+  });
+
+  it("tem rótulos únicos, para a lista do painel não confundir", () => {
+    const labels = Object.values(PREVIEW_TEMPLATES).map((t) => t.label);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });

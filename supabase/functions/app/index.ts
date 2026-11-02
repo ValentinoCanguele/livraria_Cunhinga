@@ -12,6 +12,7 @@ import {
   paymentConfirmedLetter,
   testLetter,
   welcomeLetter,
+  PREVIEW_TEMPLATES,
   type Letter,
 } from "./emailTemplates.ts";
 
@@ -1243,6 +1244,73 @@ route("POST", "/admin/whatsapp/test", async ({ auth, body }) => {
   const result = await sendWhatsAppMessage(phone, text, config, { bodyParams: ["Teste", "OK", "0 Kz"] }, { context: "test" });
   if (!result.ok) throw bad(`Falha Meta API (${result.status || ""}): ${result.error || "erro desconhecido"}`);
   return json({ message: `Mensagem de teste enviada para ${phone}.` });
+});
+
+/** Lista dos modelos que o painel pode pré-visualizar. */
+route("GET", "/admin/email/templates", async ({ auth }) => {
+  requirePermission(auth, "manage_settings");
+  const settings = await getSettings();
+  const brand = emailBrand(settings);
+  const templates = Object.entries(PREVIEW_TEMPLATES).map(([key, t]) => ({
+    key, label: t.label, group: t.group, subject: t.build(brand).subject,
+  }));
+  return json({
+    templates,
+    // O painel avisa quando falta algo para as mensagens saírem de facto.
+    ready: {
+      enabled: !!settings?.order_email_enabled,
+      provider: settings?.email_provider || "smtp",
+      configured: settings?.email_provider === "sendgrid" ? !!settings?.sendgrid_api_key : !!settings?.smtp_host,
+      site_url: brand.siteUrl,
+      logo: brand.logoUrl,
+    },
+  });
+});
+
+/**
+ * Pré-visualização de um modelo, com dados de exemplo.
+ *
+ * Passa pelas mesmas funções que enviam de verdade e devolve o HTML tal como sai, para o que
+ * o gestor vê ser o que o cliente recebe. Um exemplo montado no painel seria um segundo sítio
+ * a divergir deste com o tempo.
+ */
+route("GET", "/admin/email/preview", async ({ auth, url }) => {
+  requirePermission(auth, "manage_settings");
+  const key = String(url.searchParams.get("template") || "");
+  const template = PREVIEW_TEMPLATES[key];
+  if (!template) throw bad("Modelo desconhecido.");
+  const settings = await getSettings();
+  const brand = emailBrand(settings);
+  const letter = template.build(brand);
+  const { html, text } = emailDocument(brand, letter.doc);
+  return json({ key, label: template.label, subject: letter.subject, html, text });
+});
+
+/**
+ * Reenvia uma mensagem que já foi composta, a partir do registo de envios.
+ *
+ * Reenvia o conteúdo guardado e não o volta a compor: a encomenda pode ter mudado entretanto,
+ * e o que se quer aqui é repetir a mensagem que falhou, não enviar outra diferente. Sem chave
+ * de idempotência, porque um reenvio é precisamente um envio a mais, pedido à mão.
+ */
+route("POST", "/admin/email/resend", async ({ auth, body }) => {
+  requirePermission(auth, "manage_settings");
+  const id = String(body.logId || "").trim();
+  if (!id) throw bad("logId obrigatório.");
+  const { data: log } = await db.from("notification_logs").select("*").eq("id", id).maybeSingle();
+  if (!log) throw new HttpError(404, "Registo não encontrado.");
+  if (log.type !== "email") throw bad("Só é possível reenviar mensagens de email.");
+  if (!log.recipient) throw bad("Este registo não tem destinatário.");
+  // As de marketing ficam de fora: repetir uma campanha à mão é um envio em massa sem o
+  // consentimento ter sido verificado outra vez.
+  if (log.context === "campaign") throw bad("As campanhas não se reenviam a partir do registo.");
+  if (!log.content) throw bad("Este registo não guardou o conteúdo da mensagem.");
+  const settings = await getSettings();
+  const ok = await sendTransactionalEmail(settings, log.recipient, log.subject || "", log.content, {
+    context: log.context, customer_name: log.customer_name, order_number: log.order_number,
+  });
+  if (!ok) throw bad("O reenvio falhou. Veja o motivo no registo de comunicações.");
+  return json({ message: `Mensagem reenviada para ${log.recipient}.` });
 });
 
 route("POST", "/admin/email/test", async ({ auth, body }) => {

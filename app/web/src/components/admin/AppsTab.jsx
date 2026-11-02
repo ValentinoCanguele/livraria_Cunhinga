@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Loader2, Mail, MessageSquare, Terminal, CheckCircle2, XCircle, MinusCircle,
+  Loader2, Mail, MessageSquare, RotateCw, Terminal, CheckCircle2, XCircle, MinusCircle,
   Trash2, RefreshCw, Search, Play, Activity, Smartphone, BookOpen
 } from 'lucide-react';
 import pb from '@/lib/dataClient';
+import EmailTemplatesPanel from '@/components/admin/EmailTemplatesPanel.jsx';
 import { pbErrorMessage } from '@/lib/mediaSave';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
@@ -214,7 +215,8 @@ export default function AppsTab() {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [activeSubTab, setActiveSubTab] = useState('apps'); // 'apps', 'logs'
+  const [activeSubTab, setActiveSubTab] = useState('apps'); // 'apps', 'templates', 'logs'
+  const [resendingId, setResendingId] = useState(null);
   
   // Notification logs state
   const [logs, setLogs] = useState([]);
@@ -297,6 +299,26 @@ export default function AppsTab() {
     }
   };
 
+  /**
+   * Um registo só se reenvia se guardou o conteúdo e tem destinatário. As campanhas ficam
+   * de fora: repetir um envio em massa à mão passa por cima da verificação do consentimento.
+   */
+  const canResend = (log) =>
+    log.type === 'email' && !!log.recipient && !!log.content && log.context !== 'campaign';
+
+  const resendLog = async (log) => {
+    setResendingId(log.id);
+    try {
+      const res = await pb.send('/admin/email/resend', { method: 'POST', body: { logId: log.id } });
+      toast({ title: 'Mensagem reenviada', description: res.message });
+      loadLogs();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Não foi reenviada', description: err.message });
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   const clearAllLogs = async () => {
     if (!window.confirm('Tem a certeza de que deseja apagar todo o histórico de logs de notificações?')) return;
     try {
@@ -366,6 +388,17 @@ export default function AppsTab() {
           Integrações
         </button>
         <button
+          onClick={() => setActiveSubTab('templates')}
+          className={`px-4 py-2 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            activeSubTab === 'templates'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Mail className="h-4 w-4" />
+          Modelos de email
+        </button>
+        <button
           onClick={() => setActiveSubTab('logs')}
           className={`px-4 py-2 text-sm font-bold border-b-2 transition-all flex items-center gap-1.5 relative ${
             activeSubTab === 'logs' 
@@ -377,6 +410,8 @@ export default function AppsTab() {
           Registo de envios
         </button>
       </div>
+
+      {activeSubTab === 'templates' && <EmailTemplatesPanel />}
 
       {activeSubTab === 'apps' ? (
         <div className="space-y-4">
@@ -439,7 +474,7 @@ export default function AppsTab() {
             </ul>
           </div>
         </div>
-      ) : (
+      ) : activeSubTab === 'logs' ? (
         /* Logs tab */
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-muted/20 p-4 rounded-xl border border-border">
@@ -595,6 +630,20 @@ export default function AppsTab() {
                             </div>
                           )}
                         </div>
+
+                        {canResend(log) && (
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+                            <p className="text-[11px] text-muted-foreground">
+                              Reenvia a mensagem tal como foi composta, para o mesmo destinatário.
+                            </p>
+                            <Button size="sm" variant="outline" disabled={resendingId === log.id} onClick={() => resendLog(log)}>
+                              {resendingId === log.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <RotateCw className="h-3.5 w-3.5" />}
+                              <span className="ml-1.5">Reenviar</span>
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -603,7 +652,7 @@ export default function AppsTab() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

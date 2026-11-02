@@ -116,14 +116,38 @@ produtos digitais, licenças, downloads, vendedores nem comissões — não há 
 para isso porque não haveria nada que os chamasse. Se essas áreas forem criadas, os modelos
 seguem o mesmo padrão: uma função em `emailTemplates.ts` e o disparo na rota que muda o estado.
 
-## 4. Por fazer
+## 4. Painel de comunicações
+
+**Integrações → Modelos de email** (`components/admin/EmailTemplatesPanel.jsx`). Exige
+`manage_settings`.
+
+- Lista dos modelos por área (Conta, Encomenda, Entrega, Outros).
+- Pré-visualização em computador e telemóvel, e a versão em texto simples.
+- Envio de teste para um endereço à escolha.
+- Aviso em destaque com o que falta para as mensagens saírem de facto.
+
+O HTML vem de `GET /admin/email/preview`, que o compõe com as **mesmas funções que enviam de
+verdade** (`PREVIEW_TEMPLATES` em `emailTemplates.ts`). Montar um exemplo no frontend daria
+dois sítios a divergir, e o gestor veria algo que o cliente nunca recebe. A pré-visualização
+corre num `<iframe sandbox="">`, sem scripts.
+
+**Integrações → Registo de envios** ganhou o botão **Reenviar**, que repete a mensagem tal
+como foi composta (`POST /admin/email/resend`). Reenvia o conteúdo guardado e não o volta a
+compor: a encomenda pode ter mudado entretanto, e o que se quer é repetir a mensagem que
+falhou, não enviar outra diferente. As campanhas ficam de fora — repetir um envio em massa à
+mão passaria por cima da verificação do consentimento.
+
+## 5. Por fazer
 
 - **Fila de envio e retentativas.** Hoje o envio é feito no mesmo pedido; uma falha fica
   registada em `notification_logs` com o motivo, mas não é repetida sozinha.
 - **Webhooks do fornecedor** (entregue, devolvido, marcado como spam): o estado de entrega
   real não é conhecido.
-- **Painel de comunicações**: existe o registo de envios (Integrações → Logs) e o envio de
-  teste. Falta pré-visualizar modelos, activar categorias e editar textos.
+- **Painel de comunicações**: falta activar ou desactivar categorias opcionais, editar os
+  textos a partir do painel e guardar versões dos modelos.
+- **O painel novo não foi verificado a funcionar.** Passa lint, build e testes, mas as rotas
+  `/admin/email/templates`, `/preview` e `/resend` só respondem depois de a Edge Function ser
+  publicada, e esta máquina não tem credenciais do Supabase nem um `app/web/.env`.
 - **Preferências de comunicação por utilizador** e cancelamento de subscrição com link
   próprio. Hoje as campanhas trazem a indicação no rodapé, mas não há um registo de quem
   pediu para sair.

@@ -331,3 +331,61 @@ export function testLetter(brand: Brand): Letter {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Catálogo, para a pré-visualização no painel
+// ---------------------------------------------------------------------------
+
+/**
+ * Encomenda de exemplo para pré-visualizar os modelos.
+ *
+ * Com dados inventados aqui, e não no painel: a pré-visualização passa pelas mesmas funções
+ * que enviam de verdade, por isso o que o gestor vê é o que o cliente recebe. Um exemplo
+ * escrito no frontend significaria dois sítios a divergir com o tempo.
+ */
+function sampleOrder(pickup = false): Row {
+  const base: Row = {
+    id: "exemplo",
+    order_number: "LA-2026-0042",
+    customer_name: "Maria Fernandes",
+    customer_email: "cliente@exemplo.ao",
+    items: [
+      { quantity: 2, title: "O Grande Conflito", price: 4500 },
+      { quantity: 1, title: "Caminho a Cristo", price: 2500 },
+    ],
+    total: 13000,
+    shipping_cost: 1500,
+    payment_method_name: "Multicaixa Express",
+    payment_status: "paid",
+    created: new Date().toISOString(),
+    shipping_method: "delivery",
+    delivery_address_full: "Rua Amílcar Cabral 12, Maianga, Luanda",
+    tracking_number: "AO-2026-887512",
+    carrier: "Expresso Angola",
+  };
+  if (!pickup) return base;
+  return { ...base, shipping_method: "pickup", pickup_store: "Loja do Huambo", shipping_cost: 0 };
+}
+
+/** Modelos que o painel consegue pré-visualizar, pela chave usada em `?template=`. */
+export const PREVIEW_TEMPLATES: Record<string, { label: string; group: string; build: (brand: Brand) => Letter }> = {
+  welcome: { label: "Boas-vindas", group: "Conta", build: (b) => welcomeLetter(b, "Maria Fernandes") },
+  invite: { label: "Conta criada (convite)", group: "Conta", build: (b) => accessLinkLetter(b, "Maria Fernandes", "invite", "https://exemplo.ao/reset-password?token=exemplo") },
+  reset: { label: "Recuperar palavra-passe", group: "Conta", build: (b) => accessLinkLetter(b, "Maria Fernandes", "reset", "https://exemplo.ao/reset-password?token=exemplo") },
+  password_changed: { label: "Palavra-passe alterada", group: "Conta", build: (b) => passwordChangedLetter(b, "Maria Fernandes") },
+
+  order_unpaid: { label: "Encomenda por pagar", group: "Encomenda", build: (b) => orderCreatedLetter(b, { ...sampleOrder(), payment_status: "pending" }, "https://exemplo.ao/pagar") },
+  order_paid: { label: "Encomenda confirmada", group: "Encomenda", build: (b) => orderCreatedLetter(b, sampleOrder()) },
+  payment_confirmed: { label: "Pagamento confirmado", group: "Encomenda", build: (b) => paymentConfirmedLetter(b, sampleOrder()) },
+
+  preparing: { label: "A preparar", group: "Entrega", build: (b) => orderStatusLetter(b, sampleOrder(), "preparing")! },
+  shipped: { label: "Expedida", group: "Entrega", build: (b) => orderStatusLetter(b, sampleOrder(), "shipped")! },
+  in_transit: { label: "Em trânsito", group: "Entrega", build: (b) => orderStatusLetter(b, sampleOrder(), "in_transit")! },
+  out_for_delivery: { label: "Saiu para entrega", group: "Entrega", build: (b) => orderStatusLetter(b, sampleOrder(), "out_for_delivery")! },
+  delivered: { label: "Entregue", group: "Entrega", build: (b) => orderStatusLetter(b, sampleOrder(), "delivered")! },
+  cancelled: { label: "Cancelada", group: "Entrega", build: (b) => orderStatusLetter(b, sampleOrder(), "cancelled")! },
+  pickup_ready: { label: "Pronta para levantamento", group: "Entrega", build: (b) => orderStatusLetter(b, sampleOrder(true), "shipped")! },
+
+  campaign: { label: "Campanha", group: "Outros", build: (b) => noticeLetter(b, "Novidades deste mês", "Chegaram títulos novos à loja.\n\nEste mês há 15% de desconto na colecção de estudos bíblicos.", true) },
+  test: { label: "Teste de envio", group: "Outros", build: (b) => testLetter(b) },
+};

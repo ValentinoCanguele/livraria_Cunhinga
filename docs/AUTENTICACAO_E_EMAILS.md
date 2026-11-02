@@ -211,10 +211,48 @@ cancelar o que não se pode cancelar, e ensinaria o cliente a ignorá-lo onde el
   de email usam para mostrar o botão próprio de cancelamento, e que o Gmail exige a quem
   envia em volume.
 
-## 7. Por fazer
+## 7. Fila de recuperação
 
-- **Fila de envio e retentativas.** Hoje o envio é feito no mesmo pedido; uma falha fica
-  registada em `notification_logs` com o motivo, mas não é repetida sozinha.
+O envio continua **imediato**: o checkout tenta mandar a confirmação na hora, e a resposta
+diz se saiu. A fila (`email_queue`) é a rede por baixo — quando o SMTP está em baixo ou o
+fornecedor responde 429, a mensagem fica guardada para ser repetida, em vez de se perder num
+registo `failed` que ninguém voltava a olhar.
+
+### O que entra e o que não entra
+
+`isRetriableFailure(source, status, message)` decide. **A origem é passada e não adivinhada**,
+porque o mesmo número significa o oposto conforme o lado:
+
+| | HTTP | SMTP |
+|---|---|---|
+| `429`, `408`, `4xx` | repete (ritmo) / não repete (pedido inválido) | repete — "tente mais tarde" |
+| `5xx` | repete — servidor em baixo | **não repete** — `550` é "essa caixa não existe" |
+| sem resposta | repete — falha de ligação | repete |
+
+Insistir num endereço que não existe não o faz aparecer, e prejudica a reputação do domínio
+junto dos fornecedores de correio.
+
+Espera entre tentativas: 1 min → 5 min → 15 min → 1 h → 3 h, até 5 tentativas.
+
+### Concorrência
+
+`claim_email_jobs()` reclama um lote com `for update skip locked`. É isso que impede duas
+instâncias da Edge Function, a correr ao mesmo tempo, de enviarem a mesma mensagem duas vezes
+ao mesmo cliente. A função devolve também o que ficou preso em `sending` há mais de 5
+minutos — uma função que morreu a meio do envio.
+
+### Quem a faz correr
+
+Esta Edge Function não tem processo entre pedidos: alguém tem de chamar
+`POST /admin/email/queue/run`. Hoje é o botão **Tentar agora** no painel. Para correr
+sozinha, falta um agendador — `pg_cron` com `pg_net` a chamar a rota, ou uma tarefa agendada
+externa. **Até isso existir, a fila só avança quando alguém carregar no botão.**
+
+## 8. Por fazer
+
+- **Agendador para a fila.** Está construída e funciona, mas só corre quando alguém carrega
+  em "Tentar agora": falta o `pg_cron` com `pg_net`, ou uma tarefa externa, a chamar
+  `POST /admin/email/queue/run`.
 - **Webhooks do fornecedor** (entregue, devolvido, marcado como spam): o estado de entrega
   real não é conhecido.
 - **Painel de comunicações**: falta activar ou desactivar categorias opcionais, editar os

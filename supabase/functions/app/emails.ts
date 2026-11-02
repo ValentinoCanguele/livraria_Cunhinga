@@ -438,3 +438,52 @@ export function categoryStates(settings: Record<string, any> | null) {
     enabled: isCategoryEnabled(settings, key),
   }));
 }
+
+// ---------------------------------------------------------------------------
+// Falhas de envio
+// ---------------------------------------------------------------------------
+
+/** De onde veio a falha. O mesmo número quer dizer coisas opostas conforme a origem. */
+export type FailureSource = "http" | "smtp" | "network";
+
+/**
+ * Vale a pena repetir este envio?
+ *
+ * Repetir só ajuda quando a causa é passageira: o servidor em baixo, um limite de ritmo, a
+ * rede. Um endereço inválido ou uma chave recusada respondem sempre o mesmo, e insistir
+ * nesses só gasta tentativas — e, no caso de um endereço que não existe, prejudica a
+ * reputação do domínio junto dos fornecedores de correio.
+ *
+ * A origem é passada e não adivinhada, porque o mesmo número significa o oposto conforme
+ * vem de um lado ou do outro: **550 em HTTP** é o servidor com um problema, e repete-se;
+ * **550 em SMTP** é "essa caixa de correio não existe", e nunca vai mudar.
+ */
+export function isRetriableFailure(source: FailureSource, status?: number | null, message = ""): boolean {
+  const code = Number(status) || 0;
+  const text = String(message || "").toLowerCase();
+
+  // Nem chegou a haver resposta: problema de ligação, que costuma passar.
+  if (source === "network") return true;
+
+  if (source === "smtp") {
+    // 4xx em SMTP é "tente mais tarde"; 5xx é recusa definitiva.
+    if (code >= 400 && code < 500) return true;
+    if (code >= 500) return false;
+    // Sem código legível, decide-se pelo texto: o SMTP escreve o motivo antes do número.
+    return !/5\.\d\.\d|mailbox|recipient|does not exist|no such user|rejected|blocked/.test(text);
+  }
+
+  // HTTP: o servidor em baixo e o limite de ritmo repetem-se; o resto não.
+  if (code === 429 || code === 408) return true;
+  if (code >= 500 && code < 600) return true;
+  if (code >= 400 && code < 500) return false;
+  // Sem código: tratado como falha de ligação.
+  return true;
+}
+
+/** Espera antes da tentativa seguinte, em segundos: 1 min, 5 min, 15 min, 1 h, 3 h. */
+export function retryDelaySeconds(attempts: number): number {
+  const ladder = [60, 300, 900, 3600, 10800];
+  const index = Math.min(Math.max(attempts - 1, 0), ladder.length - 1);
+  return ladder[index];
+}

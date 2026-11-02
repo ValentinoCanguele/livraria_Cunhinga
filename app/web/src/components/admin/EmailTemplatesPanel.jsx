@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Loader2, Monitor, Send, Smartphone } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Loader2, Monitor, RotateCw, Send, Smartphone } from 'lucide-react';
 import pb from '@/lib/dataClient';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -27,19 +27,23 @@ export default function EmailTemplatesPanel() {
   const [sending, setSending] = useState(false);
   const [categories, setCategories] = useState([]);
   const [savingCategory, setSavingCategory] = useState('');
+  const [queue, setQueue] = useState(null);
+  const [runningQueue, setRunningQueue] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [res, cats] = await Promise.all([
+        const [res, cats, q] = await Promise.all([
           pb.send('/admin/email/templates'),
           pb.send('/admin/email/categories').catch(() => ({ categories: [] })),
+          pb.send('/admin/email/queue').catch(() => null),
         ]);
         if (cancelled) return;
         setTemplates(res.templates || []);
         setReady(res.ready || null);
         setCategories(cats.categories || []);
+        setQueue(q);
         setSelected((prev) => prev || res.templates?.[0]?.key || '');
       } catch (err) {
         if (cancelled) return;
@@ -101,6 +105,27 @@ export default function EmailTemplatesPanel() {
       toast({ variant: 'destructive', title: 'Não foi possível guardar', description: err.message });
     } finally {
       setSavingCategory('');
+    }
+  };
+
+  const runQueue = async () => {
+    setRunningQueue(true);
+    try {
+      const res = await pb.send('/admin/email/queue/run', { method: 'POST', body: { limit: 25 } });
+      const parts = [
+        res.sent ? `${res.sent} enviada(s)` : '',
+        res.retrying ? `${res.retrying} para repetir` : '',
+        res.failed ? `${res.failed} sem sucesso` : '',
+      ].filter(Boolean);
+      toast({
+        title: res.claimed ? 'Fila processada' : 'Nada por enviar',
+        description: parts.length ? parts.join(' · ') : 'A fila está vazia.',
+      });
+      setQueue(await pb.send('/admin/email/queue').catch(() => queue));
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Não foi possível processar', description: err.message });
+    } finally {
+      setRunningQueue(false);
     }
   };
 
@@ -169,6 +194,48 @@ export default function EmailTemplatesPanel() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {queue && (queue.summary?.pending > 0 || queue.summary?.failed > 0 || queue.jobs?.length > 0) && (
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold">Fila de recuperação</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Mensagens que falharam por motivo passageiro e vão ser repetidas. Um endereço
+                inválido ou uma chave recusada não entram aqui: repetir dava o mesmo resultado.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" onClick={runQueue} disabled={runningQueue}>
+              {runningQueue ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+              <span className="ml-1.5">Tentar agora</span>
+            </Button>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-4 text-sm">
+            <span><strong>{queue.summary?.pending ?? 0}</strong> <span className="text-muted-foreground">por repetir</span></span>
+            <span><strong>{queue.summary?.sending ?? 0}</strong> <span className="text-muted-foreground">a enviar</span></span>
+            <span><strong>{queue.summary?.failed ?? 0}</strong> <span className="text-muted-foreground">sem sucesso</span></span>
+          </div>
+
+          {queue.jobs?.length > 0 && (
+            <ul className="mt-4 space-y-2 border-t pt-3">
+              {queue.jobs.slice(0, 8).map((job) => (
+                <li key={job.id} className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-medium">{job.subject || '(sem assunto)'}</span>
+                    <span className="text-muted-foreground"> · {job.recipient}</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    {job.status === 'failed'
+                      ? `sem sucesso após ${job.attempts} tentativa(s)`
+                      : `tentativa ${job.attempts} de ${job.max_attempts}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

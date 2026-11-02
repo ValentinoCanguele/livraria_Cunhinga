@@ -3,7 +3,10 @@
 // Deploy com verify_jwt=false: a autenticação é feita aqui (token do Supabase Auth, quando existe).
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.49.4";
 import nodemailer from "npm:nodemailer@6.9.16";
-import { brandFromSettings, categoryStates, emailDocument, formatKz, isCategoryEnabled, type Brand } from "./emails.ts";
+import {
+  brandFromSettings, categoryStates, emailDocument, formatKz, isCategoryEnabled,
+  isRetriableFailure, retryDelaySeconds, type Brand, type FailureSource,
+} from "./emails.ts";
 import {
   accessLinkLetter,
   noticeLetter,
@@ -194,6 +197,77 @@ async function alreadySent(dedupe: string) {
  * filtros de correio, contam com a segunda, e um email só com HTML tem mais probabilidade de
  * acabar no lixo.
  */
+type SendOutcome = { ok: boolean; source?: FailureSource; status?: number; detail: string; provider: string };
+
+/** Entrega uma mensagem ao fornecedor. Só envia: não regista nem decide repetições. */
+async function deliverEmail(settings: Row, to: string, subject: string, html: string, text: string, headers: Record<string, string>): Promise<SendOutcome> {
+  const siteName = settings.site_name || "Livraria Adventista";
+  const provider = settings.email_provider || "smtp";
+  const fromEmail = settings.smtp_from_email || settings.contact_email || "noreply@livraria.ao";
+  const fromName = settings.smtp_from_name || siteName;
+
+  if (provider === "sendgrid") {
+    if (!settings.sendgrid_api_key) {
+      return { ok: false, detail: "Chave SendGrid em falta.", provider };
+    }
+    // A ordem importa: o SendGrid usa a última parte como a preferida, por isso o HTML vem
+    // depois do texto simples.
+    const content = [
+      ...(text ? [{ type: "text/plain", value: text }] : []),
+      { type: "text/html", value: html },
+    ];
+    try {
+      const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${settings.sendgrid_api_key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: fromEmail, name: fromName },
+          subject,
+          content,
+          ...(Object.keys(headers).length ? { headers } : {}),
+        }),
+      });
+      if (res.ok) return { ok: true, detail: `SendGrid ${res.status}`, provider };
+      return { ok: false, source: "http", status: res.status, detail: `SendGrid ${res.status}: ${await res.text()}`, provider };
+    } catch (err) {
+      return { ok: false, source: "network", detail: (err as Error)?.message || String(err), provider };
+    }
+  }
+
+  if (!settings.smtp_host) {
+    return { ok: false, detail: "Servidor SMTP não configurado.", provider: "smtp" };
+  }
+  const port = Number(settings.smtp_port) || 465;
+  try {
+    const transport = nodemailer.createTransport({
+      host: settings.smtp_host,
+      port,
+      secure: port === 465,
+      auth: settings.smtp_user ? { user: settings.smtp_user, pass: settings.smtp_password || "" } : undefined,
+    });
+    const info = await transport.sendMail({
+      from: { name: fromName, address: fromEmail },
+      to, subject, html, ...(text ? { text } : {}),
+      ...(Object.keys(headers).length ? { headers } : {}),
+    });
+    return { ok: true, detail: `${settings.smtp_host}:${port} · ${info?.response || "aceite"}`, provider: "smtp" };
+  } catch (err) {
+    const e = err as { responseCode?: number; message?: string; code?: string };
+    // Sem resposta do servidor é falha de ligação; com código SMTP, é o servidor a recusar.
+    const source: FailureSource = e?.responseCode ? "smtp" : "network";
+    return { ok: false, source, status: e?.responseCode, detail: e?.message || String(err), provider: "smtp" };
+  }
+}
+
+/**
+ * Envia uma mensagem transaccional, regista o resultado e guarda para repetir o que falhou
+ * por motivo passageiro.
+ *
+ * Leva sempre as duas versões, HTML e texto simples: clientes que não mostram HTML, e os
+ * filtros de correio, contam com a segunda, e um email só com HTML tem mais probabilidade de
+ * acabar no lixo.
+ */
 async function sendTransactionalEmail(
   settings: Row | null,
   to: string,
@@ -218,60 +292,129 @@ async function sendTransactionalEmail(
     await logNotification({ ...base, status: "skipped", detail: "Configurações do site em falta." });
     return false;
   }
-  const siteName = settings.site_name || "Livraria Adventista";
-  const provider = settings.email_provider || "smtp";
-  const fromEmail = settings.smtp_from_email || settings.contact_email || "noreply@livraria.ao";
-  const fromName = settings.smtp_from_name || siteName;
-  try {
-    if (provider === "sendgrid") {
-      if (!settings.sendgrid_api_key) {
-        await logNotification({ ...base, status: "skipped", provider, detail: "Chave SendGrid em falta." });
-        return false;
-      }
-      // A ordem importa: o SendGrid usa a última parte como a preferida, por isso o HTML vem
-      // depois do texto simples.
-      const content = [
-        ...(text ? [{ type: "text/plain", value: text }] : []),
-        { type: "text/html", value: html },
-      ];
-      const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${settings.sendgrid_api_key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          personalizations: [{ to: [{ email: to }] }],
-          from: { email: fromEmail, name: fromName },
-          subject,
-          content,
-          ...(Object.keys(headers).length ? { headers } : {}),
-        }),
-      });
-      const detail = res.ok ? `SendGrid ${res.status}` : `SendGrid ${res.status}: ${await res.text()}`;
-      await logNotification({ ...base, status: res.ok ? "sent" : "failed", provider, detail });
-      return res.ok;
-    }
-    if (!settings.smtp_host) {
-      await logNotification({ ...base, status: "skipped", provider: "smtp", detail: "Servidor SMTP não configurado." });
-      return false;
-    }
-    const port = Number(settings.smtp_port) || 465;
-    const transport = nodemailer.createTransport({
-      host: settings.smtp_host,
-      port,
-      secure: port === 465,
-      auth: settings.smtp_user ? { user: settings.smtp_user, pass: settings.smtp_password || "" } : undefined,
-    });
-    const info = await transport.sendMail({
-      from: { name: fromName, address: fromEmail },
-      to, subject, html, ...(text ? { text } : {}),
-      ...(Object.keys(headers).length ? { headers } : {}),
-    });
-    await logNotification({ ...base, status: "sent", provider: "smtp", detail: `${settings.smtp_host}:${port} · ${info?.response || "aceite"}` });
+
+  const outcome = await deliverEmail(settings, to, subject, html, text, headers);
+  if (outcome.ok) {
+    await logNotification({ ...base, status: "sent", provider: outcome.provider, detail: outcome.detail });
     return true;
-  } catch (err) {
-    console.log("Transactional email error:", err);
-    await logNotification({ ...base, status: "failed", provider, detail: (err as Error)?.message || String(err) });
+  }
+
+  // Configuração em falta não é falha de envio: não há nada para repetir até alguém a tratar.
+  if (!outcome.source) {
+    await logNotification({ ...base, status: "skipped", provider: outcome.provider, detail: outcome.detail });
     return false;
   }
+
+  console.log("Transactional email error:", outcome.detail);
+  const retriable = isRetriableFailure(outcome.source, outcome.status, outcome.detail);
+  if (retriable) {
+    const queued = await enqueueEmail({ to, subject, html, text, headers, meta, lastError: outcome.detail });
+    await logNotification({
+      ...base, status: "failed", provider: outcome.provider,
+      detail: queued ? `${outcome.detail} · na fila para repetir` : outcome.detail,
+    });
+  } else {
+    await logNotification({ ...base, status: "failed", provider: outcome.provider, detail: outcome.detail });
+  }
+  return false;
+}
+
+/** Guarda uma mensagem para repetir mais tarde. */
+async function enqueueEmail(job: {
+  to: string; subject: string; html: string; text: string;
+  headers: Record<string, string>; meta: NotifyMeta; lastError: string;
+}) {
+  const { error } = await db.from("email_queue").insert({
+    recipient: job.to,
+    subject: job.subject,
+    html: job.html,
+    text_body: job.text,
+    headers: Object.keys(job.headers).length ? job.headers : null,
+    context: job.meta.context || "order",
+    customer_name: job.meta.customer_name || "",
+    order_number: job.meta.order_number || "",
+    dedupe_key: job.meta.dedupe || null,
+    attempts: 1,
+    next_attempt_at: new Date(Date.now() + retryDelaySeconds(1) * 1000).toISOString(),
+    last_error: job.lastError.slice(0, 2000),
+  });
+  // 23505: já lá está uma igual à espera. Repetir o pedido não põe duas na fila.
+  if (error && error.code !== "23505") {
+    console.log("email_queue insert:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Processa um lote da fila: tenta entregar, e decide o que fazer com o que falhar.
+ *
+ * As mensagens são reclamadas por `claim_email_jobs`, que usa `for update skip locked`:
+ * duas instâncias da Edge Function a correr ao mesmo tempo levam lotes diferentes, em vez de
+ * enviarem a mesma mensagem duas vezes ao mesmo cliente.
+ */
+async function processEmailQueue(limit = 10) {
+  const settings = await getSettings();
+  const summary = { claimed: 0, sent: 0, retrying: 0, failed: 0 };
+  if (!settings) return summary;
+
+  const { data: jobs, error } = await db.rpc("claim_email_jobs", { p_limit: limit });
+  if (error) {
+    console.log("claim_email_jobs:", error.message);
+    return summary;
+  }
+  summary.claimed = jobs?.length || 0;
+
+  for (const job of jobs || []) {
+    // Já saiu entretanto por outro caminho (um reenvio à mão, por exemplo).
+    if (job.dedupe_key && await alreadySent(job.dedupe_key)) {
+      await db.from("email_queue").update({ status: "sent", last_error: "Já tinha sido enviada." }).eq("id", job.id);
+      summary.sent++;
+      continue;
+    }
+
+    const headers = (job.headers && typeof job.headers === "object") ? job.headers as Record<string, string> : {};
+    const outcome = await deliverEmail(settings, job.recipient, job.subject, job.html, job.text_body || "", headers);
+    const attempts = (Number(job.attempts) || 0) + 1;
+    const base = {
+      type: "email", context: job.context || "order", recipient: job.recipient,
+      customer_name: job.customer_name || "", order_number: job.order_number || "",
+      subject: job.subject, content: job.html,
+      ...(job.dedupe_key ? { dedupe_key: job.dedupe_key } : {}),
+    };
+
+    if (outcome.ok) {
+      await db.from("email_queue").update({ status: "sent", attempts, last_error: "" }).eq("id", job.id);
+      await logNotification({ ...base, status: "sent", provider: outcome.provider, detail: `${outcome.detail} · tentativa ${attempts}` });
+      summary.sent++;
+      continue;
+    }
+
+    const maxAttempts = Number(job.max_attempts) || 5;
+    const retriable = !!outcome.source && isRetriableFailure(outcome.source, outcome.status, outcome.detail);
+    // Desistir quando a causa não melhora com o tempo, ou quando as tentativas acabaram:
+    // insistir num endereço que não existe prejudica a reputação do domínio.
+    if (!retriable || attempts >= maxAttempts) {
+      await db.from("email_queue").update({
+        status: "failed", attempts, last_error: outcome.detail.slice(0, 2000),
+      }).eq("id", job.id);
+      await logNotification({
+        ...base, status: "failed", provider: outcome.provider,
+        detail: `${outcome.detail} · ${retriable ? `desistiu ao fim de ${attempts} tentativas` : "falha definitiva"}`,
+      });
+      summary.failed++;
+      continue;
+    }
+
+    await db.from("email_queue").update({
+      status: "pending", attempts,
+      next_attempt_at: new Date(Date.now() + retryDelaySeconds(attempts) * 1000).toISOString(),
+      last_error: outcome.detail.slice(0, 2000),
+      locked_at: null,
+    }).eq("id", job.id);
+    summary.retrying++;
+  }
+  return summary;
 }
 
 /** Identidade visual da loja para os emails, com o endereço público configurado no painel. */
@@ -1354,6 +1497,54 @@ route("POST", "/admin/email/categories", async ({ auth, body }) => {
   const { error } = await db.from("site_settings").update({ email_categories: next }).eq("id", settings.id);
   if (error) throw error;
   return json({ categories: categoryStates({ ...settings, email_categories: next }) });
+});
+
+/** Estado da fila de recuperação, para o painel. */
+route("GET", "/admin/email/queue", async ({ auth }) => {
+  requirePermission(auth, "manage_settings");
+  const { data } = await db.from("email_queue")
+    .select("id, recipient, subject, context, status, attempts, max_attempts, next_attempt_at, last_error, created")
+    .order("created", { ascending: false })
+    .limit(50);
+  const rows = data || [];
+  return json({
+    jobs: rows,
+    summary: {
+      pending: rows.filter((r: Row) => r.status === "pending").length,
+      sending: rows.filter((r: Row) => r.status === "sending").length,
+      failed: rows.filter((r: Row) => r.status === "failed").length,
+    },
+  });
+});
+
+/**
+ * Corre um lote da fila.
+ *
+ * Existe como rota porque esta Edge Function não tem processo a correr entre pedidos: alguém
+ * tem de a chamar. Serve o botão do painel e também um agendador externo (pg_cron com
+ * pg_net, ou uma tarefa agendada) quando houver um.
+ */
+route("POST", "/admin/email/queue/run", async ({ auth, body }) => {
+  requirePermission(auth, "manage_settings");
+  const limit = Math.min(Math.max(Number(body.limit) || 10, 1), 50);
+  return json(await processEmailQueue(limit));
+});
+
+/** Devolve uma mensagem desistida à fila, para nova tentativa à mão. */
+route("POST", "/admin/email/queue/retry", async ({ auth, body }) => {
+  requirePermission(auth, "manage_settings");
+  const id = String(body.id || "").trim();
+  if (!id) throw bad("id obrigatório.");
+  const { data: job } = await db.from("email_queue").select("id, status").eq("id", id).maybeSingle();
+  if (!job) throw new HttpError(404, "Mensagem não encontrada na fila.");
+  if (job.status === "sent") throw bad("Esta mensagem já foi enviada.");
+  // As tentativas voltam a zero: é uma decisão nova de uma pessoa, e não a continuação da
+  // série que já tinha desistido.
+  const { error } = await db.from("email_queue").update({
+    status: "pending", attempts: 0, next_attempt_at: nowISO(), locked_at: null,
+  }).eq("id", id);
+  if (error) throw error;
+  return json({ message: "Mensagem devolvida à fila." });
 });
 
 route("GET", "/admin/email/templates", async ({ auth }) => {

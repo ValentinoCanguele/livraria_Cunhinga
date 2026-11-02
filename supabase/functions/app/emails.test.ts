@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { OPTIONAL_CATEGORIES, SAFE_SYMBOLS, brandFromSettings, categoryStates, emailDocument, formatKz, isCategoryEnabled, type Brand } from "./emails.ts";
+import {
+  OPTIONAL_CATEGORIES, SAFE_SYMBOLS, brandFromSettings, categoryStates, emailDocument,
+  formatKz, isCategoryEnabled, isRetriableFailure, retryDelaySeconds, type Brand,
+} from "./emails.ts";
 import {
   accessLinkLetter,
   noticeLetter,
@@ -581,5 +584,78 @@ describe("cancelamento de subscrição", () => {
     });
     expect(html).not.toContain("javascript:");
     expect(html).not.toContain("Deixar de receber");
+  });
+});
+
+describe("isRetriableFailure", () => {
+  it("repete quando nem houve resposta", () => {
+    // Falha de ligação: a causa é a rede, e costuma passar.
+    expect(isRetriableFailure("network")).toBe(true);
+    expect(isRetriableFailure("network", null, "fetch failed")).toBe(true);
+  });
+
+  describe("HTTP", () => {
+    it("repete o servidor em baixo e o limite de ritmo", () => {
+      for (const code of [429, 408, 500, 502, 503, 504]) {
+        expect(isRetriableFailure("http", code), String(code)).toBe(true);
+      }
+    });
+
+    it("não repete pedido inválido nem autenticação recusada", () => {
+      // A chave errada ou o corpo mal formado respondem sempre o mesmo.
+      for (const code of [400, 401, 403, 404, 413, 422]) {
+        expect(isRetriableFailure("http", code), String(code)).toBe(false);
+      }
+    });
+  });
+
+  describe("SMTP", () => {
+    it("repete os 4xx, que são \"tente mais tarde\"", () => {
+      for (const code of [421, 450, 451, 452]) {
+        expect(isRetriableFailure("smtp", code), String(code)).toBe(true);
+      }
+    });
+
+    it("não repete os 5xx, que são recusa definitiva", () => {
+      // 550 em SMTP é "essa caixa de correio não existe" — ao contrário de 550 em HTTP, que
+      // seria o servidor com um problema. É por isso que a origem é passada e não adivinhada.
+      for (const code of [550, 551, 552, 553, 554]) {
+        expect(isRetriableFailure("smtp", code), String(code)).toBe(false);
+      }
+      expect(isRetriableFailure("http", 550)).toBe(true);
+    });
+
+    it("sem código, decide pelo texto do servidor", () => {
+      for (const texto of [
+        "550 5.1.1 User unknown",
+        "Mailbox does not exist",
+        "Recipient rejected",
+        "blocked by policy",
+      ]) {
+        expect(isRetriableFailure("smtp", null, texto), texto).toBe(false);
+      }
+      expect(isRetriableFailure("smtp", null, "connection timed out")).toBe(true);
+    });
+  });
+});
+
+describe("retryDelaySeconds", () => {
+  it("espera cada vez mais entre tentativas", () => {
+    const esperas = [1, 2, 3, 4, 5].map(retryDelaySeconds);
+    expect(esperas).toEqual([60, 300, 900, 3600, 10800]);
+    // Sempre a crescer: insistir ao mesmo ritmo num servidor em dificuldades piora-o.
+    for (let i = 1; i < esperas.length; i++) {
+      expect(esperas[i]).toBeGreaterThan(esperas[i - 1]);
+    }
+  });
+
+  it("não cresce para lá do último degrau", () => {
+    expect(retryDelaySeconds(6)).toBe(10800);
+    expect(retryDelaySeconds(99)).toBe(10800);
+  });
+
+  it("aguenta valores fora do esperado", () => {
+    expect(retryDelaySeconds(0)).toBe(60);
+    expect(retryDelaySeconds(-5)).toBe(60);
   });
 });

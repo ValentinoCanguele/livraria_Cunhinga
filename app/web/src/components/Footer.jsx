@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Facebook, Instagram, Mail, MapPin, ExternalLink, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Facebook, Instagram, Mail, MapPin, ExternalLink, Sparkles, CheckCircle2, PackageSearch, Truck, CreditCard, Store, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { subscribeNewsletter } from '@/api/EcommerceApi';
-import { getPhysicalStores } from '@/api/PlatformApi';
+import { getPhysicalStores, getPaymentMethods } from '@/api/PlatformApi';
 import BrandLogo from '@/components/BrandLogo';
 import { BRAND } from '@/lib/brand';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -62,8 +62,12 @@ function FooterLink({ link }) {
 }
 
 const Footer = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [stores, setStores] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [trackNumber, setTrackNumber] = useState('');
+  const [trackEmail, setTrackEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const { toast } = useToast();
@@ -81,6 +85,23 @@ const Footer = () => {
       getPhysicalStores().then(setStores).catch(() => {});
     }
   }, [showStores]);
+
+  // Os métodos de pagamento que o admin tem activos — os mesmos que o checkout aceita.
+  useEffect(() => {
+    getPaymentMethods().then((d) => setPayments(d?.methods || [])).catch(() => {});
+  }, []);
+
+  // Rastreio rápido: a página /track recebe o número e o email já preenchidos.
+  const handleTrackSubmit = (e) => {
+    e.preventDefault();
+    const num = trackNumber.trim();
+    if (!num) return;
+    navigate('/track', { state: { orderNumber: num, email: trackEmail.trim() } });
+  };
+
+  const freeFrom = Number(settings.shipping_free_threshold) || 0;
+  const hasPickup = stores.some((s) => s.pickup_enabled !== false);
+  const whatsappDigits = (settings.whatsapp || settings.contact_phone || '').replace(/\D/g, '');
 
   const handleNewsletterSubmit = async (e) => {
     e.preventDefault();
@@ -232,6 +253,95 @@ const Footer = () => {
               </AnimatePresence>
             </div>
           </div>
+        </div>
+
+        {/* Serviços: o que a loja faz mesmo, com os valores reais das Configurações, das
+            lojas e dos métodos de pagamento activos. */}
+        <div className="grid gap-8 lg:grid-cols-12 mb-12 border-t border-background/20 pt-10">
+          <div className="lg:col-span-5">
+            <h4 className="font-semibold mb-2 text-background flex items-center gap-2">
+              <PackageSearch className="h-4 w-4 text-[#22d3ee]" aria-hidden="true" />
+              Rastrear a sua encomenda
+            </h4>
+            <p className="text-sm text-background/60 mb-4">
+              Indique o número da encomenda e o email usado na compra.
+            </p>
+            <form onSubmit={handleTrackSubmit} className="flex flex-col sm:flex-row gap-2">
+              <Input
+                value={trackNumber}
+                onChange={(e) => setTrackNumber(e.target.value)}
+                placeholder="Nº da encomenda"
+                aria-label="Número da encomenda"
+                className="bg-background/10 border-background/20 text-background placeholder:text-background/40"
+              />
+              <Input
+                type="email"
+                value={trackEmail}
+                onChange={(e) => setTrackEmail(e.target.value)}
+                placeholder="Email da compra"
+                aria-label="Email usado na compra"
+                className="bg-background/10 border-background/20 text-background placeholder:text-background/40"
+              />
+              <Button type="submit" className="btn-primary shrink-0" disabled={!trackNumber.trim()}>
+                Seguir
+              </Button>
+            </form>
+          </div>
+
+          <div className="lg:col-span-4">
+            <h4 className="font-semibold mb-4 text-background">Como compra e recebe</h4>
+            <ul className="space-y-3 text-sm text-background/70">
+              <li className="flex gap-3">
+                <Truck className="h-4 w-4 mt-0.5 text-[#22d3ee] shrink-0" aria-hidden="true" />
+                <span>
+                  Entrega em todo o país
+                  {freeFrom > 0 && <> · portes grátis acima de {freeFrom.toLocaleString('pt-AO')} Kz</>}
+                </span>
+              </li>
+              {hasPickup && (
+                <li className="flex gap-3">
+                  <Store className="h-4 w-4 mt-0.5 text-[#22d3ee] shrink-0" aria-hidden="true" />
+                  <span>Levantamento nas lojas, sem portes</span>
+                </li>
+              )}
+              <li className="flex gap-3">
+                <CheckCircle2 className="h-4 w-4 mt-0.5 text-[#22d3ee] shrink-0" aria-hidden="true" />
+                <span>Confirmação de recepção com assinatura digital</span>
+              </li>
+              {whatsappDigits && (
+                <li className="flex gap-3">
+                  <MessageCircle className="h-4 w-4 mt-0.5 text-[#22d3ee] shrink-0" aria-hidden="true" />
+                  <a
+                    href={`https://wa.me/${whatsappDigits}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-[#22d3ee] transition-colors"
+                  >
+                    Falar por WhatsApp
+                  </a>
+                </li>
+              )}
+            </ul>
+          </div>
+
+          {payments.length > 0 && (
+            <div className="lg:col-span-3">
+              <h4 className="font-semibold mb-4 text-background flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-[#22d3ee]" aria-hidden="true" />
+                Pagamentos aceites
+              </h4>
+              <ul className="flex flex-wrap gap-2">
+                {payments.map((m) => (
+                  <li
+                    key={m.id || m.code}
+                    className="rounded-md border border-background/20 bg-background/10 px-2.5 py-1 text-xs text-background/80"
+                  >
+                    {m.name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {showStores && stores.length > 0 && (

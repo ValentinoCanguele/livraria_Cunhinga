@@ -148,3 +148,41 @@ CLS manteve-se em 0,0607 nas duas condições.
 
 A escolha fica guardada para as páginas seguintes. Alternar a ordem das medições não é
 opcional: sem isso mede-se o estado da cache, não o custo do que se quer avaliar.
+
+---
+
+# Fase 2 — custo dos efeitos aplicados (commit `c2129f3`)
+
+Transições em 75 botões, brilho em 7, confirmação ao comprar, indicador próprio e
+profundidade nos painéis. Três amostras de cada condição, alternadas, descartando a
+primeira depois do deploy (carga fria).
+
+| Condição | LCP das amostras | Média | Long tasks | Média |
+|----------|------------------|------:|------------|------:|
+| ligados | 2520, 1904, 2400 | **2275 ms** | 2454, 1790, 2914 | 2386 ms |
+| desligados | 2220, 2592, 2028 | **2280 ms** | 2497, 3836, 1930 | 2754 ms |
+
+**Diferença de 5 ms no LCP.** A variação dentro de cada condição — 1904 a 2520 com os
+efeitos ligados, 2028 a 2592 sem eles — é muito maior do que a diferença entre as duas.
+Long tasks saem até mais baixas com os efeitos ligados, o que confirma que o que se está a
+medir é ruído e não custo.
+
+CLS igual nas duas condições: 0,0607.
+
+Isto era o esperado pelo desenho: as regras só tocam `transform`, `opacity`, `box-shadow`,
+`background-color`, `border-color`, `color` e `filter`. Nenhuma obriga o navegador a
+recalcular a posição do resto da página, e as duas primeiras correm no compositor.
+
+## Resumo desde o início
+
+| Indicador | Antes de tudo | Agora | Objectivo | |
+|-----------|--------------:|------:|----------:|---|
+| CLS `/shop` desktop | 0,573 | 0,061 | ≤ 0,1 | ✅ |
+| CLS `/shop` mobile | 0,257 | 0,095 | ≤ 0,1 | ✅ |
+| LCP `/shop` | 2852 ms | ~2275 ms | ≤ 2500 ms | ✅ |
+| Elementos no DOM | 3978 | 1910 | — | −52% |
+| Imagens | 386 | 90 | — | −77% |
+| INP | 272 ms medido | não mensurável aqui | ≤ 200 ms | ❓ |
+
+O INP continua sem número fiável: as leituras oscilam entre 16 e 1552 ms para acções
+equivalentes neste ambiente. Precisa de dados de campo.

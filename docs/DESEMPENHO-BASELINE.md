@@ -45,3 +45,37 @@ Sombras, elevações e transições custam composição e, mal feitas, repintura
 sobre um `/shop` com CLS de 0,573 e LCP de 4,1 s em mobile agrava o que já está fora dos
 objectivos. A ordem sensata é corrigir primeiro o deslocamento e o custo do arranque, e só
 depois acrescentar camadas — medindo a cada passo contra esta tabela.
+
+---
+
+# Depois da Fase 0 (commit `2bfcb7e`)
+
+Mesmo método, mesma máquina, mesmas páginas. Produção, cache quente.
+
+| Indicador | Antes | Depois | Objectivo | |
+|-----------|------:|-------:|----------:|---|
+| CLS `/shop` desktop | 0,573 | **0,061** | ≤ 0,1 | ✅ |
+| CLS `/shop` mobile | 0,257 | **0,095** | ≤ 0,1 | ✅ |
+| LCP `/shop` desktop | 2852 ms | **2208–2428 ms** | ≤ 2500 ms | ✅ |
+| FCP `/shop` desktop | 984 ms | 912–956 ms | — | = |
+| INP (estado estável) | não medido | **272 ms** | ≤ 200 ms | ❌ |
+
+## O que falta
+
+**INP de 272 ms.** Medido com cliques reais em "Filtros avançados", já com a página
+assente. O tempo está na apresentação (`processingEnd - processingStart` = 0 ms), ou seja no
+re-render e na pintura, não no código do handler. Durante o carregamento chega a 1032 ms.
+
+**CLS residual de 0,053.** Vem das secções "Em Destaque" e da faixa de disponíveis, que
+aparecem acima da grelha quando os dados chegam. Reservar-lhes espaço exigiria saber de
+antemão quantos destaques existem; com o objectivo já cumprido, não foi perseguido.
+
+## Em repouso a página está calma
+
+Oito segundos sem interacção: 2 long tasks (111 ms no total), nenhum `requestAnimationFrame`
+nem `setInterval` novo, uma única animação CSS activa. A faixa de livros usa
+`transform: translate3d` com `will-change`, corre no compositor e respeita
+`prefers-reduced-motion` — não disputa o thread principal.
+
+Isto é o que dá margem para acrescentar os efeitos visuais: o custo deles tem de continuar a
+ser de composição, em `transform` e `opacity`, nunca em propriedades que forcem novo layout.

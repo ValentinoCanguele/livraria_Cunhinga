@@ -877,10 +877,14 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
   const shippingMethod = ["delivery", "express", "pickup"].includes(data.shippingMethod) ? data.shippingMethod : "delivery";
   const pickupStore = clip(data.pickupStore, 120);
 
-  if (!email) throw bad("Email obrigatório.");
+  // Levantamento na loja: a loja só precisa de saber quem vem buscar e como lhe ligar.
+  // Nem morada (não há entrega), nem assinatura (os livros são entregues ao balcão), nem
+  // email (o recibo é dado na hora). Entrega ao domicílio continua a exigir tudo.
+  const isPickup = shippingMethod === "pickup";
   if (!name) throw bad("Nome obrigatório.");
   if (!phone) throw bad("Telefone obrigatório.");
-  if (shippingMethod !== "pickup") {
+  if (!isPickup && !email) throw bad("Email obrigatório para entrega ao domicílio.");
+  if (!isPickup) {
     if (!data.deliveryProvince) throw bad("Província de entrega obrigatória.");
     if (!data.deliveryMunicipality) throw bad("Município de entrega obrigatório.");
     if (!data.deliveryLocality) throw bad("Bairro/comuna/localidade obrigatória.");
@@ -888,12 +892,15 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
     if (!String(data.deliveryReference || "").trim()) throw bad("Ponto de referência obrigatório para entrega.");
     if (!address) throw bad("Morada de entrega incompleta.");
   }
-  if (shippingMethod === "pickup" && !pickupStore && !address) throw bad("Seleccione a loja de levantamento.");
+  if (isPickup && !pickupStore && !address) throw bad("Seleccione a loja de levantamento.");
 
-  const signature = data.checkoutSignature || "";
-  if (typeof signature !== "string" || !signature.startsWith("data:image/png;base64,") || signature.length > 200000) {
+  // Assinatura: obrigatória na entrega (é a prova de quem recebeu), opcional no levantamento.
+  const signature = typeof data.checkoutSignature === "string" ? data.checkoutSignature : "";
+  const signatureOk = signature.startsWith("data:image/png;base64,") && signature.length <= 200000;
+  if (!isPickup && !signatureOk) {
     throw bad("Assinatura do comprador obrigatória. Assine no quadro.");
   }
+  if (isPickup && signature && !signatureOk) throw bad("Assinatura inválida.");
 
   if (settings?.maintenance_mode) throw bad("Loja em manutenção. Tente mais tarde.");
 
@@ -932,8 +939,8 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
     phone,
     address: deliveryAddress,
     city: deliveryCity,
-    checkout_signature_data: signature,
-    checkout_signature_at: nowISO(),
+    checkout_signature_data: signatureOk ? signature : "",
+    checkout_signature_at: signatureOk ? nowISO() : null,
     shipping_method: shippingMethod,
     pickup_store: pickupStore,
     payment_method_code: paymentCode,
@@ -951,6 +958,15 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
     sale_channel: saleChannel,
     order_type: isWhatsApp ? "whatsapp_order" : "online_purchase",
   };
+  // Coordenadas da morada, quando o comprador as partilha. As colunas existiam desde o
+  // início e nunca eram escritas — o estafeta não tinha como chegar a uma referência vaga.
+  const gpsLat = Number(data.deliveryGpsLat);
+  const gpsLng = Number(data.deliveryGpsLng);
+  if (!isPickup && Number.isFinite(gpsLat) && Number.isFinite(gpsLng)
+      && Math.abs(gpsLat) <= 90 && Math.abs(gpsLng) <= 180 && (gpsLat !== 0 || gpsLng !== 0)) {
+    order.delivery_gps_lat = gpsLat;
+    order.delivery_gps_lng = gpsLng;
+  }
   if (paymentCode === "entrega" || paymentCode === "transferencia") order.payment_method = paymentCode;
   if (data.notes && rules.notesMax > 0) order.notes = clip(data.notes, rules.notesMax);
   if (shippingMethod !== "pickup") {

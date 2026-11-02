@@ -46,6 +46,10 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const signatureRef = useRef(null);
+  // Coordenadas da morada, como a página de lojas faz. As colunas delivery_gps_lat/lng
+  // existiam desde o início e nunca eram escritas: o estafeta ficava só com a referência.
+  const [gps, setGps] = useState(null);
+  const [locating, setLocating] = useState(false);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -136,6 +140,26 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
     price: (item.variant.sale_price_in_cents ?? item.variant.price_in_cents) / 100,
   }));
 
+  const locate = () => {
+    if (!navigator.geolocation) {
+      toast({ variant: 'destructive', title: 'Localização indisponível', description: 'Este dispositivo não permite partilhar a localização.' });
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setGps({ lat: coords.latitude, lng: coords.longitude });
+        setLocating(false);
+        toast({ title: 'Localização guardada', description: 'O estafeta recebe o ponto exacto além da morada.' });
+      },
+      () => {
+        setLocating(false);
+        toast({ variant: 'destructive', title: 'Não foi possível obter a localização', description: 'Autorize o acesso à localização no browser, ou continue só com a morada.' });
+      },
+      { timeout: 10000 },
+    );
+  };
+
   const handleCheckout = useCallback(async (viaWhatsApp = false) => {
     if (maintenanceMode) {
       toast({ variant: 'destructive', title: 'Loja em manutenção', description: 'O checkout está temporariamente indisponível. Tente mais tarde ou contacte-nos.' });
@@ -146,7 +170,17 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
       needsAddress ? (deliveryAddress.phone || form.phone) : form.phone
     );
 
-    if (!form.name.trim() || !form.email.trim() || !effectivePhone) {
+    // Levantamento na loja: basta saber quem vem buscar e como lhe ligar.
+    // Entrega ao domicílio: conta obrigatória, email, morada e assinatura.
+    if (needsAddress && !user) {
+      toast({
+        variant: 'destructive',
+        title: 'Entre na sua conta para entrega ao domicílio',
+        description: 'A entrega precisa de conta para acompanhar a encomenda. Para levar na loja não é preciso.',
+      });
+      return;
+    }
+    if (!form.name.trim() || !effectivePhone || (needsAddress && !form.email.trim())) {
       toast({ variant: 'destructive', title: 'Preencha todos os campos obrigatórios' });
       return;
     }
@@ -177,8 +211,9 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
       return;
     }
 
-    const checkoutSignature = signatureRef.current?.getDataURL();
-    if (!checkoutSignature) {
+    // A assinatura é a prova de quem recebeu em casa; ao balcão os livros são entregues em mão.
+    const checkoutSignature = needsAddress ? signatureRef.current?.getDataURL() : '';
+    if (needsAddress && !checkoutSignature) {
       toast({
         variant: 'destructive',
         title: 'Assinatura obrigatória',
@@ -224,6 +259,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
         shippingMethod: form.shippingMethod,
         pickupStore: form.pickupStore,
         checkoutSignature,
+        ...(gps && form.shippingMethod !== 'pickup' ? { deliveryGpsLat: gps.lat, deliveryGpsLng: gps.lng } : {}),
       });
 
       const isWhatsApp = viaWhatsApp || order_type === 'whatsapp_order';
@@ -291,7 +327,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
     } finally {
       setCheckingOut(false);
     }
-  }, [cartItems, clearCart, refreshCart, deliveryAddress, form, maintenanceMode, orderItemsForReceipt, paymentMethods, physicalStores.length, settings, shippingCents, subtotalCents, setIsCartOpen, toast, updateProfile, user?.id, waApiActive]);
+  }, [cartItems, clearCart, refreshCart, deliveryAddress, form, gps, maintenanceMode, orderItemsForReceipt, paymentMethods, physicalStores.length, settings, shippingCents, subtotalCents, setIsCartOpen, toast, updateProfile, user, waApiActive]);
 
   const maxQty = (item) => (item.variant.manage_inventory ? item.variant.inventory_quantity : 99);
 
@@ -454,7 +490,11 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                       <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="O seu nome" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Email *</Label>
+                      <Label>
+                        Email {form.shippingMethod === 'pickup'
+                          ? <span className="text-muted-foreground font-normal">(opcional — para receber o recibo)</span>
+                          : '*'}
+                      </Label>
                       <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@exemplo.com" />
                     </div>
                     {form.shippingMethod === 'pickup' && (
@@ -464,7 +504,27 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                       </div>
                     )}
                     {form.shippingMethod !== 'pickup' && (
-                      <AngolaAddressSelector value={deliveryAddress} onChange={setDeliveryAddress} />
+                      <>
+                        <AngolaAddressSelector value={deliveryAddress} onChange={setDeliveryAddress} />
+                        {/* O ponto no mapa, como na página das lojas. A morada em Angola é
+                            muitas vezes uma referência; isto dá ao estafeta o sítio exacto. */}
+                        <div className="rounded-lg border border-border p-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {gps ? 'Localização guardada para o estafeta' : 'Ajuda o estafeta a encontrar a morada'}
+                            </span>
+                            <Button type="button" size="sm" variant={gps ? 'secondary' : 'outline'} onClick={locate} disabled={locating}>
+                              {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MapPin className="h-3.5 w-3.5" />}
+                              <span className="ml-1.5 text-xs">{gps ? 'Actualizar' : 'Usar a minha localização'}</span>
+                            </Button>
+                          </div>
+                          {gps && (
+                            <p className="text-[11px] text-muted-foreground font-mono">
+                              {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}
+                            </p>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
 
@@ -532,6 +592,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                     <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Instruções de entrega..." />
                   </div>
 
+                  {form.shippingMethod !== 'pickup' && (
                   <div className="space-y-3 pt-2 border-t border-border">
                     <div className="flex items-center gap-2 text-sm font-medium text-[#0ea5c9]">
                       <PenLine className="h-4 w-4" /> Assinatura
@@ -545,6 +606,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                       hint="Desenhe a sua assinatura com o dedo ou rato."
                     />
                   </div>
+                  )}
                 </div>
               )}
               <FloatingScrollTop
@@ -581,12 +643,23 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                   </div>
                 )}
                 {!user && step === 'checkout' && (
-                  <div className="text-xs p-3 rounded-lg bg-[#0ea5c9]/5 border border-[#0ea5c9]/20 text-muted-foreground">
-                    <Link to="/login" className="text-[#0ea5c9] font-medium hover:underline" onClick={() => setIsCartOpen(false)}>
-                      Entre na sua conta
-                    </Link>
-                    {' '}para acompanhar esta encomenda e guardar os seus dados.
-                  </div>
+                  form.shippingMethod === 'pickup' ? (
+                    <div className="text-xs p-3 rounded-lg bg-muted/60 border border-border text-muted-foreground">
+                      A levantar na loja não precisa de conta: pague e leve o recibo no balcão.{' '}
+                      <Link to="/login" className="text-[#0ea5c9] font-medium hover:underline" onClick={() => setIsCartOpen(false)}>
+                        Entrar
+                      </Link>{' '}guarda os seus dados para a próxima.
+                    </div>
+                  ) : (
+                    <div className="text-xs p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900">
+                      <strong>A entrega ao domicílio precisa de conta</strong>, para poder acompanhar a
+                      encomenda e confirmar a recepção.{' '}
+                      <Link to="/login" className="font-semibold underline" onClick={() => setIsCartOpen(false)}>
+                        Entrar ou criar conta
+                      </Link>
+                      {' '}— ou escolha <strong>Levantamento na loja</strong>, que não pede nada disto.
+                    </div>
+                  )
                 )}
                 <div className="flex gap-3 text-[10px] text-muted-foreground justify-center pb-1">
                   <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-green-600" /> Compra segura</span>
@@ -678,7 +751,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                         : angolaAddressToPayload(deliveryAddress).deliveryAddressFull}
                       </p>
                     </div>
-                    <Button className="w-full btn-primary py-6 text-base" onClick={() => handleCheckout(false)} disabled={checkingOut || maintenanceMode}>
+                    <Button className="w-full btn-primary py-6 text-base" onClick={() => handleCheckout(false)} disabled={checkingOut || maintenanceMode || (!user && form.shippingMethod !== 'pickup')}>
                       {checkingOut && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Confirmar Compra · {formatCurrency(totalCents)}
                     </Button>

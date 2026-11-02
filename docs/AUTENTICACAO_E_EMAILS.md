@@ -2,6 +2,25 @@
 
 Estado em 2026-11-02. Complementa [ARQUITETURA.md](ARQUITETURA.md) e [HANDOFF.md](HANDOFF.md).
 
+## 0. Estado em produção (2026-11-02)
+
+| | |
+|---|---|
+| Migrações | **Aplicadas** (até `20261102170000`), Local = Remote |
+| Edge Function `app` | **Publicada**, com `emails.ts` e `emailTemplates.ts` |
+| Site (Cloudflare Pages) | **Publicado** no commit `21915fd` |
+| Agendador `pg_cron` | **A correr**, `*/5 * * * *`, verificado a receber `200` da função |
+| Segredos do agendador | **Criados** (`EMAIL_QUEUE_TOKEN` na função, `email_queue_url`/`email_queue_token` no Vault) |
+| `site_url` | **Definido** (`https://livraria-adventista.pages.dev`) |
+| Categorias de email | **Todas activas** |
+| **SMTP / SendGrid** | **Por configurar** — exige credenciais do dono |
+| **`order_email_enabled`** | **Desligado** — ligar sem SMTP só gera registos "não enviado" |
+| **SPF, DKIM, DMARC** | **Por configurar** no DNS do domínio |
+
+**Nenhum email sai enquanto o SMTP ou o SendGrid não estiverem configurados.** Tudo o resto
+do caminho está montado e verificado: o agendador chama a função, a função reclama a fila, e
+a fila responde. Falta só o fornecedor de correio na ponta.
+
 ## 1. Sessão
 
 A sessão é do Supabase Auth (email e palavra-passe, ou Google). O `dataClient` expõe-na com a

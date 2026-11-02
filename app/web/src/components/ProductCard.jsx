@@ -101,7 +101,11 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
                   <span className="sr-only">{qty > 0 ? `Últimas ${qty} unidades` : 'Poucas unidades'}</span>
                 </span>
               )}
-              {product.ribbon_text && inStock && !isLowStock && (
+              {/* A faixa do admin só acrescenta quando não repete a estrela: muitos livros
+                  têm ribbon_text "Destaque", e ficavam com a estrela e o rótulo a dizer o
+                  mesmo. "Destaque da semana" ou outro texto continua a aparecer. */}
+              {product.ribbon_text && inStock && !isLowStock
+                && product.ribbon_text.trim().toLowerCase() !== 'destaque' && (
                 <span className="bg-[#0ea5c9] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
                   {product.ribbon_text}
                 </span>

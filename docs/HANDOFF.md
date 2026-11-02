@@ -187,6 +187,27 @@ o valor de exemplo, todo a zeros. Quem escolher transferência vê um IBAN falso
 **Admin → Pagamentos**. (Verifiquei que não é corte de layout: o texto cabe e é mesmo este o
 valor guardado.)
 
+## Catálogo: páginas e cartões mais limpos (2026-11-02)
+
+- **Páginas a sério.** O catálogo não paginava: o "Carregar mais" acumulava
+  24 → 48 → 72 → 102 livros na mesma página. Passa a páginas de `shop_per_page`: no
+  computador os números com "…" à volta da actual; no telemóvel só "Página 2 de 5" entre as
+  setas (uma fila de números não cabe). Mudar de página volta ao topo da lista; filtrar ou
+  ordenar volta à primeira. O contador diz "A mostrar 25–48 de 102".
+- **Ícones em vez de autocolantes.** O mesmo cartão dizia o stock **quatro** vezes: marca
+  cor-de-rosa a pulsar na imagem, faixa do admin ("ÚLTIMAS UNIDADES"), etiqueta ao lado do
+  preço ("Baixo Estoque · 3 un.") e ainda "Últimas 3". Agora: uma marca redonda por estado
+  na imagem (estrela = destaque, triângulo = poucas unidades), com `title` e texto para
+  leitores de ecrã; a faixa do admin só aparece se acrescentar alguma coisa (não é mostrada
+  quando é só "Destaque", que repete a estrela, nem quando há aviso de stock); e o número de
+  unidades aparece uma só vez, junto ao preço ("Restam 3").
+- **Cartão deixou de transbordar.** Medido: cartão de 160 px com 209 px de conteúdo — os
+  dois botões lado a lado não cabiam e o preço partia em duas linhas. Em ecrã estreito fica
+  só "Comprar" (tocar no cartão já abre o livro); a partir de `sm:` continuam os dois. A
+  linha do preço pode quebrar. Confirmado em produção: nenhum dos cartões transborda.
+
+Cores, tipos de letra e forma dos cartões ficaram como estavam.
+
 ## Regras para continuar
 
 - **Migrações novas:** aplicar com a ferramenta `apply_migration` do Supabase. Depois ler a versão atribuída em `supabase_migrations.schema_migrations` e guardar o ficheiro com esse nome e **exactamente** o mesmo SQL. Se as versões não coincidirem, `supabase db push` no CI falha.

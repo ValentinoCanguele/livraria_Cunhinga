@@ -219,7 +219,7 @@ Gravidade: **Crítica · Alta · Média · Baixa**. Estado: ✅ corrigido nesta 
 - **Limite de pedidos partilhado** (achado 21). O limite vivia num objecto em memória de
   cada isolate: as Edge Functions escalam e reciclam, por isso perdia-se a cada arranque a
   frio — e é o que protege o `/chat` (gasto directo na chave de IA), o `/checkout` e o
-  `/track`. A migração `20261101231055_limites_pedidos` cria `private.rate_limits` e
+  `/track`. A migração `20261102013223_limites_pedidos` (aplicada a 2026-11-02) cria `private.rate_limits` e
   `check_rate_limit`, e a função já a usa, **mas a migração ainda não foi aplicada**: a
   ferramenta de aplicar migrações foi recusada nesta sessão. Enquanto não for, a função
   detecta a falta e recua para o limite local (comportamento anterior, sem regressão).

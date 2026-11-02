@@ -89,17 +89,7 @@ primeiro (acabou o risco de página em branco depois de publicar), `app/web/publ
 com os cabeçalhos de segurança, `robots.txt`/`sitemap.xml`/`og:`, e a permissão verificada
 antes da consulta nas rotas `/admin/users/*` (davam 404 vs 403 e diziam que ids existiam).
 
-**Pendente, e precisa de uma decisão:** a migração `20261101231055_limites_pedidos`
-(limite de pedidos partilhado, em vez de em memória por isolate) **não está aplicada** — a
-ferramenta de aplicar migrações foi recusada nesta sessão, e o `supabase db push` também
-(classificador de permissões). A Edge Function já a usa e recua para o limite local enquanto
-ela não existir, por isso não há regressão; mas até ser aplicada, o `/chat`, o `/checkout` e
-o `/track` continuam praticamente sem limite. É a única migração pendente
-(`supabase migration list` confirma-o):
-
-```bash
-npx supabase db push --project-ref bggqkjjqbjhbjsckzopj
-```
+**Resolvido (2026-11-02):** a migração `limites_pedidos` (limite de pedidos partilhado, em vez de em memória por isolate) foi aplicada pelo MCP e o ficheiro passou a `20261102013223_limites_pedidos.sql`, com o mesmo SQL (md5 igual ao de `schema_migrations`). Testado: com limite 2, o terceiro pedido é recusado, e `anon` não pode chamar `check_rate_limit`. A Edge Function passa a usar o limite partilhado quando a versão nova for publicada.
 
 ## Regras para continuar
 

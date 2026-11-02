@@ -208,6 +208,54 @@ valor guardado.)
 
 Cores, tipos de letra e forma dos cartões ficaram como estavam.
 
+## Checkout por método de entrega (2026-11-02)
+
+Até aqui os dois métodos exigiam o mesmo, e quem ia buscar à loja assinava um comprovativo
+de entrega de uma entrega que não existe.
+
+| | Levantamento na loja | Entrega ao domicílio |
+|---|---|---|
+| Conta | não precisa | **obrigatória** |
+| Nome e telefone | obrigatórios | obrigatórios |
+| Email | opcional (recibo) | obrigatório |
+| Morada | não pede | obrigatória |
+| Assinatura | **não pede** | obrigatória |
+| GPS | — | opcional, botão "Usar a minha localização" |
+
+Verificado em produção, sem sessão:
+
+- entrega sem email → `Email obrigatório para entrega ao domicílio.`
+- levantamento sem email, morada nem assinatura → passa a validação
+- levantamento sem nome → `Nome obrigatório.`
+- na interface: ao escolher levantamento desaparecem a assinatura e a morada, o email fica
+  marcado como opcional e o botão de confirmar desbloqueia; na entrega sem sessão o aviso
+  aparece e o botão fica bloqueado.
+
+A regra está nos dois lados: o cliente explica, o servidor decide.
+
+**GPS:** as colunas `delivery_gps_lat/lng` existiam desde o início e **nunca eram
+escritas**. Passam a ser preenchidas quando o comprador partilha a localização (mesmo padrão
+da página das lojas). Em Angola a morada é muitas vezes uma referência, e o estafeta ficava
+sem o ponto exacto.
+
+### Funções subentendidas e repetidas (por limpar)
+
+Encontradas a confirmar o ponto acima. Não foram mexidas — mexer no esquema das encomendas
+é arriscado e merece uma decisão:
+
+- **Três campos para o método de pagamento:** `payment_method` (herdado, só preenchido para
+  "entrega" e "transferencia"), `payment_method_code` e `payment_method_name`. Quem lê tem
+  de tentar os três em cadeia (ver `receipt.js`). Deviam ser um `code` + o nome resolvido na
+  leitura.
+- **`order_type` é derivado de `sale_channel`** (`whatsapp_order` ⇔ `whatsapp`): dois campos
+  para a mesma verdade, que podem divergir.
+- **`payment_category`:** zero utilizações na Edge Function, uma no site. Coluna morta.
+- **`delivery_recipient_id`:** o `/confirm-delivery` guarda o número do documento de quem
+  recebe, e **nada o lê**. É recolher um documento de identificação sem uso — ou passa a
+  aparecer no painel, ou deixa de ser pedido.
+- **Morada em dobro:** `address`/`city` convivem com `delivery_address_full`,
+  `delivery_municipality` e companhia.
+
 ## Regras para continuar
 
 - **Migrações novas:** aplicar com a ferramenta `apply_migration` do Supabase. Depois ler a versão atribuída em `supabase_migrations.schema_migrations` e guardar o ficheiro com esse nome e **exactamente** o mesmo SQL. Se as versões não coincidirem, `supabase db push` no CI falha.

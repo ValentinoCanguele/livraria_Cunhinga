@@ -29,8 +29,8 @@ const AdminPage = lazy(() => import('@/pages/AdminPage.jsx'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage.jsx'));
 const CollectionsPage = lazy(() => import('@/pages/CollectionsPage.jsx'));
 
-import PwaInstallBanner from '@/components/PwaInstallBanner.jsx';
-import LivrariaAssistant from '@/components/LivrariaAssistant.jsx';
+const PwaInstallBanner = lazy(() => import('@/components/PwaInstallBanner.jsx'));
+const LivrariaAssistant = lazy(() => import('@/components/LivrariaAssistant.jsx'));
 
 function PageLoader() {
   return (
@@ -115,8 +115,10 @@ function App() {
           </Routes>
         </Suspense>
         <Toaster />
-        <PwaInstallBanner />
-        <LivrariaAssistant />
+        <Suspense fallback={null}>
+          <PwaInstallBanner />
+          <LivrariaAssistant />
+        </Suspense>
       </Router>
     </CartProvider>
     </AuthProvider>

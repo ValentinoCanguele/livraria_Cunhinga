@@ -155,6 +155,38 @@ escolhidas pelo tema de cada uma. Corre-se no SQL Editor do Supabase (o `db push
 esquema). Em alternativa, dá-se dois cliques por colecção em Admin → Colecções → Capa →
 aba Galeria.
 
+## Checkout no telemóvel (2026-11-02)
+
+Medido no site publicado, num ecrã de 375×812 (viewport útil 886 px):
+
+| | Antes | Depois |
+|---|---|---|
+| Rodapé do carrinho | 485 px | 303 px |
+| Janela do formulário | 288 px | 469 px |
+| Conteúdo do formulário | 2094 px | 2094 px |
+
+O cliente preenchia morada, pagamento e assinatura por uma frincha de 288 px.
+
+- O detalhe do rodapé (avisos, selos, progresso de portes, subtotal e selector de envio)
+  passa a ficar atrás de uma barra **"Ver resumo e portes"**, que já mostra o total. O Total
+  e os botões ficam sempre à vista. Confirmado que abre e fecha: fechado 469 px, aberto
+  276 px com o subtotal e os portes visíveis — nada ficou inacessível.
+- **No computador (`sm:`) está tudo aberto, exactamente como antes.** As alterações são de
+  disposição e área tocável; não houve mudanças de cor, tipo de letra ou forma dos cartões.
+- **Pagamentos:** o cartão inteiro passa a seleccionar o método (antes só o texto e o botão
+  de rádio respondiam ao toque — confirmado a tocar fora do texto, o método muda). A
+  referência e o QR deixam de ser indentados em ecrã estreito.
+- O tipo do método deixou de aparecer cru (`p2p`, `offline`, `transfer`): mostra **"paga
+  antes do envio"** ou **"paga na entrega"**, pela mesma regra que o servidor usa para
+  exigir referência.
+
+### Dado por preencher, visível ao cliente
+
+A "Transferência Bancária" mostra no checkout `IBAN: AO06 0000 0000 0000 0000 0000 0` —
+o valor de exemplo, todo a zeros. Quem escolher transferência vê um IBAN falso. Corrigir em
+**Admin → Pagamentos**. (Verifiquei que não é corte de layout: o texto cabe e é mesmo este o
+valor guardado.)
+
 ## Regras para continuar
 
 - **Migrações novas:** aplicar com a ferramenta `apply_migration` do Supabase. Depois ler a versão atribuída em `supabase_migrations.schema_migrations` e guardar o ficheiro com esse nome e **exactamente** o mesmo SQL. Se as versões não coincidirem, `supabase db push` no CI falha.

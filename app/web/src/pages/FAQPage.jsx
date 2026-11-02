@@ -5,35 +5,20 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
-import { pageTitle, BRAND } from '@/lib/brand';
+import { pageTitle } from '@/lib/brand';
 
-const faqs = [
-  {
-    category: 'Encomendas e Envios',
-    questions: [
-      { question: 'Quanto tempo demora a entrega?', answer: 'A entrega padrão demora 5 a 7 dias úteis em Luanda e 7 a 14 dias para outras províncias. Envio expresso disponível mediante consulta.' },
-      { question: 'Oferecem envio grátis?', answer: 'Sim, envio grátis para encomendas acima de 20.000 Kz em todo o território nacional.' },
-      { question: 'Posso acompanhar a minha encomenda?', answer: 'Sim! Após o envio, receberá um email com o número de rastreamento para acompanhar a entrega.' },
-    ],
-  },
-  {
-    category: 'Devoluções',
-    questions: [
-      { question: 'Qual é a política de devolução?', answer: 'Aceitamos devoluções em até 30 dias, desde que o livro esteja em bom estado e na embalagem original.' },
-      { question: 'Como inicio uma devolução?', answer: `Contacte-nos em ${BRAND.email} ou pelo formulário de contacto. Enviaremos as instruções de devolução.` },
-    ],
-  },
-  {
-    category: 'Pagamentos',
-    questions: [
-      { question: 'Que métodos de pagamento aceitam?', answer: 'Aceitamos transferência bancária, Multicaixa Express e pagamento na entrega (mediante disponibilidade na sua zona).' },
-      { question: 'Os meus dados estão seguros?', answer: 'Sim, utilizamos ligações encriptadas e não armazenamos dados de pagamento nos nossos servidores.' },
-    ],
-  },
-];
+import { FAQ_SECTIONS } from '@/lib/faqData';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 const FAQPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const { settings } = useSiteSettings();
+  // O limite do envio grátis vem das Configurações, para a resposta não ficar desactualizada.
+  const freeThreshold = `${(Number(settings.shipping_free_threshold) || 20000).toLocaleString('pt-AO')} Kz`;
+  const faqs = FAQ_SECTIONS.map((section) => ({
+    ...section,
+    questions: section.questions.map((q) => ({ ...q, answer: q.answer.replace('{free_threshold}', freeThreshold) })),
+  }));
 
   return (
     <>

@@ -1,7 +1,6 @@
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { resolveShopBgMode } from '@/lib/shopTheme';
-
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+import { APP_API_URL, supabase } from '@/lib/supabaseClient';
 
 const DEFAULT_SETTINGS = {
   site_name: 'Livraria Adventista',
@@ -38,8 +37,8 @@ const DEFAULT_SETTINGS = {
   show_stores_in_footer: true,
   ui_glass_enabled: true,
   ui_glass_opacity: 0.72,
-  shop_bg_mode: 'gradient',
-  shop_bg_image_url: '',
+  shop_bg_mode: 'image',
+  shop_bg_image_url: '/images/site/loja-banner.webp',
   shop_bg_video_url: '',
   shop_bg_overlay: 0.55,
   google_maps_embed_key: '',
@@ -48,7 +47,7 @@ const DEFAULT_SETTINGS = {
 
 export async function getSiteSettings() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/settings`);
+    const res = await fetch(`${APP_API_URL}/settings`);
     if (!res.ok) return DEFAULT_SETTINGS;
     const merged = { ...DEFAULT_SETTINGS, ...await res.json() };
     merged.shop_bg_mode = resolveShopBgMode(merged);
@@ -58,12 +57,25 @@ export async function getSiteSettings() {
   }
 }
 
+/** Lojas activas (a RLS só mostra lojas activas ao público). */
 export async function getPhysicalStores() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/stores`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.stores || [];
+    const records = await pb.collection('physical_stores').getFullList({ filter: 'active = true', sort: 'sort_order,name' });
+    return records.map((r) => ({
+      id: r.id,
+      name: r.name,
+      province: r.province,
+      address: r.address,
+      phone: r.phone || '',
+      email: r.email || '',
+      whatsapp: r.whatsapp || '',
+      hours: r.hours || '',
+      image_url: r.image_url || (r.image ? pb.files.getURL(r, r.image) : ''),
+      latitude: r.latitude,
+      longitude: r.longitude,
+      maps_url: r.maps_url || '',
+      pickup_enabled: r.pickup_enabled !== false,
+    }));
   } catch {
     return [];
   }
@@ -71,7 +83,7 @@ export async function getPhysicalStores() {
 
 export async function getCollections() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/book-collections`);
+    const res = await fetch(`${APP_API_URL}/book-collections`);
     if (!res.ok) return [];
     const data = await res.json();
     return data.collections || [];
@@ -82,16 +94,25 @@ export async function getCollections() {
 
 export async function getPaymentMethods() {
   try {
-    const res = await fetch(`${PB_URL}/api/app/payment-methods`);
+    const res = await fetch(`${APP_API_URL}/payment-methods`);
     if (!res.ok) return { methods: [] };
-    return await res.json();
+    const data = await res.json();
+    const methods = data.methods || [];
+    // O link de pagamento lê-se também directamente da base de dados (os métodos activos são
+    // de leitura pública), para funcionar mesmo com uma Edge Function publicada mais antiga.
+    if (methods.length && methods.some((m) => m.payment_link === undefined)) {
+      const { data: links } = await supabase.from('payment_methods').select('code, payment_link').eq('enabled', true);
+      const byCode = Object.fromEntries((links || []).map((l) => [l.code, l.payment_link || '']));
+      methods.forEach((m) => { if (m.payment_link === undefined) m.payment_link = byCode[m.code] || ''; });
+    }
+    return { ...data, methods };
   } catch {
     return { methods: [] };
   }
 }
 
 export async function trackOrder(orderNumber, email) {
-  const res = await fetch(`${PB_URL}/api/app/track`, {
+  const res = await fetch(`${APP_API_URL}/track`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ orderNumber, email }),
@@ -102,7 +123,7 @@ export async function trackOrder(orderNumber, email) {
 }
 
 export async function getGeoProvinces() {
-  const res = await fetch(`${PB_URL}/api/app/geo/provinces`);
+  const res = await fetch(`${APP_API_URL}/geo/provinces`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.provinces || [];
@@ -110,7 +131,7 @@ export async function getGeoProvinces() {
 
 export async function getGeoMunicipalities(provinceId) {
   if (!provinceId) return [];
-  const res = await fetch(`${PB_URL}/api/app/geo/municipalities?province=${encodeURIComponent(provinceId)}`);
+  const res = await fetch(`${APP_API_URL}/geo/municipalities?province=${encodeURIComponent(provinceId)}`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.municipalities || [];
@@ -118,14 +139,14 @@ export async function getGeoMunicipalities(provinceId) {
 
 export async function getGeoLocalities(municipalityId) {
   if (!municipalityId) return [];
-  const res = await fetch(`${PB_URL}/api/app/geo/localities?municipality=${encodeURIComponent(municipalityId)}`);
+  const res = await fetch(`${APP_API_URL}/geo/localities?municipality=${encodeURIComponent(municipalityId)}`);
   if (!res.ok) return [];
   const data = await res.json();
   return data.localities || [];
 }
 
 export async function confirmDelivery({ orderNumber, email, recipientName, recipientId, signature }) {
-  const res = await fetch(`${PB_URL}/api/app/confirm-delivery`, {
+  const res = await fetch(`${APP_API_URL}/confirm-delivery`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -142,7 +163,7 @@ export async function confirmDelivery({ orderNumber, email, recipientName, recip
 }
 
 export async function addDeliveryEvent(orderId, event, token) {
-  const res = await fetch(`${PB_URL}/api/app/delivery-event`, {
+  const res = await fetch(`${APP_API_URL}/delivery-event`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

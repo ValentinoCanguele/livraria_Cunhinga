@@ -1,7 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth as mainAuth, db } from './firebaseClient';
+import { auth as mainAuth } from './firebaseClient';
 
 const firebaseConfig = {
   projectId: "skilful-form-c5jvd",
@@ -76,13 +75,6 @@ export const signInWithGoogleWorkspace = async () => {
     }
     setCachedGoogleToken(credential.accessToken);
     
-    // Perform an asynchronous workspace data backup/sync to Firestore in the background
-    try {
-      syncGoogleWorkspaceToFirestore(result.user.uid, credential.accessToken).catch(console.error);
-    } catch (syncErr) {
-      console.warn('Silent background sync warning:', syncErr);
-    }
-
     return { user: result.user, token: credential.accessToken };
   } catch (error) {
     if (error && error.code === 'auth/popup-closed-by-user') {
@@ -98,83 +90,6 @@ export const logoutGoogleWorkspace = async () => {
   await signOut(mainAuth);
   await googleAuth.signOut();
   setCachedGoogleToken(null);
-};
-
-// ==========================================
-// FIRESTORE SYNCHRONIZATION (ARCHIVE COPY)
-// ==========================================
-export const syncGoogleWorkspaceToFirestore = async (userId, token) => {
-  if (!userId || !token) return null;
-  const timestamp = new Date().toISOString();
-  const status = {
-    contacts: false,
-    calendar: false,
-    gmail: false,
-    drive: false,
-    timestamp
-  };
-
-  try {
-    // 1. Sync Contacts (with backup info)
-    try {
-      const contacts = await listGoogleContacts(token);
-      await setDoc(doc(db, 'users', userId, 'googleData', 'contacts'), {
-        data: contacts || [],
-        lastSynced: timestamp
-      });
-      status.contacts = true;
-    } catch (e) {
-      console.error('Failed to sync contacts:', e);
-    }
-
-    // 2. Sync Calendar
-    try {
-      const events = await listCalendarEvents(token);
-      await setDoc(doc(db, 'users', userId, 'googleData', 'calendar'), {
-        data: events || [],
-        lastSynced: timestamp
-      });
-      status.calendar = true;
-    } catch (e) {
-      console.error('Failed to sync calendar:', e);
-    }
-
-    // 3. Sync Gmail Inbox
-    try {
-      const gmail = await listGmailMessages(token);
-      await setDoc(doc(db, 'users', userId, 'googleData', 'gmail'), {
-        data: gmail || [],
-        lastSynced: timestamp
-      });
-      status.gmail = true;
-    } catch (e) {
-      console.error('Failed to sync gmail messages:', e);
-    }
-
-    // 4. Sync Drive Files
-    try {
-      const drive = await listDriveFiles(token);
-      await setDoc(doc(db, 'users', userId, 'googleData', 'drive'), {
-        data: drive || [],
-        lastSynced: timestamp
-      });
-      status.drive = true;
-    } catch (e) {
-      console.error('Failed to sync drive files:', e);
-    }
-
-    // Save master summary record of workspace sync
-    await setDoc(doc(db, 'users', userId, 'googleData', 'summary'), {
-      status,
-      lastSynced: timestamp
-    });
-
-    console.log('Google Workspace database backup/sync successful for user:', userId, status);
-    return status;
-  } catch (err) {
-    console.error('Critical failure in syncGoogleWorkspaceToFirestore:', err);
-    throw err;
-  }
 };
 
 // ==========================================
@@ -347,25 +262,52 @@ export const sendGmailMessage = async (token, { to, subject, body }) => {
 // ==========================================
 // GOOGLE CONTACTS (PEOPLE API) FUNCTIONS
 // ==========================================
+function mapGoogleConnection(c) {
+  const name = c.names?.[0]?.displayName || 'Sem Nome';
+  const email = c.emailAddresses?.[0]?.value || '';
+  const phone = c.phoneNumbers?.[0]?.value || '';
+  const photo = c.photos?.[0]?.url || null;
+  return {
+    resourceName: c.resourceName,
+    name,
+    email,
+    phone,
+    photo
+  };
+}
+
 export const listGoogleContacts = async (token) => {
   const response = await fetch('https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses,phoneNumbers,photos&pageSize=30', {
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!response.ok) throw new Error('Failed to list Google Contacts');
   const data = await response.json();
-  const connections = data.connections || [];
+  return (data.connections || []).map(mapGoogleConnection);
+};
 
-  return connections.map((c) => {
-    const name = c.names?.[0]?.displayName || 'Sem Nome';
-    const email = c.emailAddresses?.[0]?.value || 'Sem Email';
-    const phone = c.phoneNumbers?.[0]?.value || 'Sem Telefone';
-    const photo = c.photos?.[0]?.url || null;
-    return {
-      resourceName: c.resourceName,
-      name,
-      email,
-      phone,
-      photo
-    };
-  });
+export const listAllGoogleContacts = async (token, onProgress) => {
+  const all = [];
+  let pageToken = '';
+  let page = 0;
+
+  do {
+    const url = new URL('https://people.googleapis.com/v1/people/me/connections');
+    url.searchParams.set('personFields', 'names,emailAddresses,phoneNumbers,photos');
+    url.searchParams.set('pageSize', '100');
+    if (pageToken) url.searchParams.set('pageToken', pageToken);
+
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to list Google Contacts');
+    const data = await response.json();
+    const batch = (data.connections || []).map(mapGoogleConnection);
+    const valid = batch.filter((c) => c.name && (c.email || c.phone));
+    all.push(...valid);
+    pageToken = data.nextPageToken || '';
+    page += 1;
+    if (onProgress) onProgress({ loaded: all.length, page });
+  } while (pageToken);
+
+  return all;
 };

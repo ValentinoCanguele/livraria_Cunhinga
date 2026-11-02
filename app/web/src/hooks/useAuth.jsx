@@ -1,172 +1,96 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { canAccessAdmin, hasPermission, getUserPermissions } from '@/lib/permissions';
 import { escapeFilterValue } from '@/lib/sanitizeHtml';
-import { auth, db, loginWithGoogleFirebase, logoutFirebase } from '@/lib/firebaseClient';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { getCachedGoogleToken, syncGoogleWorkspaceToFirestore } from '@/lib/googleAuth';
+import { supabase } from '@/lib/supabaseClient';
+import { normalizeLoginEmail, parsePbAuthError } from '@/lib/pbAuth';
 
 const AuthContext = createContext(null);
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [firebaseUser, setFirebaseUser] = useState(null);
+  // A sessão é sempre do Supabase Auth (email/palavra-passe ou Google).
+  // O Firebase fica só para as ferramentas do Google Workspace, que pedem o seu próprio acesso.
+  const [user, setUser] = useState(() => (pb.authStore.isValid ? pb.authStore.record : null));
 
   useEffect(() => {
-    // 1. Listen to PocketBase auth changes
-    const unsubPB = pb.authStore.onChange((_t, record) => {
-      if (record) {
-        setUser(record);
-        setFirebaseUser(null);
-      } else if (!auth.currentUser) {
-        setUser(null);
-      }
-    });
-
-    // 2. Listen to Firebase auth changes
-    const unsubFirebase = onAuthStateChanged(auth, (fbUser) => {
-      if (fbUser) {
-        setFirebaseUser(fbUser);
-        
-        // Load custom user profile overrides if any (localStorage fallback + firestore backend sync)
-        const savedCustom = localStorage.getItem(`custom_profile_${fbUser.uid}`);
-        const customData = savedCustom ? JSON.parse(savedCustom) : {};
-
-        setUser({
-          id: fbUser.uid,
-          uid: fbUser.uid,
-          email: fbUser.email,
-          name: customData.name || fbUser.displayName || fbUser.email.split('@')[0],
-          phone: customData.phone || '',
-          role: fbUser.email === 'ValentinoCanguele@gmail.com' ? 'admin' : 'member',
-          isFirebase: true,
-          avatar: customData.avatar || fbUser.photoURL,
-        });
-        pb.authStore.clear(); // Clear PocketBase to ensure single source of truth
-
-        // Save user profile metadata to Firestore
-        const userDocRef = doc(db, 'users', fbUser.uid);
-        const userDocData = {
-          uid: fbUser.uid,
-          displayName: customData.name || fbUser.displayName || fbUser.email.split('@')[0],
-          email: fbUser.email,
-          photoURL: customData.avatar || fbUser.photoURL || '',
-          lastLogin: new Date().toISOString(),
-          createdAt: fbUser.metadata.creationTime ? new Date(fbUser.metadata.creationTime).toISOString() : new Date().toISOString()
-        };
-        setDoc(userDocRef, userDocData, { merge: true }).catch((err) => {
-          console.warn('Failed to sync user metadata to Firestore /users collection:', err);
-        });
-
-        // Trigger Google Workspace background copy/sync if token exists
-        const token = getCachedGoogleToken();
-        if (token) {
-          syncGoogleWorkspaceToFirestore(fbUser.uid, token).catch((err) => {
-            console.warn('Silent auto-sync from useAuth hook failed:', err);
-          });
-        }
-      } else {
-        setFirebaseUser(null);
-        if (pb.authStore.isValid) {
-          setUser(pb.authStore.record);
-        } else {
-          setUser(null);
-        }
-      }
-    });
-
-    // Initialize state
-    if (pb.authStore.isValid && !auth.currentUser) {
-      setUser(pb.authStore.record);
-    }
-
-    return () => {
-      unsubPB();
-      unsubFirebase();
-    };
+    const unsub = pb.authStore.onChange((_token, record) => setUser(record || null), true);
+    return () => unsub();
   }, []);
 
   const value = {
     user,
-    isAuthed: pb.authStore.isValid || !!firebaseUser,
+    isAuthed: pb.authStore.isValid,
     isAdmin: user?.role === 'admin',
     canAccessAdmin: canAccessAdmin(user),
     hasPermission: (key) => hasPermission(user, key),
     permissions: getUserPermissions(user),
-    login: (email, password) => pb.collection('users').authWithPassword(email, password),
+    login: async (email, password) => {
+      const identity = normalizeLoginEmail(email);
+      try {
+        const authData = await pb.collection('users').authWithPassword(identity, password);
+        setUser(authData.record);
+        return authData;
+      } catch (err) {
+        throw new Error(parsePbAuthError(err));
+      }
+    },
     signup: async (email, password, name) => {
-      await pb.collection('users').create({ email, password, passwordConfirm: password, name, role: 'member' });
-      return pb.collection('users').authWithPassword(email, password);
+      const identity = normalizeLoginEmail(email);
+      try {
+        const created = await pb.collection('users').create({
+          email: identity,
+          password,
+          passwordConfirm: password,
+          name: name.trim(),
+        });
+        if (created?.needsConfirmation) return { needsConfirmation: true, email: identity };
+        setUser(created);
+        return { record: created };
+      } catch (err) {
+        throw new Error(parsePbAuthError(err));
+      }
     },
     logout: async () => {
       pb.authStore.clear();
+      setUser(null);
+      // Termina também a ligação ao Google Workspace, se existir. O Firebase só serve as
+      // ferramentas Workspace do painel: é carregado aqui, e não no arranque da loja, para
+      // não pôr 154 KB gzip no caminho crítico de quem só vem comprar um livro.
+      const tinhaGoogle = !!sessionStorage.getItem('google_access_token');
       sessionStorage.removeItem('google_access_token');
-      await logoutFirebase();
+      if (tinhaGoogle) {
+        await import('@/lib/firebaseClient')
+          .then((m) => m.logoutFirebase())
+          .catch(() => {});
+      }
     },
-    loginWithGoogle: async () => {
-      return await loginWithGoogleFirebase();
+    // Redirecciona para a Google; ao voltar, o Supabase cria a sessão e o perfil.
+    loginWithGoogle: async (redirectPath = '/profile') => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}${redirectPath}` },
+      });
+      if (error) throw error;
     },
     requestPasswordReset: (email) =>
-      pb.collection('users').requestPasswordReset(email, `${window.location.origin}/reset-password`),
+      pb.collection('users').requestPasswordReset(
+        normalizeLoginEmail(email),
+        `${window.location.origin}/reset-password`,
+      ),
     confirmPasswordReset: (token, password) =>
       pb.collection('users').confirmPasswordReset(token, password, password),
     updateProfile: async ({ name, email, phone }) => {
-      if (user?.isFirebase) {
-        const customKey = `custom_profile_${user.uid}`;
-        const saved = localStorage.getItem(customKey);
-        const customData = saved ? JSON.parse(saved) : {};
-        if (name !== undefined) customData.name = name;
-        if (phone !== undefined) customData.phone = phone;
-        localStorage.setItem(customKey, JSON.stringify(customData));
-
-        const updated = { ...user, ...customData };
-        setUser(updated);
-
-        try {
-          await setDoc(doc(db, 'users', user.uid, 'profile', 'custom'), customData, { merge: true });
-        } catch (e) {
-          console.warn('Failed to save profile overrides to Firestore:', e);
-        }
-        return updated;
-      }
       const id = pb.authStore.record?.id;
       if (!id) throw new Error('Não autenticado');
       const data = {};
       if (name !== undefined) data.name = name;
-      if (email !== undefined) data.email = email;
+      if (email !== undefined) data.email = normalizeLoginEmail(email);
       if (phone !== undefined) data.phone = phone;
       const updated = await pb.collection('users').update(id, data);
       setUser(updated);
       return updated;
     },
     updateAvatar: async (file) => {
-      if (user?.isFirebase) {
-        const reader = new FileReader();
-        const base64Promise = new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = (e) => reject(e);
-          reader.readAsDataURL(file);
-        });
-        const base64Url = await base64Promise;
-
-        const customKey = `custom_profile_${user.uid}`;
-        const saved = localStorage.getItem(customKey);
-        const customData = saved ? JSON.parse(saved) : {};
-        customData.avatar = base64Url;
-        localStorage.setItem(customKey, JSON.stringify(customData));
-
-        const updated = { ...user, avatar: base64Url };
-        setUser(updated);
-
-        try {
-          await setDoc(doc(db, 'users', user.uid, 'profile', 'custom'), customData, { merge: true });
-        } catch (e) {
-          console.warn('Failed to save avatar override to Firestore:', e);
-        }
-        return updated;
-      }
       const id = pb.authStore.record?.id;
       if (!id) throw new Error('Não autenticado');
       const formData = new FormData();
@@ -176,52 +100,29 @@ export const AuthProvider = ({ children }) => {
       return updated;
     },
     changePassword: async (oldPassword, newPassword) => {
-      if (user?.isFirebase) {
-        throw new Error('A palavra-passe do utilizador Google é gerida pela Google');
-      }
       const email = pb.authStore.record?.email;
       if (!email) throw new Error('Não autenticado');
-      await pb.collection('users').authWithPassword(email, oldPassword);
+      try {
+        await pb.collection('users').authWithPassword(email, oldPassword);
+      } catch {
+        throw new Error('A palavra-passe actual está incorrecta. Se entrou com a Google e nunca definiu uma, use "Esqueceu?" no ecrã de entrada.');
+      }
       await pb.collection('users').update(pb.authStore.record.id, {
         oldPassword,
         password: newPassword,
         passwordConfirm: newPassword,
       });
     },
+    // Encomendas do cliente; as regras (RLS) só devolvem as do email da sessão.
     fetchUserOrders: async (email) => {
-      const firestoreOrders = [];
       try {
-        const q = query(
-          collection(db, 'orders'),
-          where('customer_email', '==', email)
-        );
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-          firestoreOrders.push({ id: doc.id, ...doc.data() });
-        });
-        firestoreOrders.sort((a, b) => new Date(b.created) - new Date(a.created));
-      } catch (err) {
-        console.warn('Failed to fetch orders from Firestore:', err);
-      }
-
-      try {
-        const pbOrders = await pb.collection('orders').getFullList({
+        return await pb.collection('orders').getFullList({
           filter: `customer_email = "${escapeFilterValue(email)}"`,
           sort: '-created',
         });
-        
-        const mergedMap = new Map();
-        firestoreOrders.forEach(o => mergedMap.set(o.id, o));
-        pbOrders.forEach(o => {
-          if (!mergedMap.has(o.id)) {
-            mergedMap.set(o.id, o);
-          }
-        });
-        const merged = Array.from(mergedMap.values());
-        merged.sort((a, b) => new Date(b.created) - new Date(a.created));
-        return merged;
-      } catch {
-        return firestoreOrders;
+      } catch (err) {
+        console.warn('Failed to fetch orders:', err);
+        return [];
       }
     },
   };

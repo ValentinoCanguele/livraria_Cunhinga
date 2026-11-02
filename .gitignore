@@ -4,6 +4,21 @@ dist
 *.local
 .env
 .tools/
-app/pocketbase/pb/
-app/pocketbase/pb_data/
-app/pocketbase/*.zip
+/covers_clean/
+/capas_catalogo6.zip
+/images.png
+/logo.png
+/logo.svg
+/logo_vector.svg
+.vscode/
+api-keys*.csv
+
+# Credenciais OAuth descarregadas da Google Cloud
+client_secret_*.json
+
+# Restos locais do PocketBase (retirado do projecto; nunca voltar a enviar bases de dados)
+app/pocketbase/
+
+# Pacote original do painel de vendas (o código vive em app/web/src/painel-vendas/)
+/painel-vendas-huambo/
+/painel-vendas-huambo.zip

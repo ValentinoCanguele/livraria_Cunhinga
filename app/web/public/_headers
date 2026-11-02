@@ -1,0 +1,30 @@
+# Cabeçalhos servidos pelo Cloudflare Pages (https://developers.cloudflare.com/pages/configuration/headers/).
+# O Pages já envia `referrer-policy: strict-origin-when-cross-origin` e
+# `x-content-type-options: nosniff`; ficam aqui explícitos para não depender do padrão dele.
+
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Strict-Transport-Security: max-age=15552000
+  # A loja usa a localização para "lojas perto de mim" (StoresPage) e para as coordenadas das
+  # lojas no painel. Câmara, microfone e sensores de pagamento nunca são usados.
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
+
+# Ficheiros com hash no nome: o conteúdo nunca muda para o mesmo nome.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# O HTML e o service worker têm de ser sempre os actuais, senão uma publicação nova só
+# aparece ao segundo recarregamento (ou dá página em branco, a apontar para assets antigos).
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+
+# Em falta: Content-Security-Policy.
+# Não vai aqui por adivinhação — precisa de uma passagem com o browser aberto, porque tem de
+# cobrir o `<script>` inline do index.html, o Supabase, os pop-ups do Google (Auth, Drive,
+# Calendar, Gmail), os embeds do Google Maps, e `img-src https:` para as capas que o painel
+# aponta para URLs externos. Um CSP errado parte a loja em silêncio.

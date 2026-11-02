@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getProduct, getProductQuantities, getRelatedProducts } from '@/api/EcommerceApi';
+import { getProduct, getProductQuantities, getRelatedProducts, trackBookView } from '@/api/EcommerceApi';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { shareBookOnWhatsApp } from '@/lib/whatsapp';
 import RelatedProducts from '@/components/RelatedProducts';
@@ -16,7 +16,6 @@ import {
 import { useWishlist } from '@/hooks/useWishlist';
 import { useAuth } from '@/hooks/useAuth';
 import { useReviews } from '@/hooks/useReviews';
-import { signInWithGoogleWorkspace, getCachedGoogleToken, createCalendarEvent } from '@/lib/googleAuth';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Header from '@/components/Header.jsx';
 import { pageTitle } from '@/lib/brand';
@@ -24,6 +23,7 @@ import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import BookPreviewModal from '@/components/BookPreviewModal';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
+import SampleReaderModal from '@/components/SampleReaderModal';
 
 // Star rating helper component
 const StarRating = ({ rating, size = 16, interactive = false, onChange }) => {
@@ -56,6 +56,7 @@ const placeholderImage = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWln
 function ProductDetailPage() {
   const { id } = useParams();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [sampleReaderOpen, setSampleReaderOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,14 +73,19 @@ function ProductDetailPage() {
 
   // Reviews and Google Calendar Events hooks and state
   const { isAuthed, user } = useAuth();
-  const { reviews, loading: loadingReviews, stats, hasPurchased, submitReview, deleteReview, userReview } = useReviews(product?.id);
+  const { reviews, loading: loadingReviews, stats, hasPurchased, submitReview, deleteReview, userReview, submitting } = useReviews(product?.id);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const [editingReview, setEditingReview] = useState(false);
   const [addingCalendarEvent, setAddingCalendarEvent] = useState(false);
 
   const handleAddLaunchToCalendar = async () => {
     try {
       setAddingCalendarEvent(true);
+      // O Google Workspace traz o SDK do Firebase (154 KB gzip). A página do livro é das
+      // mais visitadas da loja: só carrega isto quem clica em juntar ao calendário.
+      const { signInWithGoogleWorkspace, getCachedGoogleToken, createCalendarEvent } =
+        await import('@/lib/googleAuth');
       let token = getCachedGoogleToken();
       if (!token) {
         toast({
@@ -154,6 +160,7 @@ function ProductDetailPage() {
     if (success) {
       setReviewComment('');
       setReviewRating(5);
+      setEditingReview(false);
     }
   };
 
@@ -218,6 +225,7 @@ function ProductDetailPage() {
         setLoading(true);
         setError(null);
         const fetchedProduct = await getProduct(id);
+        trackBookView(fetchedProduct.id);
 
         try {
           const quantitiesResponse = await getProductQuantities({
@@ -244,11 +252,10 @@ function ProductDetailPage() {
             setSelectedVariant(productWithQuantities.variants[0]);
           }
 
-          if (productWithQuantities.subtitle) {
-            getRelatedProducts(productWithQuantities.subtitle, productWithQuantities.id, 4)
-              .then((res) => setRelatedProducts(res.products || []))
-              .catch(() => {});
-          }
+          const bookGenre = productWithQuantities.type?.value || productWithQuantities.category || '';
+          getRelatedProducts(productWithQuantities.subtitle, productWithQuantities.id, 4, bookGenre)
+            .then((res) => setRelatedProducts(res.products || []))
+            .catch(() => {});
         } catch (quantityError) {
           throw quantityError;
         }
@@ -307,7 +314,7 @@ function ProductDetailPage() {
     <>
       <Helmet>
         <title>{pageTitle(product.title)}</title>
-        <meta name="description" content={product.description?.substring(0, 160) || product.title} />
+        <meta name="description" content={(product.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 160) || product.title} />
       </Helmet>
 
       <Header onCartOpen={() => setIsCartOpen(true)} />
@@ -641,7 +648,12 @@ function ProductDetailPage() {
 
             {product.preview_enabled && product.sample_pages?.length > 0 && (
               <TabsContent value="preview">
-                <p className="text-sm text-muted-foreground mb-6">Explore as primeiras páginas antes de comprar.</p>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  <p className="text-sm text-muted-foreground">Explore as primeiras páginas antes de comprar.</p>
+                  <Button size="sm" className="bg-[#0ea5c9] hover:bg-[#0ea5c9]/90 text-white" onClick={() => setSampleReaderOpen(true)}>
+                    <BookOpen className="h-4 w-4 mr-1.5" /> Modo Leitura
+                  </Button>
+                </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {product.sample_pages.map((page, i) => {
                     const url = typeof page === 'string' ? page : page.url;
@@ -735,7 +747,7 @@ function ProductDetailPage() {
 
                   {/* Submission form or existing user review indicator */}
                   <div className="bg-card border p-6 rounded-2xl shadow-sm">
-                    {userReview ? (
+                    {userReview && !editingReview ? (
                       <div className="space-y-4">
                         <h4 className="font-bold text-base text-foreground flex items-center gap-2">
                           <CheckCircle className="h-5 w-5 text-green-500" /> A sua avaliação
@@ -743,14 +755,24 @@ function ProductDetailPage() {
                         <div className="p-4 bg-muted/20 border rounded-xl">
                           <div className="flex justify-between items-center mb-2">
                             <StarRating rating={userReview.rating} size={14} />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={deleteReview}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2"
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-1" /> Eliminar
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setReviewRating(userReview.rating); setReviewComment(userReview.comment); setEditingReview(true); }}
+                                className="h-7 px-2"
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { if (window.confirm('Eliminar a sua avaliação deste livro?')) deleteReview(); }}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 px-2"
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1" /> Eliminar
+                              </Button>
+                            </div>
                           </div>
                           <p className="text-sm text-foreground break-words italic">"{userReview.comment}"</p>
                           {userReview.isVerified && (
@@ -762,7 +784,7 @@ function ProductDetailPage() {
                       </div>
                     ) : isAuthed ? (
                       <form onSubmit={handleReviewSubmit} className="space-y-4">
-                        <h4 className="font-bold text-base">Deixe a sua avaliação</h4>
+                        <h4 className="font-bold text-base">{editingReview ? 'Editar a sua avaliação' : 'Deixe a sua avaliação'}</h4>
                         
                         {/* Verified Buyer status highlight */}
                         {hasPurchased ? (
@@ -789,6 +811,7 @@ function ProductDetailPage() {
                             onChange={(e) => setReviewComment(e.target.value)}
                             placeholder="Partilhe a sua opinião sobre este livro..."
                             rows={4}
+                            maxLength={1000}
                             className="w-full text-sm p-3 rounded-xl border border-input focus:outline-none focus:ring-2 focus:ring-[#0ea5c9] bg-background"
                             required
                           />
@@ -801,9 +824,14 @@ function ProductDetailPage() {
                               A enviar avaliação...
                             </>
                           ) : (
-                            'Publicar Avaliação'
+                            editingReview ? 'Guardar alterações' : 'Publicar Avaliação'
                           )}
                         </Button>
+                        {editingReview && (
+                          <Button type="button" variant="ghost" className="w-full" onClick={() => { setEditingReview(false); setReviewComment(''); setReviewRating(5); }}>
+                            Cancelar
+                          </Button>
+                        )}
                       </form>
                     ) : (
                       <div className="text-center py-6">
@@ -846,10 +874,7 @@ function ProductDetailPage() {
                               <div>
                                 <h5 className="font-bold text-sm leading-tight">{r.userName}</h5>
                                 <p className="text-[10px] text-muted-foreground mt-0.5">
-                                  {r.createdAt?.seconds 
-                                    ? new Date(r.createdAt.seconds * 1000).toLocaleDateString('pt-AO', { day: 'numeric', month: 'short', year: 'numeric' }) 
-                                    : new Date().toLocaleDateString('pt-AO', { day: 'numeric', month: 'short', year: 'numeric' })
-                                  }
+                                  {new Date(r.createdAt || Date.now()).toLocaleDateString('pt-AO', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </p>
                               </div>
                             </div>
@@ -879,6 +904,12 @@ function ProductDetailPage() {
         <RelatedProducts products={relatedProducts} author={product.subtitle} onCartOpen={() => setIsCartOpen(true)} />
       </main>
 
+      <SampleReaderModal
+        open={sampleReaderOpen}
+        onClose={() => setSampleReaderOpen(false)}
+        pages={product.sample_pages || []}
+        title={product.title}
+      />
       <BookPreviewModal product={product} open={showPreview} onClose={() => setShowPreview(false)} onCartOpen={() => setIsCartOpen(true)} />
 
       <Footer />

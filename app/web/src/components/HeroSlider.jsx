@@ -7,14 +7,15 @@ import { getHeroSlides } from '@/api/EcommerceApi';
 import { sortSlides, getTransition, getSlideDuration } from '@/lib/slideTransitions';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 
+// Imagens feitas com as capas reais do catálogo (public/images/site); usadas só se não houver slides na base de dados.
 const FALLBACK_SLIDES = [
   {
     id: '1',
-    title: 'Cada livro, uma nova viagem',
-    subtitle: 'Literatura cristã, educação e inspiração para toda a família.',
-    image: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1920&q=80',
-    cta_text: 'Explorar o Catálogo',
-    cta_link: '/shop',
+    title: 'Catálogo Oficial da Livraria',
+    subtitle: 'Mais de 100 títulos adventistas — teologia, família, saúde e muito mais.',
+    image: '/images/site/slide-catalogo.webp',
+    cta_text: 'Ver Catálogo Geral',
+    cta_link: '/shop?category=Cat%C3%A1logo%20Geral',
     template: 'classic',
     is_primary: true,
     transition: 'fade',
@@ -23,9 +24,9 @@ const FALLBACK_SLIDES = [
   {
     id: '2',
     title: 'Obras de Ellen G. White',
-    subtitle: 'Clássicos da literatura adventista com os melhores preços.',
-    image: 'https://images.unsplash.com/photo-1456513088650-9b9390942247?w=1920&q=80',
-    cta_text: 'Ver Coleção',
+    subtitle: 'Clássicos da literatura adventista disponíveis na nossa loja.',
+    image: '/images/site/slide-ellen-white.webp',
+    cta_text: 'Pesquisar Ellen G. White',
     cta_link: '/shop?search=Ellen',
     template: 'classic',
     transition: 'slide',
@@ -33,11 +34,11 @@ const FALLBACK_SLIDES = [
   },
   {
     id: '3',
-    title: 'Livros para Crianças e Jovens',
-    subtitle: 'Histórias que formam carácter e fortalecem a fé.',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80',
-    cta_text: 'Descobrir',
-    cta_link: '/shop?category=Infantil',
+    title: 'Colportagem',
+    subtitle: 'Títulos para evangelização e saúde com condições especiais.',
+    image: '/images/site/slide-colportagem.webp',
+    cta_text: 'Ver Colportagem',
+    cta_link: '/shop?category=Colportagem',
     template: 'minimal',
     transition: 'wipe',
     media_type: 'image',
@@ -65,13 +66,16 @@ function SlideMedia({ slide, eager }) {
       alt={slide.title}
       className="w-full h-full object-cover"
       loading={eager ? 'eager' : 'lazy'}
+      // Imagem externa indisponível: fica só o fundo do slide, sem ícone de imagem partida.
+      onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
     />
   );
 }
 
 function SlideContent({ slide }) {
   const template = slide.template || 'classic';
-  const priceLabel = slide.promo_price != null && slide.promo_price !== ''
+  // 0 significa "sem preço promocional" (é o valor por omissão do campo).
+  const priceLabel = Number(slide.promo_price) > 0
     ? `Kz ${Number(slide.promo_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}`
     : null;
 

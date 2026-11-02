@@ -2,25 +2,52 @@
 <html lang="pt">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+		<link rel="icon" type="image/svg+xml" href="/logo-icon.svg" />
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 		<meta name="theme-color" content="#0c4a6e" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 		<meta name="apple-mobile-web-app-title" content="Livraria Adventista" />
-		<link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+		<link rel="apple-touch-icon" href="/logo-icon.png" />
 		<meta name="description" content="Livraria Adventista — literatura cristã, educação e inspiração. Compre online com entrega ao domicílio." />
 		<title>Livraria Adventista</title>
+		<link rel="canonical" href="https://livraria-adventista.pages.dev/" />
+
+		<!-- Partilha no WhatsApp, Facebook e X. As páginas de livro e de colecção reescrevem
+		     estas etiquetas com o react-helmet; isto é o que vale para a raiz e para quem
+		     partilha um link antes de o JavaScript correr. -->
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="Livraria Adventista" />
+		<meta property="og:locale" content="pt_AO" />
+		<meta property="og:title" content="Livraria Adventista" />
+		<meta property="og:description" content="Literatura cristã, educação e inspiração. Compre online com entrega em todo o país." />
+		<meta property="og:url" content="https://livraria-adventista.pages.dev/" />
+		<meta property="og:image" content="https://livraria-adventista.pages.dev/logo.png" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Livraria Adventista" />
+		<meta name="twitter:description" content="Literatura cristã, educação e inspiração. Compre online com entrega em todo o país." />
+		<meta name="twitter:image" content="https://livraria-adventista.pages.dev/logo.png" />
 	</head>
 	<body>
 		<div id="root"></div>
 		<script type="module" src="/src/main.jsx"></script>
 		<script>
 			if ('serviceWorker' in navigator) {
-				window.addEventListener('load', () => {
-					navigator.serviceWorker.register('/sw.js').catch(() => {});
-				});
+				const isLocalDev = ['localhost', '127.0.0.1'].includes(location.hostname);
+				if (isLocalDev) {
+					// Em desenvolvimento, limpar SW/cache antigo que causa tela branca com Vite
+					navigator.serviceWorker.getRegistrations().then((regs) => {
+						regs.forEach((r) => r.unregister());
+					});
+					caches.keys().then((keys) => {
+						keys.forEach((k) => caches.delete(k));
+					});
+				} else {
+					window.addEventListener('load', () => {
+						navigator.serviceWorker.register('/sw.js').catch(() => {});
+					});
+				}
 			}
 		</script>
 	</body>

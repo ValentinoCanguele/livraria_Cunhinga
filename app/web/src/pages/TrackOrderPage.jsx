@@ -24,6 +24,11 @@ import { displayAngolaPhone } from '@/lib/angolaPhone';
 
 const STEPS = ['received', 'confirmed', 'preparing', 'shipped', 'in_transit', 'out_for_delivery', 'delivered'];
 
+// Levantamento na loja: os estados de transporte contam todos como "pronta para levantar".
+const PICKUP_STEPS = ['received', 'confirmed', 'preparing', 'ready', 'delivered'];
+const PICKUP_LABELS = { ready: 'Pronta para levantar', delivered: 'Levantada' };
+const toPickupStep = (status) => (['shipped', 'in_transit', 'out_for_delivery'].includes(status) ? 'ready' : status);
+
 export default function TrackOrderPage() {
   const { settings } = useSiteSettings();
   const { user, isAuthed } = useAuth();
@@ -77,7 +82,11 @@ export default function TrackOrderPage() {
     }
   };
 
-  const currentStepIdx = order ? STEPS.indexOf(order.delivery_status) : -1;
+  const isPickup = order?.shipping_method === 'pickup';
+  const isCancelled = order?.status === 'cancelled' || order?.delivery_status === 'cancelled';
+  const steps = isPickup ? PICKUP_STEPS : STEPS;
+  const currentStepIdx = order ? steps.indexOf(isPickup ? toPickupStep(order.delivery_status) : order.delivery_status) : -1;
+  const stepLabel = (step) => (isPickup && PICKUP_LABELS[step]) || getDeliveryStatusLabel(step);
   const timeline = order?.timeline || [];
 
   return (
@@ -112,7 +121,7 @@ export default function TrackOrderPage() {
                 <Input
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value.toUpperCase())}
-                  placeholder="ENC-XXXXXX"
+                  placeholder={`${settings?.order_number_prefix || 'ENC-'}XXXXXXXXX`}
                   required
                   className="font-mono"
                 />
@@ -209,10 +218,18 @@ export default function TrackOrderPage() {
 
                 <div className="bg-card border rounded-2xl p-6">
                   <h3 className="font-semibold mb-6 flex items-center gap-2">
-                    <Package className="h-5 w-5 text-[#0ea5c9]" /> Estado da Entrega
+                    <Package className="h-5 w-5 text-[#0ea5c9]" /> {isPickup ? 'Estado do levantamento' : 'Estado da entrega'}
                   </h3>
+                  {isPickup && order.pickup_store && (
+                    <p className="text-sm text-muted-foreground -mt-4 mb-5">Levantamento em <strong className="text-foreground">{order.pickup_store}</strong></p>
+                  )}
+                  {isCancelled ? (
+                    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                      Esta encomenda foi cancelada. Se tiver dúvidas, contacte a loja.
+                    </div>
+                  ) : (
                   <div className="relative">
-                    {STEPS.map((step, idx) => {
+                    {steps.map((step, idx) => {
                       const done = idx <= currentStepIdx;
                       const active = idx === currentStepIdx;
                       return (
@@ -221,17 +238,18 @@ export default function TrackOrderPage() {
                             <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-[#0ea5c9] text-white' : 'bg-muted border-2 border-border'}`}>
                               {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
                             </div>
-                            {idx < STEPS.length - 1 && (
+                            {idx < steps.length - 1 && (
                               <div className={`w-0.5 flex-1 min-h-[24px] ${idx < currentStepIdx ? 'bg-[#0ea5c9]' : 'bg-border'}`} />
                             )}
                           </div>
                           <div className={`pt-1 ${active ? 'font-semibold text-[#0ea5c9]' : done ? 'text-foreground' : 'text-muted-foreground'}`}>
-                            {getDeliveryStatusLabel(step)}
+                            {stepLabel(step)}
                           </div>
                         </div>
                       );
                     })}
                   </div>
+                  )}
                 </div>
 
                 {timeline.length > 0 && (

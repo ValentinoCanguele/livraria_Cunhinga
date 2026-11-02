@@ -7,8 +7,10 @@
     "dev": "vite --host :: --port 3000",
     "build": "vite build --outDir ../../dist/app/web",
     "start": "vite preview --outDir ../../dist/app/web --host :: --port 3000",
-    "lint": "eslint . --quiet",
-    "lint:warn": "eslint ."
+    "lint": "eslint .",
+    "lint:warn": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -39,17 +41,20 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@supabase/supabase-js": "^2.118.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "d3": "^7.9.0",
     "date-fns": "^4.1.0",
+    "dompurify": "^3.4.17",
     "embla-carousel-react": "^8.6.0",
     "esbuild": "^0.28.1",
+    "firebase": "^12.16.0",
     "framer-motion": "^11.15.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.469.0",
     "next-themes": "^0.4.6",
-    "pocketbase": "^0.27.0",
     "react": "^18.3.1",
     "react-day-picker": "^9.14.0",
     "react-dom": "^18.3.1",
@@ -80,9 +85,11 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.1.0",
     "globals": "^15.14.0",
+    "jsdom": "^30.1.3",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "terser": "^5.37.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^5.0.5"
   }
 }

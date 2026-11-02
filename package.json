@@ -4,20 +4,14 @@
   "private": true,
   "scripts": {
     "setup": "npm install",
-    "dev": "concurrently --kill-others --raw \"npm run dev --prefix app/web\" \"npm run dev --prefix app/pocketbase\"",
-    "seed": "npm run seed --prefix app/pocketbase",
-    "seed:books": "npm run seed:books --prefix app/pocketbase",
+    "dev": "npm run dev --prefix app/web",
     "build": "npm run build --prefix app/web",
-    "start": "concurrently --kill-others --raw \"npm run start --prefix app/pocketbase\" \"npm run start --prefix app/web\"",
-    "lint": "npm run lint --prefix app/web"
-  },
-  "devDependencies": {
-    "concurrently": "^10.0.3"
+    "start": "npm run start --prefix app/web",
+    "lint": "npm run lint --prefix app/web",
+    "deploy:site": "bash scripts/deploy-site.sh",
+    "test": "npm run test --prefix app/web"
   },
   "workspaces": [
-    "app/*"
-  ],
-  "dependencies": {
-    "firebase": "^12.16.0"
-  }
+    "app/web"
+  ]
 }

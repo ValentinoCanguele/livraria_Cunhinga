@@ -10,19 +10,23 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BOOK_GENRES, BOOK_LANGUAGES, emptyBookForm, previewBookCode, bookToForm } from '@/lib/bookConstants';
-import pb from '@/lib/pocketbaseClient';
+import { BOOK_GENRES, BOOK_LANGUAGES, emptyBookForm, bookToForm } from '@/lib/bookConstants';
+import pb from '@/lib/dataClient';
 import { Megaphone, User, BookMarked, Layers, TrendingUp } from 'lucide-react';
 import RichTextEditor from '@/components/admin/RichTextEditor';
 import ImageField from '@/components/admin/ImageField';
+import StockHistory from '@/components/admin/StockHistory';
 import { useIntegrations } from '@/hooks/useIntegrations';
+import { isUploadPending } from '@/lib/mediaUpload';
 
-const PLACEHOLDER_COVER = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&q=80';
+const PLACEHOLDER_COVER = '/images/site/capa-por-definir.webp';
 
-export default function BookFormModal({ open, onClose, onSave, editing, saving }) {
+// Código por atribuir: a base de dados gera o seguinte da numeração ao gravar (ex.: LIV-101).
+const AUTO_CODE = '(automático)';
+
+export default function BookFormModal({ open, onClose, onSave, editing, template, saving }) {
   const [form, setForm] = useState(emptyBookForm);
   const [copied, setCopied] = useState(false);
-  const [autoCode] = useState(() => previewBookCode());
   const [collections, setCollections] = useState([]);
   const { driveImageConfig } = useIntegrations();
 
@@ -31,16 +35,35 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
       pb.collection('book_collections').getFullList({ sort: 'title' })
         .then(setCollections)
         .catch(() => setCollections([]));
-      setForm(editing ? bookToForm(editing) : { ...emptyBookForm, book_code: autoCode });
+      if (editing) setForm(bookToForm(editing));
+      // Duplicar: copia tudo menos os códigos únicos; o ID e as métricas são novos.
+      // Código vazio: a base de dados gera o seguinte da numeração (ex.: LIV-101).
+      else if (template) setForm({ ...bookToForm(template), title: `${template.title} (cópia)`, book_code: '', sku: '' });
+      else setForm({ ...emptyBookForm, book_code: '' });
     }
-  }, [open, editing, autoCode]);
+  }, [open, editing, template]);
 
   if (!open) return null;
 
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+  const samplePages = (form.sample_pages || []).map((p) => (typeof p === 'string' ? p : p?.url || ''));
+  const setSamplePage = (i, url) => setForm((f) => {
+    const pages = (f.sample_pages || []).map((p) => (typeof p === 'string' ? p : p?.url || ''));
+    pages[i] = url;
+    return { ...f, sample_pages: pages };
+  });
+  const moveSamplePage = (i, dir) => setForm((f) => {
+    const pages = [...(f.sample_pages || [])];
+    const j = i + dir;
+    if (j < 0 || j >= pages.length) return f;
+    [pages[i], pages[j]] = [pages[j], pages[i]];
+    return { ...f, sample_pages: pages };
+  });
+  const uploadPending = isUploadPending(form.cover, form.author_photo, samplePages);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (uploadPending) return;
     onSave({
       ...form,
       price: Number(form.price) || 0,
@@ -48,23 +71,19 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
       pages: Number(form.pages) || 0,
       year: Number(form.year) || new Date().getFullYear(),
       featured: !!form.featured,
-      book_code: form.book_code || autoCode,
-      sku: form.sku || form.book_code || autoCode,
+      book_code: (form.book_code || '').trim(),
+      sku: (form.sku || form.book_code || '').trim(),
       benefit_bullets: Array.isArray(form.benefit_bullets)
         ? form.benefit_bullets
         : (form.benefit_bullets || '').split('\n').map((s) => s.trim()).filter(Boolean),
-      sample_pages: Array.isArray(form.sample_pages) ? form.sample_pages : [],
+      sample_pages: samplePages.filter(Boolean),
       versions: Array.isArray(form.versions) ? form.versions : [],
       preview_enabled: !!form.preview_enabled,
-      compras: Number(form.compras) || 0,
-      lido: Number(form.lido) || 0,
-      baixados: Number(form.baixados) || 0,
-      vendidos: Number(form.vendidos) || 0,
     });
   };
 
   const copyId = () => {
-    const id = editing?.id || form.book_code || autoCode;
+    const id = editing?.id || form.book_code || '';
     navigator.clipboard.writeText(id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -83,7 +102,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
               <Sparkles className="h-5 w-5 text-[#0ea5c9]" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">{editing ? 'Editar Livro' : 'Adicionar Livro Premium'}</h2>
+              <h2 className="text-xl font-bold">{editing ? 'Editar Livro' : template ? 'Duplicar Livro' : 'Adicionar Livro Premium'}</h2>
               <p className="text-sm text-muted-foreground">Catálogo profissional com ID e código único</p>
             </div>
           </div>
@@ -107,16 +126,23 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
                   <h3 className="font-bold text-lg line-clamp-2">{form.title || 'Título do livro'}</h3>
                   <p className="text-sm text-muted-foreground">{form.author || 'Autor'}</p>
                   {form.price && (
-                    <p className="text-[#0ea5c9] font-bold text-xl">
-                      Kz {Number(form.price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
-                    </p>
+                    Number(form.sale_price) > 0 && Number(form.sale_price) < Number(form.price) ? (
+                      <p className="font-bold text-xl">
+                        <span className="text-rose-600">Kz {Number(form.sale_price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</span>
+                        <span className="ml-2 text-sm text-muted-foreground line-through">Kz {Number(form.price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[#0ea5c9] font-bold text-xl">
+                        Kz {Number(form.price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
+                      </p>
+                    )
                   )}
                 </div>
 
                 <div className="rounded-xl bg-card border p-4 space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" /> Código</span>
-                    <code className="font-mono text-[#0ea5c9] font-semibold">{form.book_code || autoCode}</code>
+                    <code className="font-mono text-[#0ea5c9] font-semibold">{form.book_code || AUTO_CODE}</code>
                   </div>
                   {editing && (
                     <div className="flex items-center justify-between">
@@ -129,7 +155,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
                   )}
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground flex items-center gap-1.5"><Barcode className="h-3.5 w-3.5" /> SKU</span>
-                    <code className="font-mono text-xs">{form.sku || form.book_code || autoCode}</code>
+                    <code className="font-mono text-xs">{form.sku || form.book_code || AUTO_CODE}</code>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Stock</span>
@@ -208,28 +234,60 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
                   </div>
                   <div className="space-y-2">
                     <Label>Descrição</Label>
-                    <Textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Sinopse do livro..." />
+                    <RichTextEditor value={form.description} onChange={(v) => set('description', v)} placeholder="Sinopse do livro..." />
                   </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-[#0ea5c9]/5 border border-[#0ea5c9]/20">
                     <Switch checked={form.featured} onCheckedChange={(v) => set('featured', v)} />
                     <Label className="cursor-pointer">Destacar na homepage</Label>
                   </div>
+                  <div className="flex items-start gap-3 p-3 rounded-lg border">
+                    <Switch checked={form.active !== false} onCheckedChange={(v) => set('active', v)} />
+                    <div>
+                      <Label className="cursor-pointer">Visível na loja</Label>
+                      <p className="text-xs text-muted-foreground">Desligado: o livro fica oculto aos clientes e não pode ser comprado, mas continua aqui no painel.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-3 p-3 rounded-lg border border-rose-500/30 bg-rose-500/5">
+                    <div>
+                      <p className="text-sm font-semibold">Promoção</p>
+                      <p className="text-xs text-muted-foreground">O checkout cobra o preço promocional entre as datas indicadas (vazias = sem limite). Deixe o preço vazio para não haver promoção.</p>
+                    </div>
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Preço promocional (Kz)</Label>
+                        <Input type="number" min="0" step="0.01" value={form.sale_price} onChange={(e) => set('sale_price', e.target.value)} placeholder="Ex.: 4000" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Começa em</Label>
+                        <Input type="datetime-local" value={form.sale_starts_at} onChange={(e) => set('sale_starts_at', e.target.value)} disabled={!form.sale_price} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Termina em</Label>
+                        <Input type="datetime-local" value={form.sale_ends_at} onChange={(e) => set('sale_ends_at', e.target.value)} disabled={!form.sale_price} />
+                      </div>
+                    </div>
+                    {Number(form.sale_price) > 0 && Number(form.price) > 0 && (
+                      Number(form.sale_price) >= Number(form.price)
+                        ? <p className="text-xs text-destructive">O preço promocional tem de ser menor do que o preço normal.</p>
+                        : <p className="text-xs text-rose-700 dark:text-rose-300">Desconto de {Math.round((1 - Number(form.sale_price) / Number(form.price)) * 100)}%.</p>
+                    )}
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="codes" className="space-y-4 mt-0">
                   <div className="rounded-xl bg-muted/50 border p-4 text-sm text-muted-foreground mb-2">
-                    Cada livro recebe um código único da Livraria Adventista. O ID do sistema é gerado automaticamente pelo PocketBase após guardar.
+                    Cada livro recebe um código único da Livraria Adventista. O ID do sistema é gerado automaticamente ao guardar.
                   </div>
                   <div className="space-y-2">
-                    <Label>Código do Livro (LA-XXXXX)</Label>
+                    <Label>Código do Livro (SKU)</Label>
                     <Input
                       value={form.book_code}
                       onChange={(e) => set('book_code', e.target.value.toUpperCase())}
-                      placeholder={autoCode}
+                      placeholder="Automático"
                       className="font-mono"
                     />
                     {!editing && (
-                      <p className="text-xs text-muted-foreground">Deixe vazio para gerar automaticamente: <code className="text-[#0ea5c9]">{autoCode}</code></p>
+                      <p className="text-xs text-muted-foreground">Deixe vazio para gerar o próximo código da numeração (prefixo em Configurações → Regras da loja). Os códigos não se podem repetir.</p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -295,6 +353,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
                     aspect="1:1"
                     previewClassName="h-20 w-20"
                     driveConfig={driveImageConfig}
+                    uploadFolder="stock_books"
                   />
                   <div className="space-y-2">
                     <Label>Biografia do Autor</Label>
@@ -307,16 +366,30 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
                     <Switch checked={form.preview_enabled} onCheckedChange={(v) => set('preview_enabled', v)} />
                     <Label>Permitir pré-visualização na loja</Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Páginas Introdutórias (uma URL de imagem por linha)</Label>
-                    <Textarea
-                      rows={6}
-                      value={(form.sample_pages || []).map((p) => (typeof p === 'string' ? p : p.url || '')).join('\n')}
-                      onChange={(e) => set('sample_pages', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean))}
-                      placeholder="https://exemplo.com/pagina1.jpg&#10;https://exemplo.com/pagina2.jpg"
-                      className="font-mono text-xs"
-                    />
-                    <p className="text-xs text-muted-foreground">Imagens das primeiras páginas para o leitor explorar antes de comprar.</p>
+                  <div className="space-y-3">
+                    <Label>Páginas introdutórias</Label>
+                    <p className="text-xs text-muted-foreground">Imagens das primeiras páginas para o leitor explorar antes de comprar, pela ordem em que aparecem.</p>
+                    {samplePages.map((url, i) => (
+                      <div key={i} className="p-3 rounded-xl border bg-muted/20 space-y-2">
+                        <ImageField
+                          label={`Página ${i + 1}`}
+                          value={url}
+                          onChange={(v) => setSamplePage(i, v)}
+                          aspect="3:4"
+                          previewClassName="h-24 w-[4.5rem]"
+                          driveConfig={driveImageConfig}
+                          uploadFolder="stock_books"
+                        />
+                        <div className="flex gap-1">
+                          <Button type="button" variant="ghost" size="sm" className="h-7" disabled={i === 0} onClick={() => moveSamplePage(i, -1)}>↑ Subir</Button>
+                          <Button type="button" variant="ghost" size="sm" className="h-7" disabled={i === samplePages.length - 1} onClick={() => moveSamplePage(i, 1)}>↓ Descer</Button>
+                          <Button type="button" variant="ghost" size="sm" className="h-7 text-destructive ml-auto" onClick={() => set('sample_pages', samplePages.filter((_, j) => j !== i))}>Remover página</Button>
+                        </div>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => set('sample_pages', [...samplePages, ''])}>
+                      + Adicionar página
+                    </Button>
                   </div>
                 </TabsContent>
 
@@ -366,66 +439,39 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
                 <TabsContent value="media" className="space-y-4 mt-0">
                   <ImageField
                     label="Capa do Livro"
+                    gallery="capa"
                     value={form.cover}
                     onChange={(v) => set('cover', v)}
                     aspect="3:4"
                     hint="Capa: 400×600px ou superior · URL, upload ou Google Drive"
                     previewClassName="h-32 w-24"
                     driveConfig={driveImageConfig}
+                    uploadFolder="stock_books"
                   />
                 </TabsContent>
 
                 <TabsContent value="stats" className="space-y-4 mt-0">
                   <div className="rounded-xl bg-gradient-to-r from-[#0ea5c9]/10 to-[#0ea5c9]/5 border border-[#0ea5c9]/20 p-4 text-sm text-foreground">
-                    <h4 className="font-semibold text-[#0ea5c9] mb-1">Métricas de Popularidade</h4>
-                    <p className="text-muted-foreground">Estes valores são usados para classificar e promover livros na homepage (ex: carrossel de destaques ou fitas de conversão).</p>
+                    <h4 className="font-semibold text-[#0ea5c9] mb-1">Métricas reais</h4>
+                    <p className="text-muted-foreground">Contadas automaticamente: vendas quando uma encomenda é registada e visualizações quando alguém abre a página do livro.</p>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Número de Compras</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={form.compras}
-                        onChange={(e) => set('compras', e.target.value)}
-                        placeholder="Ex: 142"
-                      />
+                  {editing ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-xl border p-4">
+                        <p className="text-xs text-muted-foreground">Unidades vendidas</p>
+                        <p className="text-2xl font-bold">{Number(editing.sales_count) || 0}</p>
+                      </div>
+                      <div className="rounded-xl border p-4">
+                        <p className="text-xs text-muted-foreground">Visualizações</p>
+                        <p className="text-2xl font-bold">{Number(editing.views_count) || 0}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <StockHistory bookId={editing.id} />
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Número de Leitores (Lidos)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={form.lido}
-                        onChange={(e) => set('lido', e.target.value)}
-                        placeholder="Ex: 389"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Downloads Efetuados</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={form.baixados}
-                        onChange={(e) => set('baixados', e.target.value)}
-                        placeholder="Ex: 85"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Quantidade Vendida</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={form.vendidos}
-                        onChange={(e) => set('vendidos', e.target.value)}
-                        placeholder="Ex: 120"
-                      />
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">As métricas aparecem depois de publicar o livro.</p>
+                  )}
                 </TabsContent>
               </Tabs>
             </div>
@@ -433,9 +479,9 @@ export default function BookFormModal({ open, onClose, onSave, editing, saving }
 
           <div className="sticky bottom-0 flex gap-3 px-6 py-4 border-t bg-background/95 backdrop-blur">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" className="flex-1 btn-primary py-6 text-base" disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editing ? 'Guardar Alterações' : 'Publicar Livro'}
+            <Button type="submit" className="flex-1 btn-primary py-6 text-base" disabled={saving || uploadPending}>
+              {(saving || uploadPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {uploadPending ? 'A enviar imagens…' : editing ? 'Guardar Alterações' : 'Publicar Livro'}
             </Button>
           </div>
         </form>

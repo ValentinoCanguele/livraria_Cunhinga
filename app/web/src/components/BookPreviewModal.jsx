@@ -17,6 +17,7 @@ export default function BookPreviewModal({ product, open, onClose, onCartOpen })
 
   const variant = product.variants?.[0];
   const inStock = product.purchasable && (variant?.inventory_quantity ?? 0) > 0;
+  const price = variant?.sale_price_formatted || variant?.price_formatted;
 
   // Let's generate elegant sample pages customized to the book
   const authorName = product.author || "Autor Selecionado";
@@ -140,7 +141,7 @@ export default function BookPreviewModal({ product, open, onClose, onCartOpen })
               <Button className="w-full btn-primary py-6 text-base" onClick={async () => {
                 if (!variant) return;
                 try {
-                  await addToCart(product, variant, 1, { silent: true });
+                  await addToCart(product, variant, 1, variant.inventory_quantity, { silent: true });
                   toast({
                     variant: 'cart-success',
                     product,

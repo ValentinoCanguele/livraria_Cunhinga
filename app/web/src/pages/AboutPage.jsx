@@ -6,6 +6,7 @@ import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import { pageTitle, BRAND } from '@/lib/brand';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 const values = [
   { icon: BookOpen, title: 'Literatura de Qualidade', description: 'Publicações cuidadosamente selecionadas para edificar, educar e inspirar leitores de todas as idades.' },
@@ -16,6 +17,13 @@ const values = [
 
 const AboutPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const { settings } = useSiteSettings();
+  // Escolhidas em Configurações → Página Sobre (galeria de imagens prontas). Vazio = a que
+  // vem com o site.
+  const topImage = settings.about_top_image_url || '/images/site/sobre-topo.webp';
+  const sideImage = settings.about_side_image_url || '/images/site/sobre-livros.webp';
+  // Equipa definida em Configurações → Página Sobre. Sem ninguém, a secção não aparece.
+  const team = (Array.isArray(settings.about_team) ? settings.about_team : []).filter((m) => m?.name);
 
   return (
     <>
@@ -30,7 +38,7 @@ const AboutPage = () => {
       <main>
         <section className="relative h-[60vh] min-h-[400px] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0">
-            <img src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=1200&q=80" alt="Livraria" className="w-full h-full object-cover" />
+            <img src={topImage} alt="Capas de livros do catálogo da livraria" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-[#0c4a6e]/80 to-[#0ea5c9]/40" />
           </div>
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative z-10 container-custom text-center text-white">
@@ -57,11 +65,51 @@ const AboutPage = () => {
                 </p>
               </motion.div>
               <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="relative h-[500px] rounded-2xl overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1524995997942-a1fc3e46a42d?w=800&q=80" alt="Livros" className="w-full h-full object-cover" />
+                <img src={sideImage} alt="Livros do catálogo da livraria" loading="lazy" className="w-full h-full object-cover" />
               </motion.div>
             </div>
           </div>
         </section>
+
+        {team.length > 0 && (
+          <section className="section-spacing">
+            <div className="container-custom">
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+                <h2 className="text-4xl md:text-5xl font-bold mb-4">A Nossa Equipa</h2>
+                <p className="text-muted-foreground text-lg">Quem o atende, na loja e nas entregas</p>
+              </motion.div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                {team.map((member, index) => (
+                  <motion.div
+                    key={`${member.name}-${index}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: Math.min(index, 7) * 0.05 }}
+                    className="text-center"
+                  >
+                    <div className="mx-auto mb-3 h-28 w-28 rounded-full overflow-hidden bg-muted border border-border">
+                      {member.photo_url ? (
+                        <img
+                          src={member.photo_url}
+                          alt={member.name}
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-2xl font-semibold text-muted-foreground">
+                          {member.name.trim().charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold leading-tight">{member.name}</h3>
+                    {member.role && <p className="text-sm text-muted-foreground mt-0.5">{member.role}</p>}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="section-spacing bg-muted/30">
           <div className="container-custom">

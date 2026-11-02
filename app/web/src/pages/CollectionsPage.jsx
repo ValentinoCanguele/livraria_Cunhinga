@@ -8,10 +8,9 @@ import Footer from '@/components/Footer';
 import ShoppingCart from '@/components/ShoppingCart';
 import ProductCard from '@/components/ProductCard';
 import QuickViewModal from '@/components/QuickViewModal';
-import FirestoreBooksList from '@/components/FirestoreBooksList';
 import { pageTitle } from '@/lib/brand';
 import { getCollections } from '@/api/PlatformApi';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
 import { escapeFilterValue } from '@/lib/sanitizeHtml';
 import { Button } from '@/components/ui/button';
 
@@ -75,7 +74,7 @@ export default function CollectionsPage() {
           const col = cols.find((c) => c.slug === slug || c.id === slug);
           if (col) {
             const list = await pb.collection('stock_books').getFullList({
-              filter: `collection_id = "${escapeFilterValue(col.id)}"`,
+              filter: `collection_id = "${escapeFilterValue(col.id)}" && active = true`,
               sort: '-featured,title',
             });
             setBooks(list);
@@ -196,11 +195,6 @@ export default function CollectionsPage() {
                     Nenhuma coleção disponível de momento.
                   </p>
                 )}
-              </div>
-
-              {/* Dynamic Firestore Book Collection lists here */}
-              <div className="pt-12 border-t border-border/80">
-                <FirestoreBooksList onCartOpen={() => setIsCartOpen(true)} />
               </div>
             </div>
           ) : activeCollection ? (

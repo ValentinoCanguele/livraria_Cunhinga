@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Loader2, Eye, MessageCircle, Grid3X3, List, Heart } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MessageCircle, Heart, Star, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,9 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
 
   const variant = product.variants?.[0];
   const inStock = product.purchasable && (variant?.inventory_quantity ?? 0) > 0;
+  const qty = variant?.inventory_quantity ?? 0;
+  // A marca vem da base de dados, com o limite definido em Configurações → Regras da loja.
+  const isLowStock = inStock && !!product.stock_low;
   const price = variant?.sale_price_formatted || variant?.price_formatted;
   const originalPrice = variant?.sale_price_formatted ? variant?.price_formatted : null;
   const waPhone = settings.whatsapp || settings.contact_phone;
@@ -74,21 +77,37 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
             />
-            <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10 pointer-events-none">
+            {/* Ícones, não autocolantes de texto: o mesmo cartão chegava a dizer o stock
+                quatro vezes (marca na imagem, faixa do admin, etiqueta do preço e "últimas N").
+                Fica uma marca por estado aqui, e o número aparece uma única vez, junto ao
+                preço. A faixa do admin só aparece quando não há aviso de stock, para não
+                empilhar três marcas no canto. */}
+            <div className="absolute top-2 left-2 flex items-center gap-1.5 z-10 pointer-events-none">
               {product.featured && (
-                <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
-                  ★ Destaque
+                <span
+                  className="h-6 w-6 rounded-full bg-amber-400 text-amber-950 shadow-sm flex items-center justify-center"
+                  title="Destaque"
+                >
+                  <Star className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                  <span className="sr-only">Destaque</span>
                 </span>
               )}
-              {product.ribbon_text && inStock && (
-                <span className="bg-[#0ea5c9] text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
+              {isLowStock && (
+                <span
+                  className="h-6 w-6 rounded-full bg-rose-500 text-white shadow-sm flex items-center justify-center"
+                  title={qty > 0 ? `Últimas ${qty} unidades` : 'Poucas unidades'}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="sr-only">{qty > 0 ? `Últimas ${qty} unidades` : 'Poucas unidades'}</span>
+                </span>
+              )}
+              {/* A faixa do admin só acrescenta quando não repete a estrela: muitos livros
+                  têm ribbon_text "Destaque", e ficavam com a estrela e o rótulo a dizer o
+                  mesmo. "Destaque da semana" ou outro texto continua a aparecer. */}
+              {product.ribbon_text && inStock && !isLowStock
+                && product.ribbon_text.trim().toLowerCase() !== 'destaque' && (
+                <span className="bg-[#0ea5c9] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
                   {product.ribbon_text}
-                </span>
-              )}
-              {inStock && variant?.inventory_quantity > 0 && variant?.inventory_quantity < 5 && (
-                <span className="bg-rose-500 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider animate-pulse">
-                  <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-                  Baixo Estoque ({variant.inventory_quantity})
                 </span>
               )}
             </div>
@@ -149,25 +168,27 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
             {product.type?.value && (
               <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full w-fit mb-2">{product.type.value}</span>
             )}
-            <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+            <div className="mt-auto pt-2 flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <p className="text-primary font-bold">{price}</p>
                 {originalPrice && <p className="text-xs text-muted-foreground line-through">{originalPrice}</p>}
               </div>
-              {inStock && variant?.inventory_quantity <= 5 && (
-                <span className="text-[10px] text-orange-600 font-medium">Últimas {variant.inventory_quantity}</span>
+              {inStock && isLowStock && qty > 0 && (
+                <span className="text-xs font-medium text-orange-600 whitespace-nowrap">Restam {qty}</span>
               )}
             </div>
           </div>
         </div>
       </Link>
       {inStock && !isList && (
+        // Num cartão de 160 px os dois botões lado a lado precisavam de 209 px e
+        // transbordavam. Em ecrã estreito fica só "Comprar": tocar no cartão já abre o livro.
         <div className="flex gap-2 mt-2">
           <Button size="sm" variant="outline" className="flex-1 rounded-lg border-primary/30 hover:bg-primary/10 text-xs" onClick={handleAddToCart} disabled={adding}>
             {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-1" />}
             Comprar
           </Button>
-          <Link to={`/product/${product.id}`} className="flex-1">
+          <Link to={`/product/${product.id}`} className="hidden sm:block flex-1">
             <Button size="sm" variant="secondary" className="w-full rounded-lg text-xs hover:bg-primary/10 hover:text-primary">
               Ver Detalhes
             </Button>
@@ -210,8 +231,9 @@ const gridItemVariants = {
   }
 };
 
-export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid' }) {
+export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid', onQuickView }) {
   const [quickView, setQuickView] = useState(null);
+  const handleQuickView = onQuickView || setQuickView;
 
   if (isLoading) {
     return (
@@ -233,11 +255,13 @@ export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid'
       >
         {products.map((product, index) => (
           <motion.div key={product.id} variants={gridItemVariants}>
-            <ProductCard product={product} onCartOpen={onCartOpen} index={index} viewMode={viewMode} onQuickView={setQuickView} />
+            <ProductCard product={product} onCartOpen={onCartOpen} index={index} viewMode={viewMode} onQuickView={handleQuickView} />
           </motion.div>
         ))}
       </motion.div>
-      <QuickViewModal product={quickView} open={!!quickView} onClose={() => setQuickView(null)} onCartOpen={onCartOpen} />
+      {!onQuickView && (
+        <QuickViewModal product={quickView} open={!!quickView} onClose={() => setQuickView(null)} onCartOpen={onCartOpen} />
+      )}
     </>
   );
 }

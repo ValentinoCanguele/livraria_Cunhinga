@@ -10,7 +10,10 @@ import ShoppingCart from '@/components/ShoppingCart.jsx';
 import { pageTitle } from '@/lib/brand';
 import { useAuth } from '@/hooks/useAuth';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
-import { loadLastOrder, downloadReceipt, sendReceiptViaWhatsApp } from '@/lib/receipt';
+import { useIntegrations } from '@/hooks/useIntegrations';
+import { useToast } from '@/hooks/use-toast';
+import { loadLastOrder, downloadReceipt, sendReceiptViaWhatsApp, receiptBrand } from '@/lib/receipt';
+import { showLocalNotification, subscribeToPush, isPushSupported } from '@/lib/pushNotifications';
 
 const SuccessPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -18,6 +21,9 @@ const SuccessPage = () => {
   const [params] = useSearchParams();
   const { isAuthed } = useAuth();
   const { settings } = useSiteSettings();
+  const { integrations } = useIntegrations();
+  const { toast } = useToast();
+  const waApiActive = !!(integrations?.whatsapp_business?.enabled && integrations?.whatsapp_business?.config?.configured);
 
   const orderId = params.get('orderId');
   const orderNumber = params.get('orderNumber');
@@ -25,6 +31,9 @@ const SuccessPage = () => {
   const orderType = params.get('type') || 'purchase';
 
   const [orderData, setOrderData] = useState(null);
+
+  const isWhatsApp = orderType === 'whatsapp';
+  const hasOrder = !!(orderId || orderNumber);
 
   useEffect(() => {
     const saved = loadLastOrder();
@@ -40,24 +49,47 @@ const SuccessPage = () => {
     }
   }, [orderId, orderNumber, total, orderType]);
 
-  const isWhatsApp = orderType === 'whatsapp';
-  const hasOrder = !!(orderId || orderNumber);
+  useEffect(() => {
+    if (!hasOrder || isWhatsApp) return;
+    const notify = async () => {
+      const shown = await showLocalNotification({
+        title: 'Encomenda confirmada! 🎉',
+        body: orderNumber ? `Pedido ${orderNumber} registado com sucesso.` : 'A sua compra foi registada.',
+        url: '/profile',
+      });
+      if (!shown && settings.push_enabled && settings.vapid_public_key && isPushSupported()) {
+        try { await subscribeToPush(settings.vapid_public_key); } catch { /* ignore */ }
+      }
+    };
+    notify();
+  }, [hasOrder, isWhatsApp, orderNumber, settings.push_enabled, settings.vapid_public_key]);
 
   const title = isWhatsApp ? 'Pedido WhatsApp Registado!' : 'Compra Confirmada!';
   const subtitle = isWhatsApp
-    ? 'O seu pedido foi registado no sistema. Continue a conversa no WhatsApp para confirmar pagamento e entrega.'
-    : 'Obrigado pela sua compra. A nossa equipa irá processar o pedido em breve.';
+    ? (waApiActive
+      ? 'O seu pedido foi registado e a confirmação foi enviada automaticamente para o seu WhatsApp.'
+      : 'O seu pedido foi registado no sistema. Continue a conversa no WhatsApp para confirmar pagamento e entrega.')
+    : (waApiActive
+      ? 'Obrigado pela sua compra. Receberá confirmação no WhatsApp e por email (se configurado).'
+      : 'Obrigado pela sua compra. A nossa equipa irá processar o pedido em breve.');
 
-  const handleReceiptWhatsApp = () => {
+  const handleReceiptWhatsApp = async () => {
     if (!orderData) return;
     setReceiptChoice('whatsapp');
-    sendReceiptViaWhatsApp(orderData, orderData.phone || settings.whatsapp);
+    try {
+      const result = await sendReceiptViaWhatsApp(orderData, orderData.phone || settings.whatsapp);
+      if (result?.mode === 'api') {
+        toast({ title: 'Recibo enviado', description: 'Verifique o seu WhatsApp.' });
+      }
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro', description: err.message });
+    }
   };
 
   const handleReceiptDownload = () => {
     if (!orderData) return;
     setReceiptChoice('download');
-    downloadReceipt(orderData);
+    downloadReceipt(orderData, receiptBrand(settings));
   };
 
   const nextSteps = isWhatsApp
@@ -121,6 +153,22 @@ const SuccessPage = () => {
               </div>
             )}
 
+            {hasOrder && /^https:\/\//.test(orderData?.paymentLink || '') && (
+              <div className="bg-card border border-[#0ea5c9]/40 rounded-xl p-6 mb-6 text-left space-y-3">
+                <h2 className="font-semibold text-lg">Pagamento</h2>
+                <p className="text-sm text-muted-foreground">
+                  {orderData.paymentReference
+                    ? `Indicou a referência ${orderData.paymentReference}. Se ainda não concluiu o pagamento, use o botão abaixo.`
+                    : 'Conclua o pagamento pelo link abaixo. A encomenda é confirmada quando o pagamento for verificado.'}
+                </p>
+                <Button asChild size="lg" className="btn-primary w-full sm:w-auto">
+                  <a href={orderData.paymentLink} target="_blank" rel="noopener noreferrer">
+                    Pagar agora{orderData.paymentMethod ? ` com ${orderData.paymentMethod}` : ''}
+                  </a>
+                </Button>
+              </div>
+            )}
+
             {hasOrder && orderData && (
               <div className="bg-card border border-border rounded-xl p-6 mb-8 text-left">
                 <h2 className="font-semibold text-lg flex items-center gap-2 mb-2">
@@ -149,7 +197,9 @@ const SuccessPage = () => {
                 </div>
                 {receiptChoice && (
                   <p className="text-xs text-green-600 mt-3 text-center">
-                    {receiptChoice === 'whatsapp' ? '✓ WhatsApp aberto com o recibo' : '✓ Recibo descarregado'}
+                    {receiptChoice === 'whatsapp'
+                      ? (waApiActive ? '✓ Recibo enviado para o seu WhatsApp' : '✓ WhatsApp aberto com o recibo')
+                      : '✓ Recibo descarregado'}
                   </p>
                 )}
               </div>

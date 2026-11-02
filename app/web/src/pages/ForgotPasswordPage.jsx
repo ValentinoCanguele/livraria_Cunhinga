@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Mail, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { useSiteSettings } from '@/hooks/useSiteSettings';
 import BrandLogo from '@/components/BrandLogo';
 import { pageTitle } from '@/lib/brand';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,6 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const { requestPasswordReset } = useAuth();
   const { toast } = useToast();
-  const { settings } = useSiteSettings();
 
   const handleSubmit = async (e) => {
     e.preventDefault();

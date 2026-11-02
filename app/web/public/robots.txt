@@ -1,0 +1,15 @@
+# Livraria Adventista
+User-agent: *
+Allow: /
+
+# Áreas sem valor para pesquisa: painel, conta do cliente, seguimento e checkout.
+Disallow: /admin
+Disallow: /profile
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /success
+Disallow: /track
+Disallow: /painel-vendas
+
+Sitemap: https://livraria-adventista.pages.dev/sitemap.xml

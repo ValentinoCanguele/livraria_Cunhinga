@@ -1,37 +1,63 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, LogOut, Loader2, X, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Pencil, Trash2, LogOut, Loader2, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, Store, Search, Star, Copy } from 'lucide-react';
 import CollectionsTab from '@/components/admin/CollectionsTab';
 import SlidesTab from '@/components/admin/SlidesTab';
 import { sanitizeBookPayload } from '@/lib/bookSave';
 import { pbErrorMessage } from '@/lib/mediaSave';
 import BrandLogo from '@/components/BrandLogo';
 import BookFormModal from '@/components/admin/BookFormModal';
+import BooksBulkBar from '@/components/admin/BooksBulkBar';
+import { Checkbox } from '@/components/ui/checkbox';
 import SettingsTab from '@/components/admin/SettingsTab';
 import UsersTab from '@/components/admin/UsersTab';
-import CRMContactsTab from '@/components/admin/CRMContactsTab';
 import PaymentsTab from '@/components/admin/PaymentsTab';
 import AppsTab from '@/components/admin/AppsTab';
+import StoresTab from '@/components/admin/StoresTab';
+import ContactsManager from '@/components/ContactsManager';
 import { pageTitle } from '@/lib/brand';
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SalesReportsPanel from '@/components/admin/SalesReportsPanel';
 import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_METHODS, ORDER_STATUS, getPaymentStatusLabel, getDeliveryStatusLabel, getDeliveryStatusColor } from '@/lib/orderUtils';
 import { displayAngolaPhone } from '@/lib/angolaPhone';
-import { getLowStockBooks, clearStockAlert } from '@/api/EcommerceApi';
+import { getLowStockBooks } from '@/api/EcommerceApi';
+import { isBookVisible, isSaleActive, isSaleScheduled } from '@/lib/pricing';
+import { downloadReceipt, receiptBrand, receiptFromOrder } from '@/lib/receipt';
+import { useSiteSettings } from '@/hooks/useSiteSettings';
+
+// O painel de vendas traz o d3; só é carregado quando se abre o separador.
+const VendasHuamboTab = lazy(() => import('@/components/admin/VendasHuamboTab'));
+
+// Colunas das encomendas para a lista e os relatórios. Fica de fora o que é grande e
+// só serve numa encomenda à vez: as duas assinaturas em base64 (até 200 KB e 600 KB
+// cada) e a linha temporal. Com `select *` o painel descarregava tudo isso de todas as
+// encomendas a cada abertura.
+const ORDER_LIST_FIELDS = [
+  'id', 'order_number', 'created', 'updated', 'customer_email', 'customer_name', 'phone',
+  'items', 'total', 'shipping_cost', 'status', 'payment_status', 'payment_method',
+  'payment_method_code', 'payment_method_name', 'payment_reference', 'payment_category',
+  'delivery_status', 'tracking_number', 'carrier', 'estimated_delivery',
+  'address', 'city', 'notes', 'order_type', 'sale_channel', 'shipping_method', 'pickup_store',
+  'delivery_province', 'delivery_municipality', 'delivery_locality', 'delivery_street',
+  'delivery_reference', 'delivery_address_full', 'delivery_relative_name', 'delivery_relative_phone',
+  'delivery_recipient_name', 'delivery_confirmed_at', 'delivery_confirmed_by', 'checkout_signature_at',
+];
 
 const AdminPage = () => {
   const { user, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { settings: siteSettings } = useSiteSettings();
 
   const [books, setBooks] = useState([]);
   const [slides, setSlides] = useState([]);
@@ -40,15 +66,20 @@ const AdminPage = () => {
 
   const [showBookForm, setShowBookForm] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
+  const [duplicatingBook, setDuplicatingBook] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [bookSearch, setBookSearch] = useState('');
+  const [selectedBookIds, setSelectedBookIds] = useState([]);
+  const [bookFilter, setBookFilter] = useState('all');
 
   const [orderFilter, setOrderFilter] = useState('all');
   const [orderSearch, setOrderSearch] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [lowStockBooks, setLowStockBooks] = useState([]);
 
   useEffect(() => {
-    if (!isAuthed) navigate('/login');
+    if (!isAuthed) navigate('/login', { state: { from: '/admin' } });
     else if (!canAccessAdmin) navigate('/profile');
   }, [isAuthed, canAccessAdmin, navigate]);
 
@@ -57,6 +88,7 @@ const AdminPage = () => {
   const canManageSettings = isAdmin || hasPermission('manage_settings');
   const canManageUsers = isAdmin || hasPermission('manage_users');
   const canManagePayments = isAdmin || hasPermission('manage_payments');
+  const canManageMarketing = isAdmin || hasPermission('manage_marketing');
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -64,7 +96,7 @@ const AdminPage = () => {
       const [booksList, slidesList, ordersList, lowStock] = await Promise.all([
         pb.collection('stock_books').getFullList({ sort: '-featured,title' }),
         pb.collection('hero_slides').getFullList({ sort: 'sort_order' }).catch(() => []),
-        canManageOrders ? pb.collection('orders').getFullList({ sort: '-created' }).catch(() => []) : [],
+        canManageOrders ? pb.collection('orders').getFullList({ sort: '-created', fields: ORDER_LIST_FIELDS.join(',') }).catch(() => []) : [],
         canManageCatalog ? getLowStockBooks() : [],
       ]);
       setBooks(booksList);
@@ -87,6 +119,16 @@ const AdminPage = () => {
       if (!payload.title?.trim()) {
         throw new Error('O título do livro é obrigatório.');
       }
+      // O checkout no servidor recusa livros sem preço.
+      if (!(payload.price > 0)) {
+        throw new Error('Indique um preço maior que zero; sem preço o livro não pode ser comprado.');
+      }
+      if (payload.sale_price && payload.sale_price >= payload.price) {
+        throw new Error('O preço promocional tem de ser menor do que o preço normal.');
+      }
+      if (payload.sale_starts_at && payload.sale_ends_at && payload.sale_ends_at <= payload.sale_starts_at) {
+        throw new Error('A promoção tem de terminar depois de começar.');
+      }
       if (editingBook) {
         await pb.collection('stock_books').update(editingBook.id, payload);
         toast({ title: 'Livro atualizado', description: `Código: ${payload.book_code || editingBook.book_code}` });
@@ -96,9 +138,12 @@ const AdminPage = () => {
       }
       setShowBookForm(false);
       setEditingBook(null);
+      setDuplicatingBook(null);
       loadAll();
     } catch (err) {
-      const msg = pbErrorMessage(err);
+      const msg = err?.data?.data?.code === '23505'
+        ? `Já existe outro livro com o código ${data.book_code}. Use um código diferente.`
+        : pbErrorMessage(err);
       toast({ variant: 'destructive', title: 'Erro ao guardar livro', description: msg });
     } finally {
       setSaving(false);
@@ -106,31 +151,62 @@ const AdminPage = () => {
   };
 
   const openEditBook = (b) => {
+    setDuplicatingBook(null);
     setEditingBook(b);
     setShowBookForm(true);
   };
 
-  const handleDeleteBook = async (b) => {
-    if (!confirm(`Eliminar "${b.title}"?`)) return;
-    await pb.collection('stock_books').delete(b.id);
-    toast({ title: 'Livro eliminado' });
-    loadAll();
+  const openDuplicateBook = (b) => {
+    setEditingBook(null);
+    setDuplicatingBook(b);
+    setShowBookForm(true);
   };
+
+  const handleDeleteBook = async (b) => {
+    // As encomendas guardam uma cópia dos itens; eliminar o livro não as apaga, mas convém avisar.
+    const { count } = await supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .contains('items', [{ book_id: b.id }]);
+    const warning = count
+      ? `\n\nEste livro aparece em ${count} encomenda(s). As encomendas mantêm o título, mas o livro desaparece da loja, das listas de desejos e das avaliações. Para o tirar só de venda, ponha o stock a 0.`
+      : '';
+    if (!confirm(`Eliminar "${b.title}"? Esta acção não pode ser desfeita.${warning}`)) return;
+    try {
+      await pb.collection('stock_books').delete(b.id);
+      toast({ title: 'Livro eliminado' });
+      loadAll();
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Erro ao eliminar', description: pbErrorMessage(err) });
+    }
+  };
+
+  const toggleFeatured = async (b) => {
+    const featured = !b.featured;
+    setBooks((prev) => prev.map((x) => (x.id === b.id ? { ...x, featured } : x)));
+    try {
+      await pb.collection('stock_books').update(b.id, { featured });
+      toast({ title: featured ? 'Livro destacado na homepage' : 'Destaque removido' });
+    } catch (err) {
+      setBooks((prev) => prev.map((x) => (x.id === b.id ? { ...x, featured: !featured } : x)));
+      toast({ variant: 'destructive', title: 'Erro', description: pbErrorMessage(err) });
+    }
+  };
+
+  const filteredBooks = books.filter((b) => {
+    if (bookFilter === 'featured' && !b.featured) return false;
+    if (bookFilter === 'low_stock' && !(b.stock_alert || b.stock_low)) return false;
+    if (bookFilter === 'no_cover' && (b.cover || b.cover_image)) return false;
+    if (bookFilter === 'hidden' && isBookVisible(b)) return false;
+    if (bookFilter === 'promo' && !(isSaleActive(b) || isSaleScheduled(b))) return false;
+    const q = bookSearch.trim().toLowerCase();
+    if (!q) return true;
+    return [b.title, b.author, b.book_code, b.sku, b.isbn, b.genre].filter(Boolean).join(' ').toLowerCase().includes(q);
+  });
 
   const handleOrderStatus = async (order, newStatus) => {
     try {
-      if (newStatus === 'cancelled' && order.status !== 'cancelled') {
-        for (const item of order.items || []) {
-          if (item.book_id) {
-            try {
-              const book = await pb.collection('stock_books').getOne(item.book_id);
-              await pb.collection('stock_books').update(book.id, {
-                stock: (Number(book.stock) || 0) + (Number(item.quantity) || 0),
-              });
-            } catch { /* ignore */ }
-          }
-        }
-      }
+      // Ao cancelar, o trigger orders_before_update devolve o stock (uma só vez, via stock_restored).
       await pb.collection('orders').update(order.id, { status: newStatus });
       toast({ title: 'Estado atualizado', description: getOrderStatusLabel(newStatus) });
       loadAll();
@@ -150,21 +226,20 @@ const AdminPage = () => {
   };
 
   const updateTracking = async (order, tracking, carrier, estimatedDelivery) => {
+    // estimated_delivery é timestamptz: vazio tem de ir como null ('' faz o Postgres recusar o pedido todo).
+    const day = (v) => (v ? String(v).slice(0, 10) : '');
+    const data = {
+      tracking_number: (tracking || '').trim(),
+      carrier: (carrier || '').trim(),
+      estimated_delivery: estimatedDelivery ? estimatedDelivery : null,
+    };
+    const unchanged = data.tracking_number === (order.tracking_number || '')
+      && data.carrier === (order.carrier || '')
+      && day(data.estimated_delivery) === day(order.estimated_delivery);
+    if (unchanged) return;
     try {
-      const data = { tracking_number: tracking, carrier };
-      if (estimatedDelivery !== undefined) data.estimated_delivery = estimatedDelivery || '';
       await pb.collection('orders').update(order.id, data);
       toast({ title: 'Tracking actualizado' });
-      loadAll();
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Erro', description: err.message });
-    }
-  };
-
-  const handleClearStockAlert = async (book) => {
-    try {
-      await clearStockAlert(book.id);
-      toast({ title: 'Alerta resolvido', description: `"${book.title}" — reabasteça o stock quando possível.` });
       loadAll();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
@@ -175,6 +250,20 @@ const AdminPage = () => {
     if (o.order_type === 'whatsapp_order' || o.sale_channel === 'whatsapp') return 'WhatsApp';
     if (o.order_type === 'online_purchase' || o.sale_channel === 'web_purchase') return 'Compra Online';
     return o.sale_channel || o.order_type || '—';
+  };
+
+  // A assinatura do comprador não vem na lista (é grande); busca-se só desta encomenda.
+  const handleReceipt = async (order) => {
+    let full = order;
+    try {
+      const { checkout_signature_data } = await pb.collection('orders')
+        .getOne(order.id, { fields: 'id,checkout_signature_data' });
+      full = { ...order, checkout_signature_data };
+    } catch (err) {
+      console.error('Assinatura do recibo:', err);
+      toast({ title: 'Recibo sem assinatura', description: 'Não foi possível ler a assinatura desta encomenda.' });
+    }
+    downloadReceipt(receiptFromOrder(full), receiptBrand(siteSettings));
   };
 
   const handlePaymentStatus = async (order, paymentStatus) => {
@@ -189,18 +278,55 @@ const AdminPage = () => {
 
   const filteredOrders = orders.filter((o) => {
     if (orderFilter !== 'all' && o.status !== orderFilter) return false;
+    if (paymentFilter !== 'all' && (o.payment_status || 'pending') !== paymentFilter) return false;
     if (orderSearch.trim()) {
       const q = orderSearch.toLowerCase();
-      const hay = [o.order_number, o.id, o.customer_name, o.customer_email, o.phone].filter(Boolean).join(' ').toLowerCase();
+      const hay = [o.order_number, o.id, o.customer_name, o.customer_email, o.phone, o.payment_reference].filter(Boolean).join(' ').toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
   });
 
   const pendingCount = orders.filter((o) => o.status === 'pending').length;
+  // Pagamentos por P2P/transferência que o cliente diz ter feito e falta confirmar.
+  const awaitingPaymentCount = orders.filter((o) => o.payment_status === 'awaiting_confirmation' && o.status !== 'cancelled').length;
+  const paymentLabelOf = (o) => o.payment_method_name || PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method || '';
   const totalRevenue = orders.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total), 0);
 
   const defaultTab = canManageCatalog ? 'books' : canManageOrders ? 'orders' : canManageSettings ? 'settings' : canManageUsers ? 'users' : 'payments';
+
+  // Separadores agrupados por área; o separador activo fica no URL (/admin?tab=orders) para os atalhos do cabeçalho.
+  const tabGroups = [
+    { label: 'Catálogo', tabs: [
+      canManageCatalog && { value: 'books', label: `Livros (${books.length})`, icon: PackageSearch },
+      canManageCatalog && { value: 'collections', label: 'Coleções', icon: Layers },
+      canManageCatalog && { value: 'slides', label: `Slider (${slides.length})`, icon: Image },
+    ] },
+    { label: 'Vendas', tabs: [
+      canManageOrders && { value: 'orders', label: `Encomendas (${orders.length})`, icon: ShoppingBag },
+      canManagePayments && { value: 'payments', label: 'Pagamentos', icon: CreditCard },
+      canManageSettings && { value: 'stores', label: 'Lojas', icon: Store },
+    ] },
+    { label: 'Relatórios', tabs: [
+      canAccessAdmin && { value: 'vendas-huambo', label: 'Vendas por loja', icon: BarChart3 },
+    ] },
+    { label: 'Clientes', tabs: [
+      canManageUsers && { value: 'users', label: 'Utilizadores e Clientes', icon: Users },
+      canManageMarketing && { value: 'contacts', label: 'Contactos e campanhas', icon: Megaphone },
+    ] },
+    { label: 'Sistema', tabs: [
+      canManageSettings && { value: 'settings', label: 'Configurações', icon: Settings },
+      isAdmin && { value: 'apps', label: 'Integrações', icon: Plug },
+    ] },
+  ].map((g) => ({ ...g, tabs: g.tabs.filter(Boolean) })).filter((g) => g.tabs.length);
+  const allowedTabs = tabGroups.flatMap((g) => g.tabs.map((t) => t.value));
+  const requestedTab = searchParams.get('tab');
+  const activeTab = allowedTabs.includes(requestedTab) ? requestedTab : defaultTab;
+  const setActiveTab = (value) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    next.set('tab', value);
+    return next;
+  }, { replace: true });
 
   return (
     <>
@@ -245,8 +371,8 @@ const AdminPage = () => {
                           {' '}{b.title} — <strong className={Number(b.stock) <= 0 ? 'text-red-600' : 'text-amber-700'}>{b.stock} un.</strong>
                           {b.stock_alert && <span className="ml-1 text-xs text-red-600">(esgotado)</span>}
                         </span>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleClearStockAlert(b)}>
-                          Marcar resolvido
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openEditBook(b)}>
+                          Repor stock
                         </Button>
                       </li>
                     ))}
@@ -259,24 +385,35 @@ const AdminPage = () => {
             </div>
           )}
 
-          <Tabs defaultValue={defaultTab}>
-            <TabsList className="mb-8 flex-wrap h-auto gap-1">
-              {canManageCatalog && <TabsTrigger value="books"><PackageSearch className="h-4 w-4 mr-1.5" />Livros ({books.length})</TabsTrigger>}
-              {canManageCatalog && <TabsTrigger value="collections"><Layers className="h-4 w-4 mr-1.5" />Coleções</TabsTrigger>}
-              {canManageCatalog && <TabsTrigger value="slides"><Image className="h-4 w-4 mr-1.5" />Slider ({slides.length})</TabsTrigger>}
-              {canManageOrders && <TabsTrigger value="orders"><ShoppingBag className="h-4 w-4 mr-1.5" />Encomendas ({orders.length})</TabsTrigger>}
-              {canManageSettings && <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-1.5" />Configurações</TabsTrigger>}
-              {canManageUsers && <TabsTrigger value="users"><Users className="h-4 w-4 mr-1.5" />Utilizadores</TabsTrigger>}
-              {canManageUsers && <TabsTrigger value="crm"><Users className="h-4 w-4 mr-1.5" />CRM & Contactos</TabsTrigger>}
-              {canManagePayments && <TabsTrigger value="payments"><CreditCard className="h-4 w-4 mr-1.5" />Pagamentos</TabsTrigger>}
-              {isAdmin && <TabsTrigger value="apps"><Plug className="h-4 w-4 mr-1.5" />Apps</TabsTrigger>}
-            </TabsList>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <div className="mb-8 flex flex-wrap items-stretch gap-3">
+              {tabGroups.map((group) => (
+                <div key={group.label} className="rounded-xl border border-border bg-background p-1.5">
+                  <p className="px-2 pt-0.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{group.label}</p>
+                  <TabsList className="h-auto flex-wrap gap-1 bg-transparent p-0">
+                    {group.tabs.map(({ value, label, icon: Icon }) => (
+                      <TabsTrigger key={value} value={value} className="data-[state=active]:bg-[#0ea5c9] data-[state=active]:text-white">
+                        <Icon className="h-4 w-4 mr-1.5" />{label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
+              ))}
+            </div>
 
             {canManageSettings && <TabsContent value="settings"><SettingsTab /></TabsContent>}
             {canManageUsers && <TabsContent value="users"><UsersTab /></TabsContent>}
-            {canManageUsers && <TabsContent value="crm"><CRMContactsTab /></TabsContent>}
             {canManagePayments && <TabsContent value="payments"><PaymentsTab /></TabsContent>}
+            {canManageSettings && <TabsContent value="stores"><StoresTab /></TabsContent>}
+            {canManageMarketing && <TabsContent value="contacts"><ContactsManager /></TabsContent>}
             {isAdmin && <TabsContent value="apps"><AppsTab /></TabsContent>}
+            {canAccessAdmin && (
+              <TabsContent value="vendas-huambo">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <VendasHuamboTab />
+                </Suspense>
+              </TabsContent>
+            )}
             {canManageCatalog && (
               <TabsContent value="collections">
                 <CollectionsTab books={books} onBooksChange={loadAll} />
@@ -292,16 +429,50 @@ const AdminPage = () => {
                   <div className="flex justify-between mb-6">
                     <div>
                       <h2 className="text-2xl font-bold">Catálogo</h2>
-                      <p className="text-sm text-muted-foreground mt-1">{books.length} livros · cada um com ID e código único</p>
+                      <p className="text-sm text-muted-foreground mt-1">{books.length} livros · {books.filter((b) => b.featured).length} em destaque</p>
                     </div>
-                    <Button className="btn-primary" onClick={() => { setEditingBook(null); setShowBookForm(true); }} disabled={!canManageCatalog}>
+                    <Button className="btn-primary" onClick={() => { setEditingBook(null); setDuplicatingBook(null); setShowBookForm(true); }} disabled={!canManageCatalog}>
                       <Plus className="h-4 w-4 mr-2" /> Adicionar
                     </Button>
                   </div>
+                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        value={bookSearch}
+                        onChange={(e) => setBookSearch(e.target.value)}
+                        placeholder="Pesquisar por título, autor, código, SKU ou ISBN..."
+                        className="pl-9"
+                      />
+                    </div>
+                    <Select value={bookFilter} onValueChange={setBookFilter}>
+                      <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os livros</SelectItem>
+                        <SelectItem value="featured">Em destaque</SelectItem>
+                        <SelectItem value="low_stock">Stock baixo ou esgotado</SelectItem>
+                        <SelectItem value="no_cover">Sem capa</SelectItem>
+                        <SelectItem value="hidden">Ocultos da loja</SelectItem>
+                        <SelectItem value="promo">Em promoção</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <BooksBulkBar
+                    selected={books.filter((b) => selectedBookIds.includes(b.id))}
+                    onClear={() => setSelectedBookIds([])}
+                    onDone={() => { setSelectedBookIds([]); loadAll(); }}
+                  />
                   <div className="bg-card border rounded-xl overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 text-left">
                         <tr>
+                          <th className="pl-4 w-8">
+                            <Checkbox
+                              aria-label="Seleccionar todos os livros visíveis na lista"
+                              checked={filteredBooks.length > 0 && filteredBooks.every((b) => selectedBookIds.includes(b.id))}
+                              onCheckedChange={(v) => setSelectedBookIds(v ? filteredBooks.map((b) => b.id) : [])}
+                            />
+                          </th>
                           <th className="p-4 w-14" />
                           <th className="p-4">Código</th>
                           <th className="p-4">Título</th>
@@ -316,15 +487,27 @@ const AdminPage = () => {
                       <tbody className="divide-y">
                         {books.length === 0 && (
                           <tr>
-                            <td colSpan={9} className="p-12 text-center text-muted-foreground">
+                            <td colSpan={10} className="p-12 text-center text-muted-foreground">
                               <PackageSearch className="h-10 w-10 mx-auto mb-3 opacity-40" />
                               <p className="font-medium">Nenhum livro no catálogo</p>
                               <p className="text-sm mt-1">Clique em Adicionar para publicar o primeiro livro.</p>
                             </td>
                           </tr>
                         )}
-                        {books.map((b) => (
-                          <tr key={b.id} className="hover:bg-muted/30">
+                        {books.length > 0 && filteredBooks.length === 0 && (
+                          <tr>
+                            <td colSpan={10} className="p-10 text-center text-muted-foreground">Nenhum livro corresponde à pesquisa.</td>
+                          </tr>
+                        )}
+                        {filteredBooks.map((b) => (
+                          <tr key={b.id} className={`hover:bg-muted/30 ${selectedBookIds.includes(b.id) ? 'bg-[#0ea5c9]/5' : ''}`}>
+                            <td className="pl-4">
+                              <Checkbox
+                                aria-label={`Seleccionar ${b.title}`}
+                                checked={selectedBookIds.includes(b.id)}
+                                onCheckedChange={(v) => setSelectedBookIds((prev) => (v ? [...prev, b.id] : prev.filter((id) => id !== b.id)))}
+                              />
+                            </td>
                             <td className="p-4">
                               <div className="h-12 w-9 rounded overflow-hidden bg-muted border shrink-0">
                                 {b.cover ? (
@@ -340,10 +523,25 @@ const AdminPage = () => {
                                 <span className="block text-[10px] text-muted-foreground font-mono">{b.sku}</span>
                               )}
                             </td>
-                            <td className="p-4 font-medium max-w-[180px] truncate">{b.title}</td>
+                            <td className="p-4 font-medium max-w-[180px]">
+                              <span className="block truncate">{b.title}</span>
+                              {!isBookVisible(b) && <span className="inline-block mt-0.5 text-[10px] font-semibold uppercase bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200 px-1.5 py-0.5 rounded">Oculto</span>}
+                            </td>
                             <td className="p-4 text-muted-foreground hidden lg:table-cell">{b.author}</td>
                             <td className="p-4 text-muted-foreground hidden md:table-cell">{b.genre}</td>
-                            <td className="p-4 whitespace-nowrap">Kz {Number(b.price).toFixed(2)}</td>
+                            <td className="p-4 whitespace-nowrap">
+                              {isSaleActive(b) ? (
+                                <>
+                                  <span className="text-rose-600 font-medium">Kz {Number(b.sale_price).toFixed(2)}</span>
+                                  <span className="block text-[10px] text-muted-foreground line-through">Kz {Number(b.price).toFixed(2)}</span>
+                                </>
+                              ) : (
+                                <>
+                                  Kz {Number(b.price).toFixed(2)}
+                                  {isSaleScheduled(b) && <span className="block text-[10px] text-rose-600">promoção agendada</span>}
+                                </>
+                              )}
+                            </td>
                             <td className="p-4">
                               <span className={Number(b.stock) <= 5 ? 'text-red-600 font-medium' : ''}>{b.stock}</span>
                               {(b.stock_alert || b.stock_low) && (
@@ -353,9 +551,19 @@ const AdminPage = () => {
                                 </span>
                               )}
                             </td>
-                            <td className="p-4 hidden sm:table-cell">{b.featured ? '★' : '—'}</td>
+                            <td className="p-4 hidden sm:table-cell">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => toggleFeatured(b)}
+                                title={b.featured ? 'Remover destaque' : 'Destacar na homepage'}
+                              >
+                                <Star className={`h-4 w-4 ${b.featured ? 'fill-amber-400 text-amber-500' : 'text-muted-foreground'}`} />
+                              </Button>
+                            </td>
                             <td className="p-4 text-right whitespace-nowrap">
-                              <Button variant="ghost" size="icon" onClick={() => openEditBook(b)} disabled={!canManageCatalog}><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => openEditBook(b)} disabled={!canManageCatalog} title="Editar"><Pencil className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={() => openDuplicateBook(b)} disabled={!canManageCatalog} title="Duplicar"><Copy className="h-4 w-4" /></Button>
                               <Button variant="ghost" size="icon" onClick={() => handleDeleteBook(b)} disabled={!canManageCatalog}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                             </td>
                           </tr>
@@ -376,7 +584,16 @@ const AdminPage = () => {
                 <TabsContent value="orders">
                   <SalesReportsPanel orders={orders} />
 
-                  <div className="grid sm:grid-cols-3 gap-4 mb-6">
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentFilter(paymentFilter === 'awaiting_confirmation' ? 'all' : 'awaiting_confirmation')}
+                      className={`text-left bg-card border rounded-xl p-4 transition-colors hover:border-orange-400 ${paymentFilter === 'awaiting_confirmation' ? 'border-orange-500 ring-1 ring-orange-500' : ''}`}
+                      title="Mostrar só estas encomendas"
+                    >
+                      <p className="text-sm text-muted-foreground">Pagamentos por confirmar</p>
+                      <p className="text-2xl font-bold text-orange-600">{awaitingPaymentCount}</p>
+                    </button>
                     <div className="bg-card border rounded-xl p-4">
                       <p className="text-sm text-muted-foreground">Total Encomendas</p>
                       <p className="text-2xl font-bold">{orders.length}</p>
@@ -397,9 +614,18 @@ const AdminPage = () => {
                       <Input
                         value={orderSearch}
                         onChange={(e) => setOrderSearch(e.target.value)}
-                        placeholder="Pesquisar cliente, email, nº..."
+                        placeholder="Cliente, email, nº ou referência…"
                         className="w-48 h-9"
                       />
+                      <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+                      <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os pagamentos</SelectItem>
+                        {['awaiting_confirmation', 'pending', 'paid', 'failed'].map((ps) => (
+                          <SelectItem key={ps} value={ps}>{getPaymentStatusLabel(ps)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                      </Select>
                       <Select value={orderFilter} onValueChange={setOrderFilter}>
                       <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -492,9 +718,21 @@ const AdminPage = () => {
                                   </span>
                                 </p>
                               )}
-                              {o.payment_method && (
+                              {paymentLabelOf(o) && (
                                 <p className="text-muted-foreground">
-                                  Pagamento: {PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method}
+                                  Pagamento: <strong className="text-foreground">{paymentLabelOf(o)}</strong>
+                                </p>
+                              )}
+                              {o.payment_reference && (
+                                <p className="text-muted-foreground flex items-center gap-2">
+                                  Referência: <code className="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded">{o.payment_reference}</code>
+                                  <button
+                                    type="button"
+                                    className="text-xs text-[#0ea5c9] hover:underline"
+                                    onClick={() => navigator.clipboard?.writeText(o.payment_reference).then(() => toast({ title: 'Referência copiada' }))}
+                                  >
+                                    copiar
+                                  </button>
                                 </p>
                               )}
                               {o.payment_status && (
@@ -511,9 +749,19 @@ const AdminPage = () => {
 
                             <div className="rounded-lg bg-muted/30 p-3 space-y-2">
                               {(o.items || []).map((item, i) => (
-                                <div key={i} className="flex justify-between text-sm">
-                                  <span>{item.quantity}× {item.title}</span>
-                                  <span className="font-medium">Kz {(Number(item.price) * item.quantity).toFixed(2)}</span>
+                                <div key={i} className="flex justify-between gap-3 text-sm">
+                                  <span>
+                                    {item.quantity}× {item.title}
+                                    {item.book_code && <code className="ml-1 text-[10px] text-muted-foreground font-mono">{item.book_code}</code>}
+                                  </span>
+                                  <span className="font-medium text-right whitespace-nowrap">
+                                    Kz {(Number(item.price) * item.quantity).toFixed(2)}
+                                    {Number(item.list_price) > Number(item.price) && (
+                                      <span className="block text-[10px] text-muted-foreground line-through font-normal">
+                                        Kz {(Number(item.list_price) * item.quantity).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </span>
                                 </div>
                               ))}
                             </div>
@@ -522,6 +770,11 @@ const AdminPage = () => {
                               <p className="text-sm text-muted-foreground italic">Nota: {o.notes}</p>
                             )}
 
+                            <div>
+                              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleReceipt(o)}>
+                                Emitir recibo
+                              </Button>
+                            </div>
                             <div className="space-y-2">
                               <p className="text-xs font-medium text-muted-foreground">Confirmar pagamento</p>
                               <div className="flex flex-wrap gap-1">
@@ -584,9 +837,10 @@ const AdminPage = () => {
 
         <BookFormModal
           open={showBookForm}
-          onClose={() => { setShowBookForm(false); setEditingBook(null); }}
+          onClose={() => { setShowBookForm(false); setEditingBook(null); setDuplicatingBook(null); }}
           onSave={handleSaveBook}
           editing={editingBook}
+          template={duplicatingBook}
           saving={saving}
         />
 

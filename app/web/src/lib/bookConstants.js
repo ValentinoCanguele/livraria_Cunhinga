@@ -1,6 +1,15 @@
+import { toLocalInput } from '@/lib/pricing';
+import pb from '@/lib/dataClient';
+
 export const BOOK_GENRES = [
-  'Religião', 'Clássicos', 'Romance', 'Infantil', 'Ficção', 'Biografia',
-  'Devocional', 'Educação', 'Saúde', 'História', 'Família', 'Juvenil',
+  'Catálogo Geral',
+  'Ellen G. White',
+  'Apocalipse & Profecia',
+  'Família & Relacionamentos',
+  'Saúde & Estilo de Vida',
+  'Fé & Doutrina',
+  'Pregação & Liderança',
+  'Colportagem',
 ];
 
 export const BOOK_LANGUAGES = ['Português', 'Inglês', 'Francês', 'Espanhol'];
@@ -8,7 +17,7 @@ export const BOOK_LANGUAGES = ['Português', 'Inglês', 'Francês', 'Espanhol'];
 export const emptyBookForm = {
   title: '',
   author: '',
-  genre: 'Religião',
+  genre: 'Catálogo Geral',
   price: '',
   stock: '',
   cover: '',
@@ -33,25 +42,21 @@ export const emptyBookForm = {
   author_photo: '',
   sample_pages: [],
   versions: [],
-  compras: 0,
-  lido: 0,
-  baixados: 0,
-  vendidos: 0,
+  active: true,
+  sale_price: '',
+  sale_starts_at: '',
+  sale_ends_at: '',
 };
 
-export function previewBookCode() {
-  const seq = Date.now().toString(36).toUpperCase().slice(-5);
-  return `LA-${seq}`;
-}
-
 export function bookToForm(record) {
+  const cover = record.cover || (record.cover_image ? pb.files.getURL(record, record.cover_image) : '');
   return {
     title: record.title || '',
     author: record.author || '',
-    genre: record.genre || 'Religião',
+    genre: record.genre || 'Catálogo Geral',
     price: record.price ?? '',
     stock: record.stock ?? '',
-    cover: record.cover || '',
+    cover,
     description: record.description || '',
     featured: !!record.featured,
     isbn: record.isbn || '',
@@ -73,9 +78,9 @@ export function bookToForm(record) {
     author_photo: record.author_photo || '',
     sample_pages: record.sample_pages || [],
     versions: record.versions || [],
-    compras: record.compras ?? 0,
-    lido: record.lido ?? 0,
-    baixados: record.baixados ?? 0,
-    vendidos: record.vendidos ?? 0,
+    active: record.active !== false,
+    sale_price: record.sale_price ?? '',
+    sale_starts_at: toLocalInput(record.sale_starts_at),
+    sale_ends_at: toLocalInput(record.sale_ends_at),
   };
 }

@@ -1,7 +1,24 @@
-import pb from '@/lib/pocketbaseClient';
+import pb from '@/lib/dataClient';
+import { APP_API_URL, mediaUrl } from '@/lib/supabaseClient';
+import { effectivePrice, isSaleActive } from '@/lib/pricing';
+import { escapeFilterValue } from '@/lib/sanitizeHtml';
+
+// Só livros visíveis na loja (quem gere o catálogo também lê os ocultos, mas não os vê na loja).
+const VISIBLE = 'active = true';
 
 const CURRENCY = { code: 'AOA', symbol: 'Kz' };
-const PB_URL = import.meta.env.VITE_POCKETBASE_URL || 'http://127.0.0.1:8090';
+
+function resolveBookCover(book) {
+  if (book.cover) return book.cover;
+  if (book.cover_image) {
+    try {
+      return pb.files.getURL(book, book.cover_image);
+    } catch {
+      return mediaUrl('stock_books', book.id, book.cover_image);
+    }
+  }
+  return '';
+}
 
 export function formatCurrency(amountInCents, currencyInfo = CURRENCY) {
   const amount = amountInCents / 100;
@@ -11,21 +28,24 @@ export function formatCurrency(amountInCents, currencyInfo = CURRENCY) {
 
 function bookToProduct(book, collectionsMap = {}) {
   const priceInCents = Math.round((Number(book.price) || 0) * 100);
+  const onSale = isSaleActive(book);
+  const saleInCents = onSale ? Math.round(effectivePrice(book) * 100) : null;
   const stock = Number(book.stock) || 0;
   const variantId = `${book.id}-default`;
   const collectionId = book.collection_id || '';
+  const cover = resolveBookCover(book);
 
   const variant = {
     id: variantId,
     title: 'Standard',
     price_in_cents: priceInCents,
-    sale_price_in_cents: null,
+    sale_price_in_cents: saleInCents,
     price_formatted: formatCurrency(priceInCents),
-    sale_price_formatted: null,
+    sale_price_formatted: onSale ? formatCurrency(saleInCents) : null,
     currency_info: CURRENCY,
     inventory_quantity: stock,
     manage_inventory: true,
-    image_url: book.cover || null,
+    image_url: cover || null,
   };
 
   return {
@@ -33,12 +53,15 @@ function bookToProduct(book, collectionsMap = {}) {
     title: book.title,
     subtitle: book.author || '',
     description: book.description || '',
-    image: book.cover || '',
-    images: book.cover ? [{ url: book.cover }] : [],
+    image: cover || '',
+    images: cover ? [{ url: cover }] : [],
     price_in_cents: priceInCents,
     type: { value: book.genre || 'Geral' },
     purchasable: stock > 0,
-    ribbon_text: book.urgency_text || (book.featured ? 'Destaque' : stock <= 5 && stock > 0 ? 'Últimas unidades' : null),
+    ribbon_text: book.urgency_text || (onSale ? `Promoção −${Math.round((1 - saleInCents / priceInCents) * 100)}%` : book.featured ? 'Destaque' : book.stock_low && stock > 0 ? 'Últimas unidades' : null),
+    on_sale: onSale,
+    sale_ends_at: onSale ? book.sale_ends_at || null : null,
+    active: book.active !== false,
     variants: [variant],
     options: [],
     collections: collectionId && collectionsMap[collectionId]
@@ -66,10 +89,10 @@ function bookToProduct(book, collectionsMap = {}) {
     sample_pages: book.sample_pages || [],
     versions: book.versions || [],
     preview_enabled: !!book.preview_enabled,
-    compras: Number(book.compras) || 0,
-    lido: Number(book.lido) || 0,
-    baixados: Number(book.baixados) || 0,
-    vendidos: Number(book.vendidos) || 0,
+    sales_count: Number(book.sales_count) || 0,
+    views_count: Number(book.views_count) || 0,
+    stock_low: !!book.stock_low,
+    stock_alert: !!book.stock_alert,
   };
 }
 
@@ -92,7 +115,7 @@ async function getCollectionsMap() {
 
 async function fetchBooks(options = {}) {
   const collectionsMap = await getCollectionsMap();
-  const filter = options.featured ? 'featured = true' : '';
+  const filter = options.featured ? `featured = true && ${VISIBLE}` : VISIBLE;
   const limit = Number(options.limit);
 
   let items;
@@ -153,7 +176,10 @@ export async function getHeroSlides(placement = 'home') {
       filter: 'active = true',
       sort: 'sort_order',
     });
+    // Quem gere o catálogo também lê os slides agendados; a loja mostra só os que estão no ar.
+    const now = Date.now();
     const filtered = records
+      .filter((r) => (!r.starts_at || new Date(r.starts_at).getTime() <= now) && (!r.ends_at || new Date(r.ends_at).getTime() > now))
       .map(mapSlideRecord)
       .filter((s) => s.placement === placement || s.placement === 'both' || (!s.placement && placement === 'home'));
     return sortSlidesList(filtered);
@@ -268,7 +294,7 @@ export async function initializeCheckout({
   deliveryLocality, deliveryLocalityId, deliveryStreet, deliveryReference, deliveryAddressFull,
   deliveryRelativeName, deliveryRelativePhone, checkoutSignature,
 }) {
-  const res = await fetch(`${PB_URL}/api/app/checkout`, {
+  const res = await fetch(`${APP_API_URL}/checkout`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -290,11 +316,11 @@ export async function initializeCheckout({
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || data.error || 'Erro no checkout');
-  return { url: data.url, orderId: data.orderId, total: data.total, orderNumber: data.orderNumber, order_type: data.order_type };
+  return { url: data.url, orderId: data.orderId, total: data.total, orderNumber: data.orderNumber, order_type: data.order_type, email_sent: data.email_sent, whatsapp_sent: data.whatsapp_sent };
 }
 
 export async function subscribeNewsletter(email) {
-  const res = await fetch(`${PB_URL}/api/app/newsletter`, {
+  const res = await fetch(`${APP_API_URL}/newsletter`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
@@ -305,13 +331,53 @@ export async function subscribeNewsletter(email) {
   return data;
 }
 
-export async function getRelatedProducts(author, excludeId, limit = 4) {
-  if (!author?.trim()) return { products: [] };
+export async function getRelatedProducts(author, excludeId, limit = 4, genre = null) {
   try {
     const collectionsMap = await getCollectionsMap();
-    const filter = `author ~ "${author.trim()}" && id != "${excludeId}"`;
-    const records = await pb.collection('stock_books').getList(1, limit, { filter, sort: BOOK_SORT });
-    return { products: records.items.map((b) => bookToProduct(b, collectionsMap)) };
+    const items = [];
+    const seenIds = new Set(excludeId ? [excludeId] : []);
+
+    // 1. Same author first
+    if (author?.trim()) {
+      const cleanAuthor = author.trim().replace(/["\\]/g, '');
+      const filter = (excludeId ? `author ~ "${cleanAuthor}" && id != "${excludeId}"` : `author ~ "${cleanAuthor}"`) + ` && ${VISIBLE}`;
+      const byAuthor = await pb.collection('stock_books').getList(1, limit, { filter, sort: BOOK_SORT }).catch(() => ({ items: [] }));
+      for (const b of byAuthor.items) {
+        if (!seenIds.has(b.id)) {
+          seenIds.add(b.id);
+          items.push(b);
+        }
+      }
+    }
+
+    // 2. Same genre if we need more
+    if (items.length < limit && genre?.trim()) {
+      const cleanGenre = genre.trim().replace(/["\\]/g, '');
+      const filter = (excludeId ? `genre = "${cleanGenre}" && id != "${excludeId}"` : `genre = "${cleanGenre}"`) + ` && ${VISIBLE}`;
+      const byGenre = await pb.collection('stock_books').getList(1, limit * 2, { filter, sort: BOOK_SORT }).catch(() => ({ items: [] }));
+      for (const b of byGenre.items) {
+        if (items.length >= limit) break;
+        if (!seenIds.has(b.id)) {
+          seenIds.add(b.id);
+          items.push(b);
+        }
+      }
+    }
+
+    // 3. Fallback to top books
+    if (items.length < limit) {
+      const filter = excludeId ? `id != "${excludeId}" && ${VISIBLE}` : VISIBLE;
+      const fallback = await pb.collection('stock_books').getList(1, limit * 2, { filter, sort: '-featured,stock' }).catch(() => ({ items: [] }));
+      for (const b of fallback.items) {
+        if (items.length >= limit) break;
+        if (!seenIds.has(b.id)) {
+          seenIds.add(b.id);
+          items.push(b);
+        }
+      }
+    }
+
+    return { products: items.map((b) => bookToProduct(b, collectionsMap)) };
   } catch {
     return { products: [] };
   }
@@ -320,7 +386,7 @@ export async function getRelatedProducts(author, excludeId, limit = 4) {
 export async function getLowStockBooks() {
   try {
     const records = await pb.collection('stock_books').getFullList({
-      filter: 'stock_alert = true || stock_low = true || stock <= 5',
+      filter: 'stock_alert = true || stock_low = true',
       sort: 'stock',
     });
     return records;
@@ -329,15 +395,28 @@ export async function getLowStockBooks() {
   }
 }
 
-export async function clearStockAlert(bookId) {
-  await pb.collection('stock_books').update(bookId, { stock_alert: false, stock_low: false });
+/** Conta uma visualização do livro (uma vez por sessão do navegador); falhas são ignoradas. */
+export function trackBookView(bookId) {
+  if (!bookId) return;
+  const key = `viewed:${bookId}`;
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch { /* sem sessionStorage: conta na mesma */ }
+  fetch(`${APP_API_URL}/catalog/view`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ book_id: bookId }),
+    keepalive: true,
+  }).catch(() => {});
 }
 
 export async function searchProducts(query, limit = 50) {
   const q = query.trim();
   if (!q) return getProducts({ limit });
 
-  const filter = `title ~ "${q}" || author ~ "${q}" || genre ~ "${q}" || book_code ~ "${q}" || isbn ~ "${q}"`;
+  const v = escapeFilterValue(q);
+  const filter = `(title ~ "${v}" || author ~ "${v}" || genre ~ "${v}" || book_code ~ "${v}" || isbn ~ "${v}") && ${VISIBLE}`;
   const records = await pb.collection('stock_books').getList(1, limit, { filter, sort: BOOK_SORT });
   const collectionsMap = await getCollectionsMap();
   return { products: records.items.map((b) => bookToProduct(b, collectionsMap)) };

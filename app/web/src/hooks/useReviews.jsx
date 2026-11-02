@@ -1,9 +1,26 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import { db, handleFirestoreError, OperationType } from '@/lib/firebaseClient';
-import { collection, query, where, onSnapshot, setDoc, doc, deleteDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { supabase, mediaUrl } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
 
+function toReview(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    userName: row.user_name || 'Leitor',
+    userAvatar: row.user_avatar ? mediaUrl('users', row.user_id, row.user_avatar) : null,
+    bookId: row.book_id,
+    rating: row.rating,
+    comment: row.comment,
+    isVerified: row.is_verified,
+    createdAt: row.created,
+  };
+}
+
+/**
+ * Avaliações de um livro (tabela "book_reviews" do Supabase). O nome, a foto e a
+ * "compra verificada" são definidos pela base de dados.
+ */
 export const useReviews = (bookId) => {
   const { user, isAuthed, fetchUserOrders } = useAuth();
   const [reviews, setReviews] = useState([]);
@@ -12,49 +29,31 @@ export const useReviews = (bookId) => {
   const [userOrders, setUserOrders] = useState([]);
   const { toast } = useToast();
 
-  // 1. Fetch all reviews for this book
-  useEffect(() => {
-    if (!bookId) return;
-
-    setLoading(true);
-    const q = query(
-      collection(db, 'reviews'),
-      where('bookId', '==', bookId),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items = [];
-      snapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() });
-      });
-      setReviews(items);
-      setLoading(false);
-    }, (error) => {
-      setLoading(false);
-      // Fallback if index is building or query fails
-      console.warn('Reviews listing query failed:', error);
-      // Try un-ordered query as fallback
-      const fallbackQuery = query(
-        collection(db, 'reviews'),
-        where('bookId', '==', bookId)
-      );
-      onSnapshot(fallbackQuery, (snapshot) => {
-        const items = [];
-        snapshot.forEach((doc) => {
-          items.push({ id: doc.id, ...doc.data() });
-        });
-        setReviews(items);
-        setLoading(false);
-      }, (fallbackError) => {
-        handleFirestoreError(fallbackError, OperationType.LIST, `reviews?bookId=${bookId}`);
-      });
-    });
-
-    return () => unsubscribe();
+  // 1. Avaliações do livro
+  const loadReviews = useCallback(async () => {
+    if (!bookId) {
+      setReviews([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('book_reviews')
+      .select('id, user_id, user_name, user_avatar, book_id, rating, comment, is_verified, created')
+      .eq('book_id', bookId)
+      .order('created', { ascending: false });
+    if (error) throw error;
+    setReviews((data || []).map(toReview));
   }, [bookId]);
 
-  // 2. Fetch user's orders to verify purchase status
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    loadReviews()
+      .catch((error) => console.warn('Não foi possível carregar as avaliações:', error))
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [loadReviews]);
+
+  // 2. Encomendas do utilizador, para indicar se pode ter "compra verificada"
   useEffect(() => {
     const loadOrders = async () => {
       if (isAuthed && user?.email) {
@@ -77,10 +76,7 @@ export const useReviews = (bookId) => {
     return userOrders.some(order => {
       const items = order.items || [];
       return items.some(item => {
-        // Match by title (case-insensitive) or product ID
-        const matchTitle = item.title?.toLowerCase() === bookId.toLowerCase() || 
-                           item.product_id === bookId;
-        return matchTitle;
+        return item.book_id === bookId || item.product_id === bookId;
       });
     });
   }, [userOrders, bookId, isAuthed]);
@@ -129,53 +125,47 @@ export const useReviews = (bookId) => {
       return false;
     }
 
-    setSubmitting(true);
-    const docId = `${user.id}_${bookId}`;
-    const docRef = doc(db, 'reviews', docId);
-
-    const payload = {
-      userId: user.id,
-      userName: user.name || user.email.split('@')[0],
-      userAvatar: user.avatar || null,
-      bookId,
-      rating: Number(rating),
-      comment: comment.trim(),
-      createdAt: serverTimestamp(),
-      isVerified: hasPurchased,
-    };
-
-    try {
-      await setDoc(docRef, payload);
+    if (comment.trim().length > 1000) {
       toast({
-        title: 'Avaliação Guardada',
-        description: 'A sua avaliação foi registada com sucesso! Obrigado pelo seu feedback.',
+        variant: 'destructive',
+        title: 'Comentário muito longo',
+        description: 'O comentário pode ter no máximo 1000 caracteres.',
       });
-      setSubmitting(false);
-      return true;
-    } catch (error) {
-      setSubmitting(false);
-      handleFirestoreError(error, OperationType.CREATE, `reviews/${docId}`);
       return false;
     }
+
+    setSubmitting(true);
+    const { error } = await supabase
+      .from('book_reviews')
+      .upsert(
+        { book_id: bookId, user_id: user.id, rating: Number(rating), comment: comment.trim() },
+        { onConflict: 'book_id,user_id' },
+      );
+    setSubmitting(false);
+
+    if (error) {
+      toast({ variant: 'destructive', title: 'Não foi possível guardar a avaliação', description: error.message });
+      return false;
+    }
+    toast({
+      title: 'Avaliação Guardada',
+      description: 'A sua avaliação foi registada com sucesso! Obrigado pelo seu feedback.',
+    });
+    await loadReviews().catch(() => {});
+    return true;
   };
 
-  // 6. Delete review
+  // 6. Apagar a própria avaliação
   const deleteReview = async () => {
     if (!isAuthed || !user?.id) return false;
-    const docId = `${user.id}_${bookId}`;
-    const docRef = doc(db, 'reviews', docId);
-
-    try {
-      await deleteDoc(docRef);
-      toast({
-        title: 'Avaliação Removida',
-        description: 'A sua avaliação foi removida.',
-      });
-      return true;
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `reviews/${docId}`);
+    const { error } = await supabase.from('book_reviews').delete().eq('book_id', bookId).eq('user_id', user.id);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Não foi possível remover a avaliação', description: error.message });
       return false;
     }
+    toast({ title: 'Avaliação Removida', description: 'A sua avaliação foi removida.' });
+    setReviews((prev) => prev.filter((r) => r.userId !== user.id));
+    return true;
   };
 
   // Check if current user has already reviewed

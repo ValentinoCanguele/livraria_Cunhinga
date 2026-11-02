@@ -11,23 +11,44 @@ import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import { pageTitle, BRAND } from '@/lib/brand';
+import { APP_API_URL } from '@/lib/supabaseClient';
 
 const ContactPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     message: ''
   });
+  const [sending, setSending] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast({
-      title: "Message sent",
-      description: "We'll get back to you within 24 hours.",
-    });
-    setFormData({ name: '', email: '', message: '' });
+    setSending(true);
+    try {
+      const res = await fetch(`${APP_API_URL}/contact-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Erro ao enviar mensagem');
+      toast({
+        title: 'Mensagem enviada',
+        description: data.message || 'Entraremos em contacto em breve.',
+      });
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao enviar',
+        description: err.message || 'Tente novamente mais tarde.',
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -94,6 +115,18 @@ const ContactPage = () => {
                 </div>
 
                 <div>
+                  <Label htmlFor="phone">Telefone (opcional)</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="mt-1 bg-input border-border text-foreground"
+                  />
+                </div>
+
+                <div>
                   <Label htmlFor="message">Mensagem</Label>
                   <Textarea
                     id="message"
@@ -106,8 +139,8 @@ const ContactPage = () => {
                   />
                 </div>
 
-                <Button type="submit" className="w-full btn-primary">
-                  Enviar Mensagem
+                <Button type="submit" className="w-full btn-primary" disabled={sending}>
+                  {sending ? 'A enviar...' : 'Enviar Mensagem'}
                 </Button>
               </form>
             </motion.div>

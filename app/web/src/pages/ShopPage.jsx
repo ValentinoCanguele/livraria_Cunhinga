@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   SlidersHorizontal, X, LayoutGrid, List, BookOpen, Sparkles,
-  Layers, Star, Package, ChevronRight, TrendingUp,
+  Layers, Star, Package, ChevronRight, ChevronLeft, TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -48,7 +48,10 @@ const ShopPage = () => {
   const { settings } = useSiteSettings();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(null);
+  // Páginas a sério em vez do "carregar mais", que empilhava 24 → 48 → 72 → 102 na mesma
+  // página: num telemóvel isso é uma lista interminável onde se perde o lugar.
+  const [page, setPage] = useState(1);
+  const gridTopRef = useRef(null);
 
   const shop = {
     ...shopDefaults,
@@ -110,12 +113,22 @@ const ShopPage = () => {
   );
 
   const perPage = shop.shop_per_page;
-  const displayProducts = visibleCount ? sortedProducts.slice(0, visibleCount) : sortedProducts.slice(0, perPage);
-  const hasMore = sortedProducts.length > displayProducts.length;
+  const pageCount = Math.max(1, Math.ceil(sortedProducts.length / perPage));
+  const currentPage = Math.min(page, pageCount);
+  const displayProducts = sortedProducts.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const firstShown = sortedProducts.length === 0 ? 0 : (currentPage - 1) * perPage + 1;
+  const lastShown = Math.min(currentPage * perPage, sortedProducts.length);
 
   useEffect(() => {
-    setVisibleCount(null);
+    setPage(1);
   }, [filteredProducts, sortBy, filterCount, activeFilters.search]);
+
+  // Mudar de página volta ao topo da lista; senão fica-se a meio da página seguinte.
+  const goToPage = (next) => {
+    const alvo = Math.min(Math.max(next, 1), pageCount);
+    setPage(alvo);
+    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const featuredProducts = useMemo(
     () => allProducts.filter((p) => p.featured).slice(0, 8),
@@ -387,8 +400,8 @@ const ShopPage = () => {
                   <TooltipContent side="top">Filtrar catálogo</TooltipContent>
                 </Tooltip>
                 <div className="text-sm text-muted-foreground">
-                  A mostrar <strong className="text-foreground">{displayProducts.length}</strong>
-                  {sortedProducts.length !== displayProducts.length && ` de ${sortedProducts.length}`}
+                  A mostrar <strong className="text-foreground">{firstShown}–{lastShown}</strong>
+                  {` de ${sortedProducts.length}`}
                   {' '}· catálogo com <strong className="text-foreground">{catalogStats.total}</strong> livros
                 </div>
               </div>
@@ -477,8 +490,9 @@ const ShopPage = () => {
               </div>
             )}
 
-            <motion.div 
-              key={`${activeFilters.categories.join(',')}-${sortBy}-${viewMode}-${filterCount}`}
+            <div ref={gridTopRef} aria-hidden="true" className="scroll-mt-24" />
+            <motion.div
+              key={`${activeFilters.categories.join(',')}-${sortBy}-${viewMode}-${filterCount}-p${currentPage}`}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
@@ -494,17 +508,55 @@ const ShopPage = () => {
               />
             </motion.div>
 
-            {hasMore && !isLoading && (
-              <div className="text-center mt-10">
+            {pageCount > 1 && !isLoading && (
+              <nav className="mt-10 flex items-center justify-center gap-2" aria-label="Páginas do catálogo">
                 <Button
                   variant="outline"
-                  size="lg"
-                  className="px-10 border-[var(--brand-primary)] text-[var(--brand-primary)]"
-                  onClick={() => setVisibleCount((v) => (v || perPage) + perPage)}
+                  size="sm"
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  aria-label="Página anterior"
                 >
-                  Carregar mais livros ({sortedProducts.length - displayProducts.length} restantes)
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Anterior</span>
                 </Button>
-              </div>
+
+                {/* Telemóvel: só "Página 2 de 5" — uma fila de números não cabe em 375 px. */}
+                <span className="sm:hidden text-sm text-muted-foreground px-2">
+                  Página <strong className="text-foreground">{currentPage}</strong> de {pageCount}
+                </span>
+
+                <div className="hidden sm:flex items-center gap-1">
+                  {Array.from({ length: pageCount }, (_, i) => i + 1)
+                    .filter((n) => n === 1 || n === pageCount || Math.abs(n - currentPage) <= 1)
+                    .map((n, i, lista) => (
+                      <React.Fragment key={n}>
+                        {i > 0 && n - lista[i - 1] > 1 && <span className="px-1 text-muted-foreground">…</span>}
+                        <Button
+                          variant={n === currentPage ? 'default' : 'outline'}
+                          size="sm"
+                          className={n === currentPage ? 'btn-primary w-9' : 'w-9'}
+                          onClick={() => goToPage(n)}
+                          aria-current={n === currentPage ? 'page' : undefined}
+                          aria-label={`Página ${n}`}
+                        >
+                          {n}
+                        </Button>
+                      </React.Fragment>
+                    ))}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === pageCount}
+                  aria-label="Página seguinte"
+                >
+                  <span className="hidden sm:inline mr-1">Seguinte</span>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </nav>
             )}
           </div>
         </div>

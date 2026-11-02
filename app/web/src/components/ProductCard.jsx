@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Loader2, Eye, MessageCircle, Heart } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MessageCircle, Heart, Star, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -77,21 +77,33 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
             />
-            <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10 pointer-events-none">
+            {/* Ícones, não autocolantes de texto: o mesmo cartão chegava a dizer o stock
+                quatro vezes (marca na imagem, faixa do admin, etiqueta do preço e "últimas N").
+                Fica uma marca por estado aqui, e o número aparece uma única vez, junto ao
+                preço. A faixa do admin só aparece quando não há aviso de stock, para não
+                empilhar três marcas no canto. */}
+            <div className="absolute top-2 left-2 flex items-center gap-1.5 z-10 pointer-events-none">
               {product.featured && (
-                <span className="bg-amber-400 text-amber-950 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
-                  ★ Destaque
-                </span>
-              )}
-              {product.ribbon_text && inStock && (
-                <span className="bg-[#0ea5c9] text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm uppercase tracking-wider">
-                  {product.ribbon_text}
+                <span
+                  className="h-6 w-6 rounded-full bg-amber-400 text-amber-950 shadow-sm flex items-center justify-center"
+                  title="Destaque"
+                >
+                  <Star className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+                  <span className="sr-only">Destaque</span>
                 </span>
               )}
               {isLowStock && (
-                <span className="bg-rose-500 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider animate-pulse">
-                  <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
-                  Baixo Estoque{qty > 0 ? ` (${qty})` : ''}
+                <span
+                  className="h-6 w-6 rounded-full bg-rose-500 text-white shadow-sm flex items-center justify-center"
+                  title={qty > 0 ? `Últimas ${qty} unidades` : 'Poucas unidades'}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span className="sr-only">{qty > 0 ? `Últimas ${qty} unidades` : 'Poucas unidades'}</span>
+                </span>
+              )}
+              {product.ribbon_text && inStock && !isLowStock && (
+                <span className="bg-[#0ea5c9] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
+                  {product.ribbon_text}
                 </span>
               )}
             </div>
@@ -157,11 +169,8 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
                 <p className="text-primary font-bold">{price}</p>
                 {originalPrice && <p className="text-xs text-muted-foreground line-through">{originalPrice}</p>}
               </div>
-              {inStock && isLowStock && (
-                <span className="text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Baixo Estoque · {qty} un.</span>
-              )}
-              {inStock && !isLowStock && variant?.inventory_quantity <= 5 && (
-                <span className="text-[10px] text-orange-600 font-medium">Últimas {variant.inventory_quantity}</span>
+              {inStock && isLowStock && qty > 0 && (
+                <span className="text-xs font-medium text-orange-600 whitespace-nowrap">Restam {qty}</span>
               )}
             </div>
           </div>

@@ -29,6 +29,7 @@ const TrackOrderPage = lazy(() => import('@/pages/TrackOrderPage.jsx'));
 const AdminPage = lazy(() => import('@/pages/AdminPage.jsx'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage.jsx'));
 const CollectionsPage = lazy(() => import('@/pages/CollectionsPage.jsx'));
+const UnsubscribePage = lazy(() => import('@/pages/UnsubscribePage.jsx'));
 
 const PwaInstallBanner = lazy(() => import('@/components/PwaInstallBanner.jsx'));
 const LivrariaAssistant = lazy(() => import('@/components/LivrariaAssistant.jsx'));
@@ -44,6 +45,16 @@ function PageLoader() {
 function LegacyCategoryRedirect() {
   const { category } = useParams();
   return <Navigate to={category ? `/shop/${encodeURIComponent(category)}` : '/shop'} replace />;
+}
+
+/**
+ * O alias em português do cancelamento de subscrição tem de levar a busca consigo: o token
+ * vai em `?t=`, e um `<Navigate>` simples deixava-o pelo caminho, dando um link partido a
+ * quem usasse este endereço.
+ */
+function UnsubscribeAliasRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/unsubscribe${search}`} replace />;
 }
 
 function LegacyCollectionRedirect() {
@@ -142,6 +153,8 @@ function App() {
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/track" element={<TrackOrderPage />} />
+              <Route path="/unsubscribe" element={<UnsubscribePage />} />
+              <Route path="/cancelar-subscricao" element={<UnsubscribeAliasRedirect />} />
               <Route path="/rastreio" element={<Navigate to="/track" replace />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/perfil" element={<Navigate to="/profile" replace />} />

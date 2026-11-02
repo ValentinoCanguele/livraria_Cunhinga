@@ -3,7 +3,7 @@
 // Deploy com verify_jwt=false: a autenticação é feita aqui (token do Supabase Auth, quando existe).
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.49.4";
 import nodemailer from "npm:nodemailer@6.9.16";
-import { brandFromSettings, emailDocument, formatKz, type Brand } from "./emails.ts";
+import { brandFromSettings, categoryStates, emailDocument, formatKz, isCategoryEnabled, type Brand } from "./emails.ts";
 import {
   accessLinkLetter,
   noticeLetter,
@@ -13,6 +13,7 @@ import {
   testLetter,
   welcomeLetter,
   PREVIEW_TEMPLATES,
+  unsubscribeUrlFor,
   type Letter,
 } from "./emailTemplates.ts";
 
@@ -99,7 +100,7 @@ const normalizePhone = (phone: string) => (phone || "").replace(/\D/g, "");
 // mensagens de WhatsApp mudavam de formato com a máquina.
 const fmtMoneyKz = formatKz;
 
-type NotifyMeta = { context?: string; customer_name?: string; order_number?: string; dedupe?: string };
+type NotifyMeta = { context?: string; customer_name?: string; order_number?: string; dedupe?: string; category?: string };
 
 /** Regista o resultado real de cada envio em notification_logs (visível no admin → Integrações). */
 async function logNotification(entry: Row) {
@@ -200,6 +201,7 @@ async function sendTransactionalEmail(
   html: string,
   meta: NotifyMeta = {},
   text = "",
+  headers: Record<string, string> = {},
 ) {
   if (!to) return false;
   const dedupe = meta.dedupe || "";
@@ -240,6 +242,7 @@ async function sendTransactionalEmail(
           from: { email: fromEmail, name: fromName },
           subject,
           content,
+          ...(Object.keys(headers).length ? { headers } : {}),
         }),
       });
       const detail = res.ok ? `SendGrid ${res.status}` : `SendGrid ${res.status}: ${await res.text()}`;
@@ -260,6 +263,7 @@ async function sendTransactionalEmail(
     const info = await transport.sendMail({
       from: { name: fromName, address: fromEmail },
       to, subject, html, ...(text ? { text } : {}),
+      ...(Object.keys(headers).length ? { headers } : {}),
     });
     await logNotification({ ...base, status: "sent", provider: "smtp", detail: `${settings.smtp_host}:${port} · ${info?.response || "aceite"}` });
     return true;
@@ -275,10 +279,33 @@ function emailBrand(settings: Row | null): Brand {
   return brandFromSettings(settings, String(settings?.site_url || Deno.env.get("SITE_URL") || ""));
 }
 
-/** Envia um modelo pronto (`emailTemplates.ts`), com HTML e texto simples. */
+/**
+ * Envia um modelo pronto (`emailTemplates.ts`), com HTML e texto simples.
+ *
+ * Verifica aqui a categoria, e não em cada sítio que chama: uma categoria esquecida num dos
+ * pontos de envio seria uma mensagem a sair depois de a loja a ter desligado. As
+ * transaccionais não são desligáveis, e `isCategoryEnabled` trata disso.
+ */
 async function sendLetter(settings: Row | null, to: string, letter: Letter, meta: NotifyMeta = {}) {
+  const category = meta.category || "";
+  if (category && !isCategoryEnabled(settings, category)) {
+    await logNotification({
+      type: "email", context: meta.context || "order", recipient: to,
+      customer_name: meta.customer_name || "", order_number: meta.order_number || "",
+      subject: letter.subject, content: "", status: "skipped",
+      detail: `Categoria "${category}" desligada em Configurações.`,
+    });
+    return false;
+  }
   const { html, text } = emailDocument(emailBrand(settings), letter.doc);
-  return sendTransactionalEmail(settings, to, letter.subject, html, meta, text);
+  // `List-Unsubscribe` é o que os clientes de email usam para mostrar o botão próprio de
+  // cancelamento, e o Gmail exige-o a quem envia em volume. O `One-Click` diz que basta um
+  // pedido ao endereço, sem o utilizador ter de confirmar noutra página.
+  const unsubscribe = letter.doc.unsubscribeUrl || "";
+  const headers = unsubscribe
+    ? { "List-Unsubscribe": `<${unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" }
+    : {};
+  return sendTransactionalEmail(settings, to, letter.subject, html, meta, text, headers);
 }
 
 /** Link de pagamento do método da encomenda (ex.: Multicaixa Express), se o pagamento ainda não estiver confirmado. */
@@ -310,12 +337,17 @@ async function sendOrderConfirmationEmail(order: Row, settings: Row | null) {
  * idempotência é a encomenda mais o estado, por isso voltar a pôr a encomenda no mesmo
  * estado não repete a mensagem.
  */
+const PROGRESS_STATUSES = ["confirmed", "preparing", "shipped", "in_transit", "out_for_delivery"];
+
 async function sendOrderStatusEmail(order: Row, settings: Row | null, status: string, event?: Row) {
   if (!settings?.order_email_enabled || !order.customer_email) return false;
   const letter = orderStatusLetter(emailBrand(settings), order, status, event);
   if (!letter) return false;
   return sendLetter(settings, order.customer_email, letter, {
     context: "order_status",
+    // "Entregue" e "Cancelada" não entram na categoria opcional: são o fecho da compra e
+    // saem mesmo com o acompanhamento desligado.
+    category: PROGRESS_STATUSES.includes(status) ? "order_progress" : "",
     customer_name: order.customer_name,
     order_number: order.order_number,
     dedupe: `order:status:${order.id}:${status}`,
@@ -562,7 +594,17 @@ function calcNextSendAt(frequency: string) {
 
 // Contactos com esta etiqueta não recebem envios manuais nem campanhas.
 const OPT_OUT_TAG = "nao-contactar";
-const isOptedOut = (contact: Row) => Array.isArray(contact.tags) && contact.tags.includes(OPT_OUT_TAG);
+/**
+ * Não contactar este contacto?
+ *
+ * Duas origens para a mesma decisão: a etiqueta, que a equipa põe no painel, e a data, que
+ * fica quando o próprio cliente usa o link de cancelamento no rodapé de uma campanha. A
+ * etiqueta é o que o painel mostra e o que já era verificado; a data diz quando foi e que
+ * partiu do cliente. Qualquer uma delas basta — uma gravação que falhe a meio não pode
+ * resultar em mensagens a continuar a sair.
+ */
+const isOptedOut = (contact: Row) =>
+  (Array.isArray(contact.tags) && contact.tags.includes(OPT_OUT_TAG)) || !!contact.marketing_opt_out_at;
 const MAX_NOTIFY_CONTACTS = 300;
 const clipText = (value: unknown, max: number) => String(value ?? "").trim().slice(0, max);
 
@@ -595,10 +637,24 @@ async function notifyContact(contact: Row, opts: Row) {
       // Campanhas e avisos levam a mesma moldura das restantes mensagens, e no rodapé a
       // razão certa: as de marketing dizem como deixar de as receber.
       const isCampaign = !!opts.campaignId;
-      emailSent = await sendLetter(
-        settings, contact.email, noticeLetter(emailBrand(settings), subject, body, isCampaign),
-        { context: isCampaign ? "campaign" : "contact", customer_name: contact.name },
-      );
+      const brand = emailBrand(settings);
+      // Quem pediu para não ser contactado não recebe campanhas. A verificação é aqui, no
+      // envio, e não só em quem escolhe os destinatários: uma lista montada antes do
+      // cancelamento voltaria a apanhá-lo.
+      if (isCampaign && isOptedOut(contact)) {
+        await logNotification({
+          type: "email", context: "campaign", recipient: contact.email,
+          customer_name: contact.name || "", subject, content: "", status: "skipped",
+          detail: "O contacto pediu para não ser contactado.",
+        });
+        emailSent = false;
+      } else {
+        emailSent = await sendLetter(
+          settings, contact.email,
+          noticeLetter(brand, subject, body, isCampaign, isCampaign ? unsubscribeUrlFor(brand, contact.unsubscribe_token || "") : ""),
+          { context: isCampaign ? "campaign" : "contact", category: isCampaign ? "campaign" : "", customer_name: contact.name },
+        );
+      }
       if (channel === "email") status = emailSent ? "sent" : "failed";
       else if (emailSent) status = "sent";
     } else if (channel === "email") {
@@ -1247,6 +1303,59 @@ route("POST", "/admin/whatsapp/test", async ({ auth, body }) => {
 });
 
 /** Lista dos modelos que o painel pode pré-visualizar. */
+/**
+ * Cancelar a subscrição de campanhas, pelo token que vai no rodapé das mensagens.
+ *
+ * Pública e sem sessão: quem quer sair de uma lista não deve ter de criar conta nem entrar.
+ * O token é opaco, de 64 caracteres, por contacto e revogável — é por isso que não vai aqui
+ * o email, que ficaria exposto nos registos do servidor e no histórico do navegador.
+ *
+ * Responde sempre o mesmo com um token inválido: dizer "não existe" transformaria esta rota
+ * num meio de confirmar se um token é de alguém.
+ */
+route("POST", "/unsubscribe", async ({ body, ip }) => {
+  if (!await checkRateLimit("unsubscribe", ip, 20)) throw bad("Demasiados pedidos. Aguarde um minuto.");
+  const token = String(body.token || "").trim();
+  const done = { message: "Deixou de receber campanhas e novidades desta loja." };
+  if (!/^[a-f0-9]{64}$/.test(token)) return json(done);
+  const { data: contact } = await db.from("contacts")
+    .select("id, tags, marketing_opt_out_at").eq("unsubscribe_token", token).maybeSingle();
+  if (!contact) return json(done);
+  // Grava a data e acrescenta a etiqueta que o painel já usava: a equipa vê o contacto como
+  // "não contactar" na lista, sem ter de aprender um segundo sítio onde olhar, e a decisão
+  // vale para todos os canais e não só para o email.
+  if (!isOptedOut(contact)) {
+    const tags = Array.isArray(contact.tags) ? contact.tags.map(String) : [];
+    await db.from("contacts").update({
+      marketing_opt_out_at: nowISO(),
+      tags: tags.includes(OPT_OUT_TAG) ? tags : [...tags, OPT_OUT_TAG],
+    }).eq("id", contact.id);
+  }
+  return json(done);
+});
+
+/** Categorias opcionais de email, para o painel ligar e desligar. */
+route("GET", "/admin/email/categories", async ({ auth }) => {
+  requirePermission(auth, "manage_settings");
+  return json({ categories: categoryStates(await getSettings()) });
+});
+
+route("POST", "/admin/email/categories", async ({ auth, body }) => {
+  requirePermission(auth, "manage_settings");
+  const settings = await getSettings();
+  if (!settings) throw bad("Configurações do site em falta.");
+  // Só as chaves conhecidas entram: um valor qualquer vindo do pedido não pode ficar
+  // guardado a fingir-se de categoria.
+  const incoming = body.categories && typeof body.categories === "object" ? body.categories : {};
+  const next: Row = {};
+  for (const { key } of categoryStates(settings)) {
+    next[key] = incoming[key] !== false;
+  }
+  const { error } = await db.from("site_settings").update({ email_categories: next }).eq("id", settings.id);
+  if (error) throw error;
+  return json({ categories: categoryStates({ ...settings, email_categories: next }) });
+});
+
 route("GET", "/admin/email/templates", async ({ auth }) => {
   requirePermission(auth, "manage_settings");
   const settings = await getSettings();
@@ -1590,6 +1699,7 @@ route("POST", "/account/welcome", async ({ auth }) => {
   const { data: profile } = await db.from("profiles").select("name").eq("id", auth.id).maybeSingle();
   const sent = await sendLetter(settings, auth.email, welcomeLetter(emailBrand(settings), profile?.name || ""), {
     context: "welcome",
+    category: "welcome",
     customer_name: profile?.name || "",
     dedupe: `account:welcome:${auth.id}`,
   });

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Loader2, Monitor, Send, Smartphone } from 'lucide-react';
 import pb from '@/lib/dataClient';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { EDGE_FUNCTION_DESACTUALIZADA, isMissingRoute } from '@/lib/apiCompat';
 
@@ -24,15 +25,21 @@ export default function EmailTemplatesPanel() {
   const [device, setDevice] = useState('desktop');
   const [showText, setShowText] = useState(false);
   const [sending, setSending] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [savingCategory, setSavingCategory] = useState('');
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await pb.send('/admin/email/templates');
+        const [res, cats] = await Promise.all([
+          pb.send('/admin/email/templates'),
+          pb.send('/admin/email/categories').catch(() => ({ categories: [] })),
+        ]);
         if (cancelled) return;
         setTemplates(res.templates || []);
         setReady(res.ready || null);
+        setCategories(cats.categories || []);
         setSelected((prev) => prev || res.templates?.[0]?.key || '');
       } catch (err) {
         if (cancelled) return;
@@ -82,6 +89,21 @@ export default function EmailTemplatesPanel() {
     }
   }, [toast]);
 
+  const toggleCategory = async (key, enabled) => {
+    setSavingCategory(key);
+    const next = categories.map((c) => (c.key === key ? { ...c, enabled } : c));
+    try {
+      const payload = Object.fromEntries(next.map((c) => [c.key, c.enabled]));
+      const res = await pb.send('/admin/email/categories', { method: 'POST', body: { categories: payload } });
+      setCategories(res.categories || next);
+      toast({ title: enabled ? 'Categoria activada' : 'Categoria desactivada' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Não foi possível guardar', description: err.message });
+    } finally {
+      setSavingCategory('');
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
   }
@@ -124,6 +146,29 @@ export default function EmailTemplatesPanel() {
         <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-800 dark:text-emerald-200" role="status">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
           Os envios estão configurados. Confirme com um teste que a mensagem não cai no lixo.
+        </div>
+      )}
+
+      {categories.length > 0 && (
+        <div className="rounded-xl border bg-card p-5">
+          <h3 className="text-sm font-semibold">Categorias opcionais</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            As confirmações de encomenda, os pagamentos, a entrega e as mensagens de conta saem
+            sempre: são a prova de uma compra e o acesso à conta, e não se desligam aqui.
+          </p>
+          <ul className="mt-4 space-y-3">
+            {categories.map((c) => (
+              <li key={c.key} className="flex items-start justify-between gap-4">
+                <label htmlFor={`cat-${c.key}`} className="text-sm leading-snug">{c.label}</label>
+                <Switch
+                  id={`cat-${c.key}`}
+                  checked={c.enabled}
+                  disabled={savingCategory === c.key}
+                  onCheckedChange={(v) => toggleCategory(c.key, v)}
+                />
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

@@ -299,8 +299,14 @@ export function orderStatusLetter(brand: Brand, order: Row, status: string, even
 // C. Avisos simples e testes
 // ---------------------------------------------------------------------------
 
-/** Mensagens de contacto e campanhas: texto escrito no painel, dentro da moldura da loja. */
-export function noticeLetter(brand: Brand, subject: string, body: string, marketing = false): Letter {
+/**
+ * Mensagens de contacto e campanhas: texto escrito no painel, dentro da moldura da loja.
+ *
+ * Só as de marketing levam link de cancelamento. Pôr um numa confirmação de encomenda
+ * convidava a cancelar o que não se pode cancelar — e ainda ensinava o cliente a ignorar o
+ * link nas mensagens onde ele conta.
+ */
+export function noticeLetter(brand: Brand, subject: string, body: string, marketing = false, unsubscribeUrl = ""): Letter {
   return {
     subject,
     doc: {
@@ -309,10 +315,17 @@ export function noticeLetter(brand: Brand, subject: string, body: string, market
       title: subject,
       lead: String(body || "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
       reason: marketing
-        ? "Recebeu esta mensagem porque aceitou receber novidades desta loja. Responda com \"sair\" para deixar de as receber."
+        ? "Recebeu esta mensagem porque aceitou receber novidades desta loja."
         : "Recebeu esta mensagem porque é cliente desta loja.",
+      ...(marketing && unsubscribeUrl ? { unsubscribeUrl } : {}),
     },
   };
+}
+
+/** Endereço do link de cancelamento de subscrição de um contacto. */
+export function unsubscribeUrlFor(brand: Brand, token: string) {
+  if (!brand.siteUrl || !token) return "";
+  return `${brand.siteUrl.replace(/\/$/, "")}/unsubscribe?t=${encodeURIComponent(token)}`;
 }
 
 export function testLetter(brand: Brand): Letter {

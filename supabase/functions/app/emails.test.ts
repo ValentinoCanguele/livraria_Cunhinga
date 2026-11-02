@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SAFE_SYMBOLS, brandFromSettings, emailDocument, formatKz, type Brand } from "./emails.ts";
+import { OPTIONAL_CATEGORIES, SAFE_SYMBOLS, brandFromSettings, categoryStates, emailDocument, formatKz, isCategoryEnabled, type Brand } from "./emails.ts";
 import {
   accessLinkLetter,
   noticeLetter,
@@ -11,6 +11,7 @@ import {
   testLetter,
   welcomeLetter,
   PREVIEW_TEMPLATES,
+  unsubscribeUrlFor,
 } from "./emailTemplates.ts";
 
 const SETTINGS = {
@@ -373,12 +374,12 @@ describe("noticeLetter", () => {
   it("separa marketing de transaccional no rodapé", () => {
     const transaccional = noticeLetter(brand, "Aviso", "Corpo da mensagem.");
     expect(transaccional.doc.reason).toContain("é cliente desta loja");
-    expect(transaccional.doc.reason).not.toContain("sair");
 
-    // As de marketing têm de dizer como deixar de as receber.
-    const campanha = noticeLetter(brand, "Novidades", "Corpo.", true);
+    // As de marketing dizem que houve consentimento; como sair é o link de cancelamento,
+    // que substituiu o "responda com sair" de antes.
+    const campanha = noticeLetter(brand, "Novidades", "Corpo.", true, "https://loja.exemplo.ao/unsubscribe?t=x");
     expect(campanha.doc.reason).toContain("aceitou receber novidades");
-    expect(campanha.doc.reason).toContain("sair");
+    expect(campanha.doc.unsubscribeUrl).toBe("https://loja.exemplo.ao/unsubscribe?t=x");
   });
 
   it("parte o corpo em parágrafos", () => {
@@ -492,5 +493,93 @@ describe("PREVIEW_TEMPLATES", () => {
   it("tem rótulos únicos, para a lista do painel não confundir", () => {
     const labels = Object.values(PREVIEW_TEMPLATES).map((t) => t.label);
     expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+describe("categorias", () => {
+  it("as transaccionais não se desligam", () => {
+    // A regra vive no código e não só nos interruptores do painel: uma configuração
+    // estranha guardada à mão não pode calar a prova de uma compra nem o acesso à conta.
+    const tudoDesligado = { email_categories: { order: false, payment: false, account: false, order_final: false } };
+    for (const categoria of ["order", "payment", "account", "order_status", "receipt", ""]) {
+      expect(isCategoryEnabled(tudoDesligado, categoria), categoria).toBe(true);
+    }
+  });
+
+  it("desliga as opcionais quando a configuração o diz", () => {
+    const settings = { email_categories: { welcome: false, order_progress: true, campaign: false } };
+    expect(isCategoryEnabled(settings, "welcome")).toBe(false);
+    expect(isCategoryEnabled(settings, "campaign")).toBe(false);
+    expect(isCategoryEnabled(settings, "order_progress")).toBe(true);
+  });
+
+  it("sem configuração, tudo continua a sair", () => {
+    // Uma configuração em falta não pode calar mensagens por omissão.
+    for (const settings of [null, {}, { email_categories: null }, { email_categories: "lixo" }]) {
+      expect(isCategoryEnabled(settings as never, "welcome")).toBe(true);
+      expect(isCategoryEnabled(settings as never, "campaign")).toBe(true);
+    }
+  });
+
+  it("só `false` explícito desliga", () => {
+    for (const valor of [true, undefined, null, 0, "", "nao"]) {
+      expect(isCategoryEnabled({ email_categories: { welcome: valor } }, "welcome"), String(valor)).toBe(true);
+    }
+  });
+
+  it("o painel recebe as três opcionais com rótulo", () => {
+    const estados = categoryStates({ email_categories: { campaign: false } });
+    expect(estados.map((c) => c.key)).toEqual(Object.keys(OPTIONAL_CATEGORIES));
+    expect(estados.every((c) => c.label.length > 0)).toBe(true);
+    expect(estados.find((c) => c.key === "campaign")?.enabled).toBe(false);
+    expect(estados.find((c) => c.key === "welcome")?.enabled).toBe(true);
+  });
+});
+
+describe("cancelamento de subscrição", () => {
+  const token = "a".repeat(64);
+
+  it("monta o endereço com o token", () => {
+    expect(unsubscribeUrlFor(brand, token)).toBe(`https://loja.exemplo.ao/unsubscribe?t=${token}`);
+  });
+
+  it("não inventa um endereço sem o que precisa", () => {
+    expect(unsubscribeUrlFor(brand, "")).toBe("");
+    expect(unsubscribeUrlFor(brandFromSettings(SETTINGS), token)).toBe("");
+  });
+
+  it("o link vai nas campanhas, em HTML e em texto", () => {
+    const url = unsubscribeUrlFor(brand, token);
+    const { html, text } = emailDocument(brand, noticeLetter(brand, "Novidades", "Corpo.", true, url).doc);
+    expect(html).toContain(url);
+    expect(html).toContain("Deixar de receber estas mensagens");
+    expect(text).toContain(url);
+  });
+
+  it("não vai nas transaccionais", () => {
+    // Um link de cancelamento numa confirmação de encomenda convida a cancelar o que não se
+    // pode cancelar, e ensina o cliente a ignorá-lo onde ele conta.
+    const url = unsubscribeUrlFor(brand, token);
+    for (const letter of [
+      orderCreatedLetter(brand, ORDER),
+      paymentConfirmedLetter(brand, ORDER),
+      orderStatusLetter(brand, ORDER, "delivered")!,
+      accessLinkLetter(brand, "João", "reset", "https://loja.exemplo.ao/x"),
+      welcomeLetter(brand, "Ana"),
+      // Mesmo passando um endereço, um aviso que não é de marketing não o leva.
+      noticeLetter(brand, "Aviso", "Corpo.", false, url),
+    ]) {
+      expect(letter.doc.unsubscribeUrl, letter.subject).toBeFalsy();
+      const { html } = emailDocument(brand, letter.doc);
+      expect(html, letter.subject).not.toContain("Deixar de receber");
+    }
+  });
+
+  it("recusa um endereço de cancelamento inseguro", () => {
+    const { html } = emailDocument(brand, {
+      title: "Campanha", reason: "Motivo", unsubscribeUrl: "javascript:alert(1)",
+    });
+    expect(html).not.toContain("javascript:");
+    expect(html).not.toContain("Deixar de receber");
   });
 });

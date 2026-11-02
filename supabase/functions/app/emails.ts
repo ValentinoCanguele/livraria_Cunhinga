@@ -94,6 +94,11 @@ export type EmailDoc = {
   notes?: string[];
   /** Porque é que esta mensagem foi enviada. Obrigatório: vai no rodapé de todas. */
   reason: string;
+  /**
+   * Endereço para deixar de receber mensagens desta loja. Só nas de marketing: pôr um
+   * destes numa confirmação de encomenda convida a cancelar o que não se pode cancelar.
+   */
+  unsubscribeUrl?: string;
 };
 
 /**
@@ -283,6 +288,7 @@ function notesBlock(notes: string[] = []): string {
 }
 
 function footer(brand: Brand, doc: EmailDoc): string {
+  const unsubscribe = safeUrl(doc.unsubscribeUrl);
   const bits: string[] = [];
   if (brand.contactAddress) bits.push(esc(brand.contactAddress));
   if (brand.contactPhone) bits.push(esc(brand.contactPhone));
@@ -299,6 +305,7 @@ function footer(brand: Brand, doc: EmailDoc): string {
         <p style="margin:0 0 6px;font:600 13px/1.5 ${FONT};color:${INK}">${esc(brand.siteName)}</p>
         ${bits.length ? `<p style="margin:0 0 10px;font:400 12px/1.7 ${FONT};color:${INK_SOFT}">${bits.join(" · ")}</p>` : ""}
         <p style="margin:0;font:400 12px/1.6 ${FONT};color:${INK_SOFT}">${esc(doc.reason)}</p>
+        ${unsubscribe ? `<p style="margin:10px 0 0;font:400 12px/1.6 ${FONT};color:${INK_SOFT}"><a href="${esc(unsubscribe)}" style="color:${INK_SOFT};text-decoration:underline">Deixar de receber estas mensagens</a></p>` : ""}
       </td></tr>
     </table>
   </td></tr>`;
@@ -379,5 +386,55 @@ export function emailText(brand: Brand, doc: EmailDoc): string {
   const contact = [brand.contactAddress, brand.contactPhone, brand.contactEmail, brand.siteUrl].filter(Boolean);
   if (contact.length) out.push(contact.join(" · "));
   out.push(doc.reason);
+  const unsubscribe = safeUrl(doc.unsubscribeUrl);
+  if (unsubscribe) out.push(`Para deixar de receber estas mensagens: ${unsubscribe}`);
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+}
+
+// ---------------------------------------------------------------------------
+// Categorias
+// ---------------------------------------------------------------------------
+
+/**
+ * Categorias opcionais, as únicas que a loja pode desligar.
+ *
+ * O que não está aqui sai sempre: a confirmação da encomenda, o pagamento, a entrega, o
+ * cancelamento e tudo o que é conta (convite, recuperação). São a prova de uma compra e o
+ * acesso a uma conta. A regra vive aqui, e não só nos interruptores do painel, para que
+ * nenhuma configuração — nem um valor estranho guardado à mão — possa calar uma mensagem
+ * que o cliente precisa de receber.
+ */
+export const OPTIONAL_CATEGORIES = {
+  welcome: "Boas-vindas a quem cria conta",
+  order_progress: "Progresso da encomenda (a preparar, expedida, em trânsito, saiu para entrega)",
+  campaign: "Campanhas e novidades",
+} as const;
+
+export type OptionalCategory = keyof typeof OPTIONAL_CATEGORIES;
+
+export function isOptionalCategory(value: unknown): value is OptionalCategory {
+  return typeof value === "string" && value in OPTIONAL_CATEGORIES;
+}
+
+/**
+ * Esta categoria está activa?
+ *
+ * Uma categoria que não seja opcional é sempre `true`. Entre as opcionais, só `false`
+ * explícito desliga: uma configuração em falta, nula ou mal formada deixa tudo a funcionar
+ * como antes, em vez de calar mensagens por omissão.
+ */
+export function isCategoryEnabled(settings: Record<string, any> | null, category: string): boolean {
+  if (!isOptionalCategory(category)) return true;
+  const config = settings?.email_categories;
+  if (!config || typeof config !== "object") return true;
+  return config[category] !== false;
+}
+
+/** Estado de todas as categorias opcionais, para o painel. */
+export function categoryStates(settings: Record<string, any> | null) {
+  return (Object.keys(OPTIONAL_CATEGORIES) as OptionalCategory[]).map((key) => ({
+    key,
+    label: OPTIONAL_CATEGORIES[key],
+    enabled: isCategoryEnabled(settings, key),
+  }));
 }

@@ -162,7 +162,56 @@ O teste `lib/apiRoutes.test.js` compara as rotas que o frontend chama com as que
 `index.ts` regista. Não substitui o deploy, mas apanha um nome trocado ou um caminho
 renomeado só de um lado.
 
-## 6. Por fazer
+## 6. Categorias e cancelamento de subscrição
+
+### Categorias opcionais
+
+`OPTIONAL_CATEGORIES` (em `emails.ts`) tem as **únicas** que a loja pode desligar:
+
+| Chave | O quê |
+|-------|-------|
+| `welcome` | Boas-vindas a quem cria conta |
+| `order_progress` | A preparar, expedida, em trânsito, saiu para entrega |
+| `campaign` | Campanhas e novidades |
+
+Tudo o resto sai sempre: a confirmação da encomenda, o pagamento, a **entrega**, o
+**cancelamento** e as mensagens de conta. São a prova de uma compra e o acesso a uma conta.
+
+A regra vive em `isCategoryEnabled()` e é verificada em `sendLetter()` — num só sítio, e não
+em cada ponto de envio, onde uma categoria esquecida seria uma mensagem a sair depois de a
+loja a ter desligado. Entre as opcionais, **só `false` explícito desliga**: configuração em
+falta, nula ou mal formada deixa tudo a funcionar. Um envio travado por categoria fica em
+`notification_logs` com `status = 'skipped'` e o motivo.
+
+O painel liga e desliga em **Integrações → Modelos de email**
+(`GET`/`POST /admin/email/categories`). A rota só aceita as chaves conhecidas: um valor
+qualquer vindo do pedido não fica guardado a fingir-se de categoria.
+
+### Cancelamento de subscrição
+
+Só nas mensagens de marketing. Pôr o link numa confirmação de encomenda convidaria a
+cancelar o que não se pode cancelar, e ensinaria o cliente a ignorá-lo onde ele conta.
+
+- `contacts.unsubscribe_token`: 64 caracteres, opaco, por contacto, revogável, criado por
+  um trigger. Dois UUID v4 em vez do `random()` que o `gen_record_id` usa — `random()` é
+  previsível a partir do estado do gerador, e com isso alguém poderia cancelar a subscrição
+  de outra pessoa.
+- O link é `/unsubscribe?t=<token>`. **O email não vai no endereço**: ficaria exposto nos
+  registos do servidor, no histórico do navegador e em quem recebesse a mensagem
+  reencaminhada.
+- `POST /unsubscribe` é pública e limitada por IP — quem quer sair de uma lista não deve ter
+  de criar conta. Responde sempre o mesmo com um token inválido: dizer "não existe"
+  transformaria a rota num meio de confirmar se um token é de alguém.
+- A página confirma com um **POST**, e não ao abrir o link: alguns servidores de correio
+  seguem os endereços das mensagens para os analisar, e com um GET a cancelar, uma dessas
+  visitas dava baixa de quem nunca carregou em nada.
+- `notifyContact()` verifica `marketing_opt_out_at` **no envio**, e não só em quem escolhe
+  os destinatários: uma lista montada antes do cancelamento voltaria a apanhá-lo.
+- As campanhas levam `List-Unsubscribe` e `List-Unsubscribe-Post: One-Click`, que os clientes
+  de email usam para mostrar o botão próprio de cancelamento, e que o Gmail exige a quem
+  envia em volume.
+
+## 7. Por fazer
 
 - **Fila de envio e retentativas.** Hoje o envio é feito no mesmo pedido; uma falha fica
   registada em `notification_logs` com o motivo, mas não é repetida sozinha.
@@ -173,8 +222,7 @@ renomeado só de um lado.
 - **O painel novo não foi verificado a funcionar.** Passa lint, build e testes, mas as rotas
   `/admin/email/templates`, `/preview` e `/resend` só respondem depois de a Edge Function ser
   publicada, e esta máquina não tem credenciais do Supabase nem um `app/web/.env`.
-- **Preferências de comunicação por utilizador** e cancelamento de subscrição com link
-  próprio. Hoje as campanhas trazem a indicação no rodapé, mas não há um registo de quem
-  pediu para sair.
+- **Preferências por canal e por tipo de mensagem** para o próprio cliente gerir no perfil:
+  hoje o cancelamento é tudo-ou-nada para as campanhas.
 - **Verificação em Gmail, Outlook e Apple Mail**: a moldura segue as regras conhecidas e está
   coberta por testes, mas não foi aberta nesses clientes.

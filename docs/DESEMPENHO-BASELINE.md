@@ -111,3 +111,40 @@ fim de uma cópia, por isso ninguém via mais de uma dúzia de títulos diferent
 
 Os 24 cartões da grelha refaziam-se a cada render do pai, e a grelha tinha uma `key` derivada
 dos filtros que os desmontava e remontava a todos sempre que a selecção mudava.
+
+---
+
+# Fase 1 — custo dos efeitos visuais (commit `90a1c02`)
+
+Os interruptores existem para isto: medir a **mesma** página, na mesma máquina e na mesma
+rede, com e sem os efeitos. A ordem foi alternada porque as primeiras leituras davam uma
+diferença enorme (LCP 3208 vs 1772) que afinal era a cache a aquecer, não os efeitos.
+
+| Ordem | Efeitos | LCP | Long tasks |
+|-------|---------|----:|-----------:|
+| 3.º | desligados | 1516 ms | 883 ms |
+| 4.º | ligados | 1608 ms | 837 ms |
+| 5.º | desligados | 1412 ms | 838 ms |
+| 6.º | ligados | 1536 ms | 736 ms |
+| **média** | **desligados** | **1464 ms** | **861 ms** |
+| **média** | **ligados** | **1572 ms** | **787 ms** |
+
+**Diferença: ~108 ms de LCP (7%), dentro da variação das próprias medições — que vão de 1412
+a 1608 ms com os mesmos ajustes.** As long tasks ficam iguais, com os efeitos ligados a sair
+ligeiramente melhor, o que confirma que a diferença é ruído.
+
+Era o esperado: sombras e transformações correm no compositor. As regras só tocam em
+`box-shadow`, `transform`, `opacity` e `filter`, e nenhuma delas obriga o navegador a
+recalcular a posição do resto da página.
+
+CLS manteve-se em 0,0607 nas duas condições.
+
+## Como repetir
+
+```
+/shop?ff=reset                                     efeitos ligados
+/shop?ff=elevacao:0,transicoes:0,zoomImagem:0      efeitos desligados
+```
+
+A escolha fica guardada para as páginas seguintes. Alternar a ordem das medições não é
+opcional: sem isso mede-se o estado da cache, não o custo do que se quer avaliar.

@@ -1,4 +1,5 @@
 import pb from '@/lib/dataClient';
+import { isMissingRoute } from '@/lib/apiCompat';
 import { resolveShopBgMode } from '@/lib/shopTheme';
 import { APP_API_URL, supabase } from '@/lib/supabaseClient';
 
@@ -181,12 +182,24 @@ export async function addDeliveryEvent(orderId, event, token) {
  *
  * Passa pela API e não pela tabela porque é aí que o aviso ao cliente é enviado: a gravação
  * directa em `orders` mudava o estado sem que ninguém soubesse que o pagamento foi aceite.
+ *
+ * Enquanto a Edge Function publicada não tiver esta rota, grava na tabela como antes e
+ * devolve `via: 'fallback'`, para o painel poder dizer que o estado mudou mas o cliente não
+ * foi avisado. Sem isto, o site novo com a função antiga deixava de conseguir sequer
+ * confirmar um pagamento — uma funcionalidade a menos em vez de um aviso a mais.
  */
 export async function setOrderPaymentStatus(orderId, status) {
-  return pb.send('/admin/orders/payment-status', {
-    method: 'POST',
-    body: { orderId, status },
-  });
+  try {
+    const res = await pb.send('/admin/orders/payment-status', {
+      method: 'POST',
+      body: { orderId, status },
+    });
+    return { ...res, via: 'api' };
+  } catch (err) {
+    if (!isMissingRoute(err)) throw err;
+    await pb.collection('orders').update(orderId, { payment_status: status });
+    return { payment_status: status, email_sent: false, via: 'fallback' };
+  }
 }
 
 export function getSettingsFileUrl(record, field) {

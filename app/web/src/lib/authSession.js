@@ -11,6 +11,8 @@
  * para as guardas esperarem em vez de decidirem com informação incompleta.
  */
 
+import { isMissingRoute } from '@/lib/apiCompat';
+
 /** Tempo máximo à espera do arranque da sessão: sem rede, mais vale mostrar o ecrã de entrada. */
 export const AUTH_READY_TIMEOUT_MS = 8000;
 
@@ -105,6 +107,9 @@ export function sessionDecision({ ready, isAuthed, allowed = true }) {
 /** Contas a que já se pediu o email de boas-vindas neste navegador. */
 const WELCOME_KEY = 'livraria_welcome_sent';
 
+/** A função publicada ainda não tem `/account/welcome`? Não insistir nesta sessão. */
+let missingWelcomeRoute = false;
+
 /**
  * Pede o email de boas-vindas uma vez por conta.
  *
@@ -123,11 +128,15 @@ export async function requestWelcomeEmail(pb, userId) {
   } catch {
     seen = [];
   }
+  if (missingWelcomeRoute) return false;
   try {
     await pb.send('/account/welcome', { method: 'POST', body: {} });
-  } catch {
+  } catch (err) {
     // Falhar aqui não pode estragar a entrada na loja: o email é um extra, e o pedido
     // repete-se no acesso seguinte porque a marca só é guardada em caso de sucesso.
+    // A excepção é a rota ainda não existir na função publicada: aí não vale a pena voltar
+    // a pedir nesta sessão, porque a resposta vai ser a mesma até haver um deploy novo.
+    if (isMissingRoute(err)) missingWelcomeRoute = true;
     return false;
   }
   try {

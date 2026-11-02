@@ -12,6 +12,7 @@ import { pageTitle } from '@/lib/brand';
 import pb from '@/lib/dataClient';
 import { supabase } from '@/lib/supabaseClient';
 import { setOrderPaymentStatus } from '@/api/PlatformApi';
+import { EDGE_FUNCTION_DESACTUALIZADA } from '@/lib/apiCompat';
 import { useAuth } from '@/hooks/useAuth';
 import SessionGate from '@/components/SessionGate.jsx';
 import { sessionDecision } from '@/lib/authSession';
@@ -277,12 +278,18 @@ const AdminPage = () => {
       // Pela API, e não por `orders.update`: é no servidor que o cliente é avisado de que o
       // pagamento foi confirmado. A gravação directa mudava o estado em silêncio.
       const res = await setOrderPaymentStatus(order.id, paymentStatus);
-      toast({
-        title: 'Pagamento actualizado',
-        description: res?.email_sent
-          ? `${getPaymentStatusLabel(paymentStatus)} · cliente avisado por email`
-          : getPaymentStatusLabel(paymentStatus),
-      });
+      const label = getPaymentStatusLabel(paymentStatus);
+      if (res?.via === 'fallback') {
+        toast({
+          title: 'Pagamento actualizado, cliente não avisado',
+          description: `${label}. ${EDGE_FUNCTION_DESACTUALIZADA}`,
+        });
+      } else {
+        toast({
+          title: 'Pagamento actualizado',
+          description: res?.email_sent ? `${label} · cliente avisado por email` : label,
+        });
+      }
       loadAll();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });

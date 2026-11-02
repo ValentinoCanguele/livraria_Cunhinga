@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, Loader2, Monitor, Send, Smartphone } from 
 import pb from '@/lib/dataClient';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { EDGE_FUNCTION_DESACTUALIZADA, isMissingRoute } from '@/lib/apiCompat';
 
 /**
  * Modelos de email: lista, pré-visualização e envio de teste.
@@ -34,7 +35,10 @@ export default function EmailTemplatesPanel() {
         setReady(res.ready || null);
         setSelected((prev) => prev || res.templates?.[0]?.key || '');
       } catch (err) {
-        if (!cancelled) setError(err.message || 'Não foi possível carregar os modelos.');
+        if (cancelled) return;
+        // A rota é nova: com a função publicada antiga, um "Rota não encontrada" seco não
+        // dizia a quem está no painel o que fazer a seguir.
+        setError(isMissingRoute(err) ? EDGE_FUNCTION_DESACTUALIZADA : (err.message || 'Não foi possível carregar os modelos.'));
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -137,7 +137,32 @@ compor: a encomenda pode ter mudado entretanto, e o que se quer é repetir a men
 falhou, não enviar outra diferente. As campanhas ficam de fora — repetir um envio em massa à
 mão passaria por cima da verificação do consentimento.
 
-## 5. Por fazer
+## 5. Site novo com função antiga
+
+O site e a Edge Function são publicados por caminhos diferentes — Cloudflare Pages e
+Supabase —, por isso há sempre uma janela em que o site novo fala com a função antiga. Hoje
+essa janela está aberta: o Actions está bloqueado por facturação e a função publicada é
+anterior às rotas deste trabalho (confirmado: `/health` responde 200,
+`/admin/orders/payment-status` responde 404).
+
+`lib/apiCompat.js` → `isMissingRoute(err)` distingue "esta rota ainda não existe" de "correu
+mal". Testa a **mensagem** e não só o código 404: as rotas devolvem 404 também quando o
+registo não existe ("Encomenda não encontrada."), e confundir os dois esconderia um erro
+verdadeiro.
+
+Quem depende de uma rota nova trata o caso:
+
+- **Estado do pagamento**: grava na tabela como antes e avisa que o cliente não foi
+  notificado. Uma funcionalidade a menos seria pior do que um aviso a mais.
+- **Modelos de email**: mostra o que é preciso fazer ("Publique a Edge Function") em vez de
+  um "Rota não encontrada" seco.
+- **Boas-vindas**: deixa de insistir nessa sessão — a resposta será a mesma até haver deploy.
+
+O teste `lib/apiRoutes.test.js` compara as rotas que o frontend chama com as que o
+`index.ts` regista. Não substitui o deploy, mas apanha um nome trocado ou um caminho
+renomeado só de um lado.
+
+## 6. Por fazer
 
 - **Fila de envio e retentativas.** Hoje o envio é feito no mesmo pedido; uma falha fica
   registada em `notification_logs` com o motivo, mas não é repetida sozinha.

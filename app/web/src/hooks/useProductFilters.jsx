@@ -4,6 +4,32 @@ import { getProducts, getCategories, getBookCollections } from '@/api/EcommerceA
 import { BOOK_GENRES } from '@/lib/bookConstants';
 import { matchesTokenizedSearch, buildProductSearchHaystack } from '@/lib/searchUtils';
 
+export function buildCatalogSearchParams(activeFilters, availableMaxPrice) {
+  const params = new URLSearchParams();
+
+  if (activeFilters.categories.length > 0) params.set('category', activeFilters.categories.join(','));
+  if (activeFilters.collection) params.set('collection', activeFilters.collection);
+  if (activeFilters.search) params.set('search', activeFilters.search);
+  if (activeFilters.author) params.set('author', activeFilters.author);
+  if (activeFilters.isbn) params.set('isbn', activeFilters.isbn);
+  if (activeFilters.publisher) params.set('publisher', activeFilters.publisher);
+  if (activeFilters.language) params.set('language', activeFilters.language);
+  if (activeFilters.yearFrom) params.set('yearFrom', activeFilters.yearFrom);
+  if (activeFilters.yearTo) params.set('yearTo', activeFilters.yearTo);
+  if (activeFilters.featuredOnly) params.set('featuredOnly', 'true');
+  if (activeFilters.inStockOnly) params.set('inStockOnly', 'true');
+  if (activeFilters.minPrice > 0) params.set('minPrice', activeFilters.minPrice);
+  if (activeFilters.maxPrice !== Infinity && activeFilters.maxPrice < availableMaxPrice) {
+    params.set('maxPrice', activeFilters.maxPrice);
+  }
+
+  Object.entries(activeFilters.options || {}).forEach(([key, values]) => {
+    values.forEach((val) => params.append(key, val));
+  });
+
+  return params;
+}
+
 export function useProductFilters(initialCategory = null) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [allProducts, setAllProducts] = useState([]);
@@ -133,27 +159,13 @@ export function useProductFilters(initialCategory = null) {
   }, [urlSearch]);
 
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (activeFilters.categories.length > 0) params.set('category', activeFilters.categories.join(','));
-    if (activeFilters.collection) params.set('collection', activeFilters.collection);
-    if (activeFilters.search) params.set('search', activeFilters.search);
-    if (activeFilters.author) params.set('author', activeFilters.author);
-    if (activeFilters.isbn) params.set('isbn', activeFilters.isbn);
-    if (activeFilters.publisher) params.set('publisher', activeFilters.publisher);
-    if (activeFilters.language) params.set('language', activeFilters.language);
-    if (activeFilters.yearFrom) params.set('yearFrom', activeFilters.yearFrom);
-    if (activeFilters.yearTo) params.set('yearTo', activeFilters.yearTo);
-    if (activeFilters.featuredOnly) params.set('featuredOnly', 'true');
-    if (activeFilters.inStockOnly) params.set('inStockOnly', 'true');
-    if (activeFilters.minPrice > 0) params.set('minPrice', activeFilters.minPrice);
-    if (activeFilters.maxPrice !== Infinity && activeFilters.maxPrice < availableFilters.maxPrice) {
-      params.set('maxPrice', activeFilters.maxPrice);
+    const nextParams = buildCatalogSearchParams(activeFilters, availableFilters.maxPrice);
+    const nextQuery = nextParams.toString();
+
+    if (searchParams.toString() !== nextQuery) {
+      setSearchParams(nextParams, { replace: true });
     }
-    Object.entries(activeFilters.options).forEach(([key, values]) => {
-      values.forEach((val) => params.append(key, val));
-    });
-    setSearchParams(params, { replace: true });
-  }, [activeFilters, availableFilters.maxPrice, setSearchParams]);
+  }, [activeFilters, availableFilters.maxPrice, searchParams, setSearchParams]);
 
   const filteredProducts = useMemo(() => {
     return allProducts.filter((product) => {

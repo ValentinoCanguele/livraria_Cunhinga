@@ -88,20 +88,20 @@ const CategoryPage = () => {
           </aside>
 
           <div className="flex-1">
-            <div className="flex items-center justify-between mb-6 gap-4 bg-card border border-border p-4 rounded-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3 sm:gap-4 bg-card border border-border p-4 rounded-xl">
               <Button
                 variant="outline"
                 onClick={() => setIsMobileFilterOpen(true)}
-                className="lg:hidden"
+                className="lg:hidden w-full sm:w-auto"
               >
                 <SlidersHorizontal className="h-4 w-4 mr-2" />
                 Filters {filterCount > 0 && `(${filterCount})`}
               </Button>
 
-              <div className="flex items-center gap-4 ml-auto">
+              <div className="flex items-center gap-4 w-full sm:w-auto sm:ml-auto">
                 <span className="text-sm text-muted-foreground hidden sm:inline">Ordenar por:</span>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[180px] bg-background">
+                  <SelectTrigger className="w-full sm:w-[180px] bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

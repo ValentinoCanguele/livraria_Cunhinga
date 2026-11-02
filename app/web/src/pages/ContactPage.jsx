@@ -68,7 +68,7 @@ const ContactPage = () => {
       <Header onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
-      <main className="section-spacing bg-background">
+      <main className="section-spacing bg-background overflow-x-clip">
         <div className="container-custom">
           <motion.div
             initial={{ opacity: 0, y: 20 }}

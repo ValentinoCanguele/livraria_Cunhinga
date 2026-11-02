@@ -35,7 +35,7 @@ const AboutPage = () => {
       <Header onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
-      <main>
+      <main className="overflow-x-clip">
         <section className="relative h-[60vh] min-h-[400px] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0">
             <img src={topImage} alt="Capas de livros do catálogo da livraria" className="w-full h-full object-cover" />

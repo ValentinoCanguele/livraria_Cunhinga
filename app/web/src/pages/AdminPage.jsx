@@ -2,20 +2,12 @@ import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Trash2, LogOut, Loader2, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, Store, Search, Star, Copy } from 'lucide-react';
-import CollectionsTab from '@/components/admin/CollectionsTab';
-import SlidesTab from '@/components/admin/SlidesTab';
 import { sanitizeBookPayload } from '@/lib/bookSave';
 import { pbErrorMessage } from '@/lib/mediaSave';
 import BrandLogo from '@/components/BrandLogo';
 import BookFormModal from '@/components/admin/BookFormModal';
 import BooksBulkBar from '@/components/admin/BooksBulkBar';
 import { Checkbox } from '@/components/ui/checkbox';
-import SettingsTab from '@/components/admin/SettingsTab';
-import UsersTab from '@/components/admin/UsersTab';
-import PaymentsTab from '@/components/admin/PaymentsTab';
-import AppsTab from '@/components/admin/AppsTab';
-import StoresTab from '@/components/admin/StoresTab';
-import ContactsManager from '@/components/ContactsManager';
 import { pageTitle } from '@/lib/brand';
 import pb from '@/lib/dataClient';
 import { supabase } from '@/lib/supabaseClient';
@@ -26,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import SalesReportsPanel from '@/components/admin/SalesReportsPanel';
 import { getOrderStatusLabel, getOrderStatusColor, formatOrderNumber, PAYMENT_METHODS, ORDER_STATUS, getPaymentStatusLabel, getDeliveryStatusLabel, getDeliveryStatusColor } from '@/lib/orderUtils';
 import { displayAngolaPhone } from '@/lib/angolaPhone';
 import { getLowStockBooks } from '@/api/EcommerceApi';
@@ -34,7 +25,15 @@ import { isBookVisible, isSaleActive, isSaleScheduled } from '@/lib/pricing';
 import { downloadReceipt, receiptBrand, receiptFromOrder } from '@/lib/receipt';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 
-// O painel de vendas traz o d3; só é carregado quando se abre o separador.
+const CollectionsTab = lazy(() => import('@/components/admin/CollectionsTab'));
+const SlidesTab = lazy(() => import('@/components/admin/SlidesTab'));
+const SettingsTab = lazy(() => import('@/components/admin/SettingsTab'));
+const UsersTab = lazy(() => import('@/components/admin/UsersTab'));
+const PaymentsTab = lazy(() => import('@/components/admin/PaymentsTab'));
+const AppsTab = lazy(() => import('@/components/admin/AppsTab'));
+const StoresTab = lazy(() => import('@/components/admin/StoresTab'));
+const ContactsManager = lazy(() => import('@/components/ContactsManager'));
+const SalesReportsPanel = lazy(() => import('@/components/admin/SalesReportsPanel'));
 const VendasHuamboTab = lazy(() => import('@/components/admin/VendasHuamboTab'));
 
 // Colunas das encomendas para a lista e os relatórios. Fica de fora o que é grande e
@@ -401,12 +400,48 @@ const AdminPage = () => {
               ))}
             </div>
 
-            {canManageSettings && <TabsContent value="settings"><SettingsTab /></TabsContent>}
-            {canManageUsers && <TabsContent value="users"><UsersTab /></TabsContent>}
-            {canManagePayments && <TabsContent value="payments"><PaymentsTab /></TabsContent>}
-            {canManageSettings && <TabsContent value="stores"><StoresTab /></TabsContent>}
-            {canManageMarketing && <TabsContent value="contacts"><ContactsManager /></TabsContent>}
-            {isAdmin && <TabsContent value="apps"><AppsTab /></TabsContent>}
+            {canManageSettings && (
+              <TabsContent value="settings">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <SettingsTab />
+                </Suspense>
+              </TabsContent>
+            )}
+            {canManageUsers && (
+              <TabsContent value="users">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <UsersTab />
+                </Suspense>
+              </TabsContent>
+            )}
+            {canManagePayments && (
+              <TabsContent value="payments">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <PaymentsTab />
+                </Suspense>
+              </TabsContent>
+            )}
+            {canManageSettings && (
+              <TabsContent value="stores">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <StoresTab />
+                </Suspense>
+              </TabsContent>
+            )}
+            {canManageMarketing && (
+              <TabsContent value="contacts">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <ContactsManager />
+                </Suspense>
+              </TabsContent>
+            )}
+            {isAdmin && (
+              <TabsContent value="apps">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <AppsTab />
+                </Suspense>
+              </TabsContent>
+            )}
             {canAccessAdmin && (
               <TabsContent value="vendas-huambo">
                 <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
@@ -416,7 +451,9 @@ const AdminPage = () => {
             )}
             {canManageCatalog && (
               <TabsContent value="collections">
-                <CollectionsTab books={books} onBooksChange={loadAll} />
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                  <CollectionsTab books={books} onBooksChange={loadAll} />
+                </Suspense>
               </TabsContent>
             )}
 

@@ -40,6 +40,10 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
   const cartScrollRef = useRef(null);
 
   const [step, setStep] = useState('cart');
+  // Telemóvel: o rodapé do carrinho ocupava 485 px dos 886 do ecrã, deixando 288 px para um
+  // formulário de 2094 px. O detalhe (portes, subtotal, dados, avisos) passa a ficar atrás
+  // de um resumo recolhível; no computador (sm:) continua tudo aberto, como estava.
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const signatureRef = useRef(null);
   const [form, setForm] = useState({
@@ -107,7 +111,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
   }, [user]);
 
   useEffect(() => {
-    if (!isCartOpen) setStep('cart');
+    if (!isCartOpen) { setStep('cart'); setSummaryOpen(false); }
   }, [isCartOpen]);
 
   // Ao abrir o carrinho, confirma preços, promoções, stock e visibilidade com a base de dados.
@@ -471,13 +475,22 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                     <RadioGroup value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v, paymentReference: '' })}>
                       {paymentMethods.length > 0 ? paymentMethods.map((m) => (
                         <div key={m.code} className="space-y-2">
-                          <div className={`flex items-start space-x-2 p-3 rounded-lg border transition-colors cursor-pointer ${form.paymentMethod === m.code ? 'border-[var(--brand-primary)] bg-[rgb(var(--brand-primary-rgb)/0.05)]' : 'hover:bg-muted/50'}`}>
+                          {/* O cartão todo selecciona: num telemóvel, só o texto ser tocável obriga
+                              a acertar no sítio certo. */}
+                          <div
+                            role="presentation"
+                            onClick={() => setForm({ ...form, paymentMethod: m.code, paymentReference: '' })}
+                            className={`flex items-start gap-2 p-3 rounded-lg border transition-colors cursor-pointer ${form.paymentMethod === m.code ? 'border-[var(--brand-primary)] bg-[rgb(var(--brand-primary-rgb)/0.05)]' : 'hover:bg-muted/50'}`}
+                          >
                             <RadioGroupItem value={m.code} id={m.code} className="mt-1" />
                             <Label htmlFor={m.code} className="cursor-pointer flex-1">
-                              <span className="font-medium flex items-center gap-2">
+                              <span className="font-medium flex items-center gap-2 flex-wrap">
                                 {m.icon && <span>{m.icon}</span>}
                                 {m.name}
-                                <span className="text-[10px] uppercase text-muted-foreground font-normal">{m.type}</span>
+                                {/* "p2p"/"offline" é jargão nosso; o cliente precisa é de saber quando paga. */}
+                                <span className="text-[10px] text-muted-foreground font-normal">
+                                  {m.type === 'p2p' || m.type === 'transfer' ? 'paga antes do envio' : 'paga na entrega'}
+                                </span>
                               </span>
                               {m.account_info && <span className="block text-xs text-muted-foreground font-mono mt-0.5">{m.account_info}</span>}
                               {form.paymentMethod === m.code && m.instructions && (
@@ -486,7 +499,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                             </Label>
                           </div>
                           {form.paymentMethod === m.code && (m.type === 'p2p' || m.type === 'transfer') && (
-                            <div className="ml-6 space-y-2">
+                            <div className="ml-0 sm:ml-6 space-y-2">
                               {m.payment_link && (
                                 <a
                                   href={m.payment_link}
@@ -544,6 +557,24 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
 
             {cartItems.length > 0 && (
               <div className="p-5 border-t border-border bg-muted/20 space-y-3">
+                {/* Telemóvel: barra que abre/fecha o detalhe. No computador não aparece. */}
+                <button
+                  type="button"
+                  onClick={() => setSummaryOpen((o) => !o)}
+                  aria-expanded={summaryOpen}
+                  className="sm:hidden w-full flex items-center justify-between rounded-lg px-3 py-2 -mx-1 bg-background border border-border text-sm"
+                >
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Truck className="h-3.5 w-3.5 text-[#0ea5c9]" aria-hidden="true" />
+                    {summaryOpen ? 'Esconder resumo' : 'Ver resumo e portes'}
+                  </span>
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    {formatCurrency(totalCents)}
+                    {summaryOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </span>
+                </button>
+
+                <div className={`${summaryOpen ? 'block' : 'hidden'} sm:block space-y-3`}>
                 {maintenanceMode && (
                   <div className="text-xs p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900">
                     A loja está em manutenção — o checkout online está temporariamente desactivado.
@@ -625,10 +656,13 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                       )}
                     </div>
                   )}
-                  <div className="flex justify-between font-bold text-base pt-1 border-t border-border">
-                    <span>Total</span>
-                    <span className="text-[#0ea5c9]">{formatCurrency(totalCents)}</span>
-                  </div>
+                </div>
+                </div>
+
+                {/* Total sempre à vista: no telemóvel é a única linha de valores fora do resumo. */}
+                <div className="flex justify-between font-bold text-base pt-1 border-t border-border">
+                  <span>Total</span>
+                  <span className="text-[#0ea5c9]">{formatCurrency(totalCents)}</span>
                 </div>
 
                 {step === 'cart' ? (
@@ -638,8 +672,8 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                 ) : (
                   <>
                     <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-2 space-y-0.5">
-                      <p><strong>{form.name || '—'}</strong> · {form.email}</p>
-                      <p>{form.shippingMethod === 'pickup'
+                      <p className="truncate sm:whitespace-normal"><strong>{form.name || '—'}</strong> · {form.email}</p>
+                      <p className="truncate sm:whitespace-normal">{form.shippingMethod === 'pickup'
                         ? `Levantamento: ${form.pickupStore || 'Loja física'}`
                         : angolaAddressToPayload(deliveryAddress).deliveryAddressFull}
                       </p>
@@ -659,7 +693,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                         {waApiActive ? 'Confirmar e receber no WhatsApp' : 'Finalizar via WhatsApp'}
                       </Button>
                     )}
-                    <p className="text-[10px] text-center text-muted-foreground">
+                    <p className="hidden sm:block text-[10px] text-center text-muted-foreground">
                       <strong>Compra online</strong> — pagamento e entrega pela loja.{' '}
                       {waApiActive ? (
                         <><strong>WhatsApp</strong> — confirmação automática enviada para o seu número.</>

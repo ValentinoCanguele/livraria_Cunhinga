@@ -13,13 +13,58 @@ Estado em 2026-11-02. Complementa [ARQUITETURA.md](ARQUITETURA.md) e [HANDOFF.md
 | Segredos do agendador | **Criados** (`EMAIL_QUEUE_TOKEN` na função, `email_queue_url`/`email_queue_token` no Vault) |
 | `site_url` | **Definido** (`https://livraria-adventista.pages.dev`) |
 | Categorias de email | **Todas activas** |
-| **SMTP / SendGrid** | **Por configurar** — exige credenciais do dono |
+| **SMTP / SendGrid** | **Bloqueado** — não há domínio de email (ver secção 0.1) |
 | **`order_email_enabled`** | **Desligado** — ligar sem SMTP só gera registos "não enviado" |
 | **SPF, DKIM, DMARC** | **Por configurar** no DNS do domínio |
 
 **Nenhum email sai enquanto o SMTP ou o SendGrid não estiverem configurados.** Tudo o resto
 do caminho está montado e verificado: o agendador chama a função, a função reclama a fila, e
 a fila responde. Falta só o fornecedor de correio na ponta.
+
+## 0.1. PENDENTE — não há domínio de email
+
+Verificado no DNS em 2026-11-02:
+
+| Domínio | Nameservers | MX | SPF |
+|---------|------------:|----|-----|
+| `livrariaadventista.ao` | **0** | nenhum | nenhum |
+| `livraria.ao` | **0** | nenhum | nenhum |
+| `livraria-adventista.pages.dev` | — | nenhum | é do Cloudflare Pages, não serve email |
+
+O `contact_email` da loja está como `contacto@livrariaadventista.ao`, **um domínio que não
+existe**. Isto não é falta de credenciais: não há de onde enviar nem para onde responder.
+Nenhum servidor aceita enviar em nome de um domínio não registado, e se aceitasse as
+mensagens seriam recusadas na entrega.
+
+### Caminhos possíveis
+
+**(a) SMTP do Google Workspace** — `smtp.gmail.com:587` com palavra-passe de aplicação.
+Funciona sem registar nada, porque `fata.adventist.org` já existe e está no Google:
+
+```
+MX:  ALT1.ASPMX.L.GOOGLE.COM
+SPF: v=spf1 mx a include:spf.host-h.net ?all
+```
+
+É o domínio da conta que publica o Cloudflare. O remetente seria algo como
+`livraria@fata.adventist.org`. Limite de ~2000 mensagens por dia. **Atenção:** esse SPF
+termina em `?all` (neutro) e não inclui o Google — convém acertá-lo com quem gere o DNS.
+
+**(b) SendGrid ou Brevo** — plano gratuito, ~100 mensagens/dia, com autenticação de domínio
+própria. Melhor entregabilidade a prazo, mas precisa de um domínio controlado.
+
+**(c) Registar o `.ao`** — o mais correcto para a imagem da loja, o mais demorado.
+
+### O que falta depois de decidir
+
+As credenciais preenchem-se em **Configurações → Comunicações** no painel, que já tem campos
+para servidor, porta, utilizador, palavra-passe, remetente e chave do SendGrid. A seguir:
+enviar um teste por `/admin/email/test`, confirmar no registo que saiu, ligar
+`order_email_enabled` e correr uma encomenda de ponta a ponta.
+
+**`order_email_enabled` fica desligado até lá.** Ligado sem fornecedor, cada encomenda
+geraria um registo "não enviado" e daria a impressão de que o sistema funciona quando não
+funciona.
 
 ## 1. Sessão
 

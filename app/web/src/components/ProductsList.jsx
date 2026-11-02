@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
-const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid', onQuickView, embedded = false }) => {
+const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid', onQuickView, embedded = false, skeletonCount = 8 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -59,6 +59,10 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid',
   const displayList = embedded ? products : filteredList;
 
   if (isLoading) {
+    // O esqueleto usa a classe `product-grid` e as mesmas colunas da grelha real, e tantos
+    // cartões quantos a página vai mostrar. Antes eram 8 fixos, numa grelha com outras
+    // colunas: quando os 24 produtos chegavam, a página crescia de repente e empurrava tudo
+    // o que estava abaixo. Um esqueleto com a forma errada desloca tanto como não ter nenhum.
     return (
       <div className="space-y-6">
         {!embedded && (
@@ -67,8 +71,12 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid',
             <Skeleton className="h-8 w-full sm:w-80 rounded-full" />
           </div>
         )}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
+        <div
+          className={`product-grid grid gap-6 ${viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}
+          aria-busy="true"
+          aria-label="A carregar livros"
+        >
+          {Array.from({ length: skeletonCount }, (_, i) => (
             <div key={i} className="space-y-4">
               <Skeleton className="aspect-[3/4] w-full rounded-xl" />
               <Skeleton className="h-4 w-2/3" />

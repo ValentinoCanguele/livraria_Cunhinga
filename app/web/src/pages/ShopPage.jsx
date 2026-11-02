@@ -196,23 +196,27 @@ const ShopPage = () => {
             <h1 className="text-3xl md:text-5xl font-bold mb-3 tracking-tight">{heroTitle}</h1>
             <p className="text-white/85 max-w-2xl text-lg mb-8">{heroSubtitle}</p>
 
-            {/* Estatísticas do catálogo */}
-            {!isLoading && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 max-w-2xl">
-                {[
-                  { icon: BookOpen, label: 'Livros', value: catalogStats.total },
-                  { icon: Package, label: 'Disponíveis', value: catalogStats.inStock },
-                  { icon: Star, label: 'Destaques', value: catalogStats.featured },
-                  { icon: Layers, label: 'Coleções', value: catalogStats.collections },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
-                    <Icon className="h-4 w-4 text-white/70 mb-1" />
-                    <p className="text-2xl font-bold">{value}</p>
-                    <p className="text-xs text-white/70">{label}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Estatísticas do catálogo.
+                Renderizadas sempre, com um traço no lugar do número enquanto os dados não
+                chegam. Antes só apareciam com `!isLoading`, e como estão no topo da página,
+                surgir passados uns segundos empurrava tudo o que vinha a seguir: era este
+                bloco o responsável por um CLS de 0,573 em `/shop` (0,257 em telemóvel). */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 max-w-2xl">
+              {[
+                { icon: BookOpen, label: 'Livros', value: catalogStats.total },
+                { icon: Package, label: 'Disponíveis', value: catalogStats.inStock },
+                { icon: Star, label: 'Destaques', value: catalogStats.featured },
+                { icon: Layers, label: 'Coleções', value: catalogStats.collections },
+              ].map(({ icon: Icon, label, value }) => (
+                <div key={label} className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
+                  <Icon className="h-4 w-4 text-white/70 mb-1" aria-hidden />
+                  <p className="text-2xl font-bold" aria-live="polite">
+                    {isLoading ? <span className="text-white/40" aria-label="a carregar">—</span> : value}
+                  </p>
+                  <p className="text-xs text-white/70">{label}</p>
+                </div>
+              ))}
+            </div>
 
             <AdvancedSearchPanel
               activeFilters={activeFilters}
@@ -502,11 +506,17 @@ const ShopPage = () => {
                 embedded
                 products={displayProducts}
                 isLoading={isLoading}
+                skeletonCount={perPage}
                 onCartOpen={() => setIsCartOpen(true)}
                 viewMode={viewMode}
                 onQuickView={setQuickView}
               />
             </motion.div>
+
+            {/* Enquanto carrega, fica aqui um espaço com a altura da navegação de páginas.
+                Sem ele, a navegação aparecia de repente no fim da lista e empurrava o rodapé
+                — o que resta do deslocamento depois de corrigidas as estatísticas do topo. */}
+            {isLoading && <div className="mt-10 h-9" aria-hidden />}
 
             {pageCount > 1 && !isLoading && (
               <nav className="mt-10 flex items-center justify-center gap-2" aria-label="Páginas do catálogo">

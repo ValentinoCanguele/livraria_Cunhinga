@@ -30,6 +30,28 @@ export function buildCatalogSearchParams(activeFilters, availableMaxPrice) {
   return params;
 }
 
+/**
+ * Das opções que vieram no endereço, as que são mesmo atributos do catálogo.
+ *
+ * O `useProductFilters` trata qualquer parâmetro desconhecido como filtro por atributo do
+ * livro — é o que permite `?acabamento=capa-dura` sem ter de o declarar. Mas isso apanhava
+ * também os parâmetros de rastreio que as campanhas, o Facebook e o WhatsApp acrescentam
+ * sozinhos aos links (`utm_source`, `fbclid`, `gclid`): nenhum livro tem esse atributo, por
+ * isso o filtro excluía o catálogo inteiro e a loja aparecia vazia a quem viesse por aí.
+ *
+ * A regra é a correspondência com o que o catálogo tem, e não uma lista de nomes a ignorar:
+ * amanhã aparece outro parâmetro de rastreio qualquer e esta função não precisa de mudar.
+ */
+export function usableOptionFilters(activeOptions, availableOptions) {
+  const usable = {};
+  for (const [name, values] of Object.entries(activeOptions || {})) {
+    if (!Array.isArray(values) || values.length === 0) continue;
+    if (!availableOptions || !(name in availableOptions)) continue;
+    usable[name] = values;
+  }
+  return usable;
+}
+
 export function useProductFilters(initialCategory = null) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [allProducts, setAllProducts] = useState([]);
@@ -206,8 +228,9 @@ export function useProductFilters(initialCategory = null) {
       const price = product.price_in_cents / 100;
       if (price < activeFilters.minPrice || price > activeFilters.maxPrice) return false;
 
-      for (const [optionName, selectedValues] of Object.entries(activeFilters.options)) {
-        if (selectedValues.length === 0) continue;
+      // `usableOptionFilters` descarta o que veio no endereço mas não é atributo do
+      // catálogo — os parâmetros de rastreio, por exemplo.
+      for (const [optionName, selectedValues] of Object.entries(usableOptionFilters(activeFilters.options, availableFilters.options))) {
         const productOption = product.options?.find((o) => o.title === optionName);
         if (!productOption) return false;
         const productOptionValues = productOption.values.map((v) => v.value);
@@ -216,7 +239,7 @@ export function useProductFilters(initialCategory = null) {
 
       return true;
     });
-  }, [allProducts, activeFilters, categoriesMap]);
+  }, [allProducts, activeFilters, categoriesMap, availableFilters.options]);
 
   const updateFilter = useCallback((key, value) => {
     setActiveFilters((prev) => ({ ...prev, [key]: value }));
@@ -267,9 +290,12 @@ export function useProductFilters(initialCategory = null) {
         (activeFilters.maxPrice !== Infinity && activeFilters.maxPrice < (availableFilters.maxPrice || 5000))) {
       count++;
     }
-    Object.values(activeFilters.options).forEach((values) => { count += values.length; });
+    // Pela mesma razão: um parâmetro de rastreio no endereço não é um filtro que o
+    // utilizador tenha escolhido, e não deve aparecer como "Filtros (1)".
+    Object.values(usableOptionFilters(activeFilters.options, availableFilters.options))
+      .forEach((values) => { count += values.length; });
     return count;
-  }, [activeFilters, initialCategory, availableFilters.minPrice, availableFilters.maxPrice]);
+  }, [activeFilters, initialCategory, availableFilters.minPrice, availableFilters.maxPrice, availableFilters.options]);
 
   const catalogStats = useMemo(() => ({
     total: allProducts.length,

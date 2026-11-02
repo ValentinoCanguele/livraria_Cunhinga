@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCatalogSearchParams } from '@/hooks/useProductFilters';
+import { buildCatalogSearchParams, usableOptionFilters } from '@/hooks/useProductFilters';
 
 describe('buildCatalogSearchParams', () => {
   it('serializa filtros ativos sem perder opções dinâmicas', () => {
@@ -56,5 +56,47 @@ describe('buildCatalogSearchParams', () => {
 
     expect(params.has('maxPrice')).toBe(false);
     expect(params.has('minPrice')).toBe(false);
+  });
+});
+
+describe('usableOptionFilters', () => {
+  const catalogo = { acabamento: ['capa-dura', 'capa-suave'], idioma: ['pt', 'en'] };
+
+  it('deixa passar as opções que o catálogo tem', () => {
+    expect(usableOptionFilters({ acabamento: ['capa-dura'] }, catalogo))
+      .toEqual({ acabamento: ['capa-dura'] });
+  });
+
+  it('descarta os parâmetros de rastreio que vêm nos links', () => {
+    // Era isto que esvaziava a loja: nenhum livro tem o atributo `utm_source`, por isso o
+    // filtro excluía o catálogo inteiro a quem chegasse por uma campanha ou por uma partilha
+    // do Facebook ou do WhatsApp.
+    const comRastreio = {
+      utm_source: ['newsletter'],
+      utm_medium: ['email'],
+      fbclid: ['IwAR0abc'],
+      gclid: ['Cj0KCQ'],
+      v: ['3'],
+      acabamento: ['capa-dura'],
+    };
+    expect(usableOptionFilters(comRastreio, catalogo)).toEqual({ acabamento: ['capa-dura'] });
+  });
+
+  it('não deixa nada passar quando o catálogo ainda não carregou', () => {
+    expect(usableOptionFilters({ acabamento: ['capa-dura'] }, {})).toEqual({});
+    expect(usableOptionFilters({ acabamento: ['capa-dura'] }, null)).toEqual({});
+    expect(usableOptionFilters({ acabamento: ['capa-dura'] }, undefined)).toEqual({});
+  });
+
+  it('ignora opções sem valores', () => {
+    expect(usableOptionFilters({ acabamento: [], idioma: ['pt'] }, catalogo))
+      .toEqual({ idioma: ['pt'] });
+    expect(usableOptionFilters({ acabamento: 'capa-dura' }, catalogo)).toEqual({});
+  });
+
+  it('aguenta entradas vazias', () => {
+    expect(usableOptionFilters({}, catalogo)).toEqual({});
+    expect(usableOptionFilters(null, catalogo)).toEqual({});
+    expect(usableOptionFilters(undefined, catalogo)).toEqual({});
   });
 });

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Pause, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ProductCard from '@/components/ProductCard';
-import { buildMarqueeTrack } from '@/lib/catalogCategories';
+import { buildMarqueeTrack, MARQUEE_MAX_ITEMS } from '@/lib/catalogCategories';
 
 const PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzc0MTUxIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzlDQTNBRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K";
 
@@ -85,7 +85,10 @@ export default function CategoryBookMarquee({
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  const duration = Math.max(55, products.length * 4.5);
+  // A duração acompanha o número de títulos que a faixa mostra de facto, e não o total da
+  // lista: o track é mais curto, por isso percorrê-lo no tempo antigo seria andar depressa
+  // de mais. Assim a velocidade aparente mantém-se.
+  const duration = Math.max(55, Math.min(products.length, MARQUEE_MAX_ITEMS) * 4.5);
   const animClass = direction === 'rtl' ? 'catalog-marquee-rtl' : 'catalog-marquee-ltr';
   const track = useMemo(() => buildMarqueeTrack(products), [products]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -140,6 +140,11 @@ const ShopPage = () => {
     [allProducts]
   );
 
+  // Estável entre renders: uma função criada no JSX muda de identidade a cada render e
+  // anula o `memo` dos cartões, que é o que evita refazer os 24 sempre que o painel de
+  // filtros abre ou a página muda.
+  const handleCartOpen = useCallback(() => setIsCartOpen(true), []);
+
   const gridClass = {
     2: 'xl:grid-cols-2',
     3: 'xl:grid-cols-3',
@@ -179,7 +184,7 @@ const ShopPage = () => {
         <meta name="description" content={heroSubtitle} />
       </Helmet>
 
-      <Header onCartOpen={() => setIsCartOpen(true)} />
+      <Header onCartOpen={handleCartOpen} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
       {/* Hero personalizável com fundo configurável */}
@@ -252,7 +257,7 @@ const ShopPage = () => {
         loading={modalLoading}
         open={!!quickView}
         onClose={() => setQuickView(null)}
-        onCartOpen={() => setIsCartOpen(true)}
+        onCartOpen={handleCartOpen}
       />
 
       {/* Destaques — só sem filtros activos */}
@@ -275,7 +280,7 @@ const ShopPage = () => {
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onCartOpen={() => setIsCartOpen(true)}
+                  onCartOpen={handleCartOpen}
                   onQuickView={setQuickView}
                   index={i}
                 />
@@ -495,8 +500,14 @@ const ShopPage = () => {
             )}
 
             <div ref={gridTopRef} aria-hidden="true" className="scroll-mt-24" />
+            {/* Sem `key` derivada dos filtros. Tinha-a para reanimar a entrada sempre que a
+                selecção mudava, mas mudar a `key` faz o React desmontar e montar de novo os
+                24 cartões — o caminho mais caro possível para uma acção que o utilizador
+                espera ver responder de imediato. A animação de entrada mantém-se na primeira
+                montagem; a seguir, o React reconcilia pelos `key={product.id}` de cada
+                cartão e reaproveita os que não mudaram. Quem muda um filtro já tem a
+                contagem de resultados a dizer-lhe que mudou. */}
             <motion.div
-              key={`${activeFilters.categories.join(',')}-${sortBy}-${viewMode}-${filterCount}-p${currentPage}`}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, ease: "easeOut" }}
@@ -507,7 +518,7 @@ const ShopPage = () => {
                 products={displayProducts}
                 isLoading={isLoading}
                 skeletonCount={perPage}
-                onCartOpen={() => setIsCartOpen(true)}
+                onCartOpen={handleCartOpen}
                 viewMode={viewMode}
                 onQuickView={setQuickView}
               />

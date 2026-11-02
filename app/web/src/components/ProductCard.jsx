@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Loader2, Eye, MessageCircle, Heart, Star, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -13,7 +13,7 @@ import QuickViewModal from '@/components/QuickViewModal';
 
 const PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzc0MTUxIi8+CiAgPHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzlDQTNBRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4K";
 
-export default function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuickView }) {
+function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuickView }) {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const { settings } = useSiteSettings();
@@ -75,6 +75,12 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
               src={product.image || PLACEHOLDER}
               alt={product.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              /* As primeiras da grelha carregam já — uma delas é o maior elemento visível e
+                 define o LCP, e adiá-la seria atrasar justamente o que se quer medir. As
+                 restantes esperam por chegar perto do ecrã: eram 24 capas a disputar a rede
+                 ao mesmo tempo, e a maioria fica abaixo da dobra. */
+              loading={index < 6 ? 'eager' : 'lazy'}
+              decoding="async"
               onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
             />
             {/* Ícones, não autocolantes de texto: o mesmo cartão chegava a dizer o stock
@@ -231,6 +237,19 @@ const gridItemVariants = {
   }
 };
 
+/**
+ * `memo` porque a grelha tem 24 cartões e o pai volta a renderizar por muitas razões que
+ * não lhes dizem respeito: abrir o painel de filtros, mudar de página, escrever na busca.
+ * Sem isto, cada uma dessas acções refazia os 24 — era o que punha o INP em 272 ms, com o
+ * tempo todo na apresentação e nenhum no código do handler.
+ *
+ * Para `memo` servir de alguma coisa, as funções passadas têm de ser estáveis: ver os
+ * `useCallback` em `ShopPage`. Uma função criada no JSX do pai muda de identidade a cada
+ * render e anula a comparação.
+ */
+const MemoProductCard = memo(ProductCard);
+export default MemoProductCard;
+
 export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid', onQuickView }) {
   const [quickView, setQuickView] = useState(null);
   const handleQuickView = onQuickView || setQuickView;
@@ -255,7 +274,7 @@ export function ProductGrid({ products, isLoading, onCartOpen, viewMode = 'grid'
       >
         {products.map((product, index) => (
           <motion.div key={product.id} variants={gridItemVariants}>
-            <ProductCard product={product} onCartOpen={onCartOpen} index={index} viewMode={viewMode} onQuickView={handleQuickView} />
+            <MemoProductCard product={product} onCartOpen={onCartOpen} index={index} viewMode={viewMode} onQuickView={handleQuickView} />
           </motion.div>
         ))}
       </motion.div>

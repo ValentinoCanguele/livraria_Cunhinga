@@ -24,6 +24,8 @@ import ShoppingCart from '@/components/ShoppingCart.jsx';
 import BookPreviewModal from '@/components/BookPreviewModal';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import SampleReaderModal from '@/components/SampleReaderModal';
+import RecentlyViewed from '@/components/RecentlyViewed.jsx';
+import { addRecentlyViewed } from '@/lib/recentlyViewed';
 
 // Star rating helper component
 const StarRating = ({ rating, size = 16, interactive = false, onChange }) => {
@@ -247,6 +249,9 @@ function ProductDetailPage() {
           };
 
           setProduct(productWithQuantities);
+          // Fica no navegador de quem visita, para poder voltar a este livro depois de ver
+          // outros. Nada vai para o servidor: é um atalho, não um registo de hábitos.
+          addRecentlyViewed(productWithQuantities);
 
           if (productWithQuantities.variants && productWithQuantities.variants.length > 0) {
             setSelectedVariant(productWithQuantities.variants[0]);
@@ -930,6 +935,8 @@ function ProductDetailPage() {
         title={product.title}
       />
       <BookPreviewModal product={product} open={showPreview} onClose={() => setShowPreview(false)} onCartOpen={() => setIsCartOpen(true)} />
+
+      <RecentlyViewed currentId={product.id} />
 
       <Footer />
     </>

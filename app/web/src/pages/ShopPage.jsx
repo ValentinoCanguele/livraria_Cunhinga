@@ -231,6 +231,7 @@ const ShopPage = () => {
               bookCollections={bookCollections}
               publishers={availableFilters.publishers}
               quickGenres={availableFilters.genres}
+              catalog={allProducts}
               resultCount={hasActiveBrowsing ? filteredProducts.length : undefined}
               filterCount={filterCount}
             />

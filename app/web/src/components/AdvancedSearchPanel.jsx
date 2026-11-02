@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, SlidersHorizontal, X, BookOpen, Hash, Sparkles, Filter, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { BOOK_GENRES, BOOK_LANGUAGES } from '@/lib/bookConstants';
+import { buildSearchSuggestions } from '@/lib/searchUtils';
 
 export default function AdvancedSearchPanel({
   activeFilters,
@@ -18,8 +19,11 @@ export default function AdvancedSearchPanel({
   resultCount,
   filterCount = 0,
   quickGenres = [],
+  catalog = [],
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
+  const campoRef = useRef(null);
   const [local, setLocal] = useState({
     search: activeFilters.search || '',
     author: activeFilters.author || '',
@@ -47,6 +51,21 @@ export default function AdvancedSearchPanel({
       inStockOnly: activeFilters.inStockOnly || false,
     });
   }, [activeFilters]);
+
+  // Do catálogo que já está carregado: nada é pedido ao servidor enquanto se escreve.
+  const sugestoes = useMemo(
+    () => buildSearchSuggestions(catalog, local.search),
+    [catalog, local.search],
+  );
+
+  // Fechar ao tocar fora. Num telemóvel a lista tapa metade do ecrã, e ficar presa ali até
+  // alguém escolher alguma coisa seria uma armadilha.
+  useEffect(() => {
+    if (!sugestoesAbertas) return undefined;
+    const fora = (e) => { if (campoRef.current && !campoRef.current.contains(e.target)) setSugestoesAbertas(false); };
+    document.addEventListener('pointerdown', fora);
+    return () => document.removeEventListener('pointerdown', fora);
+  }, [sugestoesAbertas]);
 
   // Real-time debounce for the search filter
   useEffect(() => {
@@ -89,15 +108,52 @@ export default function AdvancedSearchPanel({
   return (
     <div className={className}>
       <div className="flex gap-2">
-        <div className="relative flex-1">
+        <div className="relative flex-1" ref={campoRef}>
           <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isHero ? 'text-white/70' : 'text-muted-foreground'}`} />
           <Input
             value={local.search}
-            onChange={(e) => setLocal((s) => ({ ...s, search: e.target.value }))}
-            onKeyDown={(e) => e.key === 'Enter' && apply()}
+            onChange={(e) => { setLocal((s) => ({ ...s, search: e.target.value })); setSugestoesAbertas(true); }}
+            onFocus={() => setSugestoesAbertas(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { setSugestoesAbertas(false); apply(); }
+              if (e.key === 'Escape') setSugestoesAbertas(false);
+            }}
             placeholder="Título, autor, ISBN, código..."
             className={inputClass}
+            role="combobox"
+            aria-expanded={sugestoesAbertas && sugestoes.length > 0}
+            aria-controls="sugestoes-pesquisa"
+            aria-autocomplete="list"
           />
+
+          {sugestoesAbertas && sugestoes.length > 0 && (
+            <ul
+              id="sugestoes-pesquisa"
+              role="listbox"
+              aria-label="Sugestões de pesquisa"
+              className="elev-overlay absolute left-0 right-0 top-full z-50 mt-2 max-h-72 overflow-y-auto rounded-xl border border-border bg-popover py-1 text-left"
+            >
+              {sugestoes.map((sug) => (
+                <li key={`${sug.tipo}-${sug.id || sug.texto}`} role="option" aria-selected="false">
+                  <button
+                    type="button"
+                    className="control-press flex w-full items-baseline gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted"
+                    onClick={() => {
+                      setLocal((s) => ({ ...s, search: sug.texto }));
+                      setSugestoesAbertas(false);
+                      updateFilter('search', sug.texto);
+                      if (onSearch) onSearch();
+                    }}
+                  >
+                    <span className="min-w-0 flex-1 truncate text-foreground">{sug.texto}</span>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {sug.tipo === 'livro' ? 'livro' : sug.tipo === 'autor' ? 'autor' : 'editora'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <Button onClick={apply} className={`rounded-full px-5 shrink-0 ${isHero ? 'bg-white text-[var(--brand-dark)] hover:bg-white/90' : 'btn-primary'}`}>
           Pesquisar

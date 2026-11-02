@@ -24,17 +24,18 @@ export default defineConfig({
     chunkSizeWarningLimit: 700,
     rollupOptions: {
       output: {
-        // Só as bibliotecas que a loja carrega de qualquer maneira ficam num chunk
-        // separado, para não mudarem de hash a cada alteração do nosso código.
-        //
-        // Tudo o resto fica entregue à divisão automática do Vite — e em especial o
-        // recharts e o firebase, que têm de ficar dentro dos chunks assíncronos de quem
-        // os usa (/admin e as ferramentas Google). A versão anterior agrupava por
-        // substring ("react" apanhava também o react-smooth, do recharts): partia pacotes
-        // por vários chunks, o Rollup religava-os com imports estáticos, e o index.html
-        // acabava a pré-carregar ~250 KB gzip que só o /admin usa.
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+        // Divide os pacotes pesados em chunks dedicados para reduzir o payload inicial e
+        // evitar que o bundle principal fique dominado por panel, gráficos e integrações.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+
+          if (id.includes('/react') || id.includes('/scheduler') || id.includes('/react-router-dom')) return 'vendor-react';
+          if (id.includes('/recharts') || id.includes('/d3')) return 'vendor-charts';
+          if (id.includes('/firebase') || id.includes('/@firebase')) return 'vendor-firebase';
+          if (id.includes('@supabase')) return 'vendor-supabase';
+          if (id.includes('/framer-motion')) return 'vendor-motion';
+
+          return 'vendor-commons';
         },
       },
     },

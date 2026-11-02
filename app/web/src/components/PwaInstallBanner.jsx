@@ -38,7 +38,7 @@ export default function PwaInstallBanner() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-50 bg-card border shadow-xl rounded-2xl p-4 flex gap-3 items-start animate-in slide-in-from-bottom-4">
+    <div className="fixed bottom-4 safe-float-bottom [--float-gap:1rem] left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-50 bg-card border shadow-xl rounded-2xl p-4 flex gap-3 items-start animate-in slide-in-from-bottom-4">
       <div className="h-10 w-10 rounded-xl bg-[#0ea5c9]/10 flex items-center justify-center shrink-0 overflow-hidden">
         {logoUrl ? (
           <img src={logoUrl} alt="" className="h-full w-full object-contain p-1" />

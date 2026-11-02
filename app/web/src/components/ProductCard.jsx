@@ -140,7 +140,7 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
                     e.stopPropagation();
                     toggleWishlist(product);
                   }}
-                  className="absolute top-2 right-2 p-1.5 rounded-full bg-background/95 shadow-md hover:bg-background z-20 transition-colors cursor-pointer"
+                  className="tap-target absolute top-2 right-2 p-1.5 rounded-full bg-background/95 shadow-md hover:bg-background z-20 control-press cursor-pointer"
                   aria-label={isWish ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
                 >
                   <Heart className={`h-4 w-4 transition-colors ${isWish ? 'text-red-500 fill-red-500' : 'text-muted-foreground hover:text-red-500'}`} />
@@ -155,10 +155,14 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
                 <span className="bg-destructive text-white text-xs font-bold px-3 py-1 rounded-full">Esgotado</span>
               </div>
             )}
-            <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Visíveis no telemóvel, escondidos até ao apontar no computador.
+                Estavam em `opacity-0 group-hover:opacity-100`, e num ecrã de toque não há
+                "passar por cima": a visualização rápida e a partilha nunca chegavam a
+                aparecer a quem usa telemóvel. */}
+            <div className="absolute bottom-2 right-2 flex gap-5 sm:gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" onClick={handleQuickView} className="p-1.5 rounded-full bg-background/90 shadow hover:bg-background" aria-label="Visualizar">
+                  <button type="button" onClick={handleQuickView} className="tap-target p-1.5 rounded-full bg-background/90 shadow hover:bg-background control-press" aria-label="Visualizar">
                     <Eye className="h-3.5 w-3.5" />
                   </button>
                 </TooltipTrigger>
@@ -167,7 +171,7 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
               {waPhone && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button type="button" onClick={handleShare} className="p-1.5 rounded-full bg-green-500 text-white shadow hover:bg-green-600" aria-label="Partilhar no WhatsApp">
+                    <button type="button" onClick={handleShare} className="tap-target p-1.5 rounded-full bg-green-500 text-white shadow hover:bg-green-600 control-press" aria-label="Partilhar no WhatsApp">
                       <MessageCircle className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
@@ -206,7 +210,7 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
           <Button
             size="sm"
             variant="outline"
-            className={`flex-1 rounded-lg text-xs ${added ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'border-primary/30 hover:bg-primary/10'}`}
+            className={`h-11 sm:h-8 flex-1 rounded-lg text-xs ${added ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'border-primary/30 hover:bg-primary/10'}`}
             onClick={handleAddToCart}
             disabled={adding}
           >
@@ -218,7 +222,7 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
             {added ? 'No carrinho' : 'Comprar'}
           </Button>
           <Link to={`/product/${product.id}`} className="hidden sm:block flex-1">
-            <Button size="sm" variant="secondary" className="w-full rounded-lg text-xs hover:bg-primary/10 hover:text-primary">
+            <Button size="sm" variant="secondary" className="h-11 sm:h-8 w-full rounded-lg text-xs hover:bg-primary/10 hover:text-primary">
               Ver Detalhes
             </Button>
           </Link>

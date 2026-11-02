@@ -352,6 +352,77 @@
   transition: transform var(--motion-slow) var(--ease-out), opacity var(--motion-fast) linear;
 }
 
+/* ---------------------------------------------------------------------------
+   Toque e barras do sistema
+   --------------------------------------------------------------------------- */
+
+/* O `index.html` tem `viewport-fit=cover`, que estende a página para baixo do
+   entalhe e da barra inferior do telemóvel. Isso só se usa se o conteúdo for
+   depois afastado dessas zonas — sem estas regras, o cabeçalho fica por baixo da
+   hora e da bateria, e o que está preso ao fundo fica por baixo da barra de
+   gestos do sistema, onde o toque não chega ao sítio certo.
+   `env()` devolve zero nos equipamentos que não têm entalhe, por isso não é
+   preciso separar por aparelho. */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Para quem está preso ao fundo com `bottom`: afasta-se do indicador de gestos
+   em vez de lhe ficar por baixo. */
+.safe-float-bottom {
+  bottom: calc(var(--float-gap, 1.5rem) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Área de toque de 44px sem mudar o tamanho do que se vê.
+   O alvo cresce por baixo, num pseudo-elemento centrado: o ícone continua
+   pequeno e discreto, e o dedo acerta à primeira. Aumentar o botão em si daria
+   cartões com ícones enormes a competir com a capa do livro.
+   44px é o mínimo que a Apple recomenda; a Google pede 48dp. Fica nos 44 porque
+   é o que cabe entre dois ícones nos cantos de um cartão sem eles se tocarem. */
+.tap-target {
+  position: relative;
+}
+
+.tap-target::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+  /* Só nos equipamentos de toque: com rato, o ponteiro é preciso e áreas
+     invisíveis a mais só atrapalham quem passa por perto. */
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .tap-target::before {
+    display: block;
+  }
+}
+
+/* Resposta ao toque.
+   O rectângulo cinzento que o Android desenha por cima do que se toca aparece
+   sempre tarde e com a forma errada — tapa o canto arredondado e fica depois de
+   o dedo sair. A resposta é dada pelo próprio elemento, com `:active`, que
+   acontece no instante do toque.
+   `touch-action: manipulation` tira o atraso de 300 ms que os navegadores
+   guardavam para ver se era um toque duplo para ampliar. */
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  summary {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
 /* Painéis que flutuam sobre a página: modais, gavetas, menus.
    A sombra do Tailwind é uma mancha única; esta tem as duas camadas dos restantes níveis,
    mais fundas, porque estes elementos estão mais acima. O contorno claríssimo por cima

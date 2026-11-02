@@ -52,7 +52,7 @@ const Header = ({ onCartOpen }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border shadow-sm glass-topbar text-white">
+    <header className="safe-top sticky top-0 z-40 border-b border-border shadow-sm glass-topbar text-white">
       {/* Barra superior — mensagem de boas-vindas */}
       <div className="hidden sm:block text-white/90 text-center text-xs py-1.5 px-4 border-b border-white/5 bg-white/5">
         {isAuthed ? (

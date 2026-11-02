@@ -79,3 +79,35 @@ nem `setInterval` novo, uma única animação CSS activa. A faixa de livros usa
 
 Isto é o que dá margem para acrescentar os efeitos visuais: o custo deles tem de continuar a
 ser de composição, em `transform` e `opacity`, nunca em propriedades que forcem novo layout.
+
+---
+
+# Depois do ataque ao INP (commit `0917f63`)
+
+| Indicador | Baseline | Fase 0 | Agora | Objectivo | |
+|-----------|---------:|-------:|------:|----------:|---|
+| CLS `/shop` | 0,573 | 0,061 | **0,055–0,061** | ≤ 0,1 | ✅ |
+| LCP `/shop` | 2852 ms | 2208–2428 ms | **2392–2600 ms** | ≤ 2500 ms | ~ |
+| Long tasks em 9 s | 4552 ms | 4250–4681 ms | **2212–2434 ms** | — | ✅ −48% |
+| Elementos no DOM | 3978 | 3978 | **1910** | — | ✅ −52% |
+| Imagens carregadas | 386 | 386 | **90** | — | ✅ −77% |
+
+## O INP não ficou medido
+
+As medições oscilaram entre 16 ms e 1552 ms para acções equivalentes, conforme o que a
+página estivesse a fazer e a contenção do painel do navegador. Uma medição única não
+distingue melhoria de ruído, e não tenho aqui um ambiente que isole o suficiente.
+
+**O que se pode afirmar** é o trabalho que deixou de existir: menos 48% de tempo em long
+tasks, menos 52% de elementos no DOM e menos 77% de imagens. Isso reduz layout, pintura e
+memória em cada interacção — mas o número de INP em campo só o CrUX ou uma ferramenta de RUM
+o dirão, com utilizadores reais e equipamentos reais.
+
+## O que estava a custar
+
+A faixa "Disponíveis para Encomenda" recebia os 90 livros em stock e multiplicava-os pelas
+4 cópias do loop: 360 cartões, 2520 elementos, 360 imagens — 63% do DOM. A faixa reinicia ao
+fim de uma cópia, por isso ninguém via mais de uma dúzia de títulos diferentes. Passou a 16.
+
+Os 24 cartões da grelha refaziam-se a cada render do pai, e a grelha tinha uma `key` derivada
+dos filtros que os desmontava e remontava a todos sempre que a selecção mudava.

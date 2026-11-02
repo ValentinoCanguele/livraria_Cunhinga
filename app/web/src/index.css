@@ -11,6 +11,25 @@
     --glass-opacity: 0.72;
     --glass-blur: 20px;
     --glass-enabled: 1;
+
+    /* Elevação em camadas.
+       Cada nível soma uma sombra curta e apertada (o contacto com a superfície) a uma
+       longa e difusa (a sombra projectada). É isso que dá a sensação de um objecto
+       pousado, em vez da mancha cinzenta única que uma só sombra produz.
+       As sombras são pretas com pouca opacidade, e não cinzentos opacos: assim
+       escurecem o que está por baixo em vez de lhe pintarem uma cor por cima, e
+       continuam certas sobre qualquer fundo.
+       Tempos e curva ficam aqui para todos os elementos se moverem ao mesmo ritmo —
+       uma biblioteca de valores soltos dá uma interface onde cada peça responde a um
+       compasso diferente. */
+    --elev-1: 0 1px 2px -1px rgb(0 0 0 / 0.07), 0 2px 6px -2px rgb(0 0 0 / 0.06);
+    --elev-2: 0 2px 4px -2px rgb(0 0 0 / 0.08), 0 6px 14px -4px rgb(0 0 0 / 0.09);
+    --elev-3: 0 4px 8px -4px rgb(0 0 0 / 0.10), 0 14px 28px -8px rgb(0 0 0 / 0.12);
+    --elev-rise: -2px;              /* subida ao destacar: o suficiente para se notar */
+    --motion-fast: 140ms;
+    --motion-base: 220ms;
+    --motion-slow: 420ms;
+    --ease-out: cubic-bezier(0.22, 0.8, 0.3, 1);
     --border: 210 18% 88%;
     --input: 210 20% 94%;
     --ring: var(--brand-primary-hsl, 216 55% 24%);
@@ -137,10 +156,6 @@
     @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all duration-300 active:scale-[0.98];
   }
 
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
-  }
-
   .input-focus {
     @apply focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all duration-200;
   }
@@ -215,6 +230,117 @@
       animation: none;
     }
   }
+}
+
+/* Quem pediu menos movimento no sistema operativo recebe a interface sem ele.
+   As animações não são removidas, são encurtadas para quase zero: uma animação que
+   não corre pode deixar um elemento preso no estado inicial — invisível, se começava
+   com `opacity: 0` —, enquanto uma que salta para o fim chega sempre ao sítio certo.
+   `scroll-behavior: auto` porque o deslocamento suave também é movimento. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Refinamento visual
+   Ligado e desligado pelos atributos `data-ff-*` que `lib/featureFlags.js` põe no
+   `<html>`. Em CSS, e não em React, para um efeito se poder desligar sem nenhum
+   componente voltar a desenhar.
+   Só `transform`, `opacity`, `box-shadow` e `filter`: nenhuma destas obriga o
+   navegador a recalcular a posição do resto da página, que é o que torna um efeito
+   bonito numa página lenta.
+   --------------------------------------------------------------------------- */
+
+/* Superfície com profundidade. Sobe um pouco ao ser apontada ou tocada. */
+.surface-raise {
+  box-shadow: var(--elev-1);
+}
+
+:root[data-ff-elevacao="1"] .surface-raise {
+  transition: box-shadow var(--motion-base) var(--ease-out),
+              transform var(--motion-base) var(--ease-out);
+}
+
+:root[data-ff-elevacao="1"] .surface-raise:hover,
+:root[data-ff-elevacao="1"] .surface-raise:focus-within {
+  box-shadow: var(--elev-3);
+  transform: translate3d(0, var(--elev-rise), 0);
+}
+
+/* No toque não há "passar por cima": a elevação acontece enquanto o dedo está pousado.
+   `:active` dá a resposta imediata que o toque pede. */
+:root[data-ff-elevacao="1"] .surface-raise:active {
+  box-shadow: var(--elev-2);
+  transform: translate3d(0, 0, 0);
+  transition-duration: var(--motion-fast);
+}
+
+/* O contorno de foco por cima de tudo: a elevação nunca pode esconder onde o teclado está. */
+.surface-raise:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+/* Capas com aproximação lenta dentro do cartão.
+   O `overflow: hidden` do contentor é que a mantém dentro da moldura; sem ele, a
+   imagem crescia por cima do que está à volta. */
+:root[data-ff-zoomimagem="1"] .media-zoom {
+  transition: transform var(--motion-slow) var(--ease-out);
+  will-change: transform;
+}
+
+:root[data-ff-zoomimagem="1"] .surface-raise:hover .media-zoom,
+:root[data-ff-zoomimagem="1"] .surface-raise:focus-within .media-zoom {
+  transform: scale(1.04);
+}
+
+/* Controlos: resposta ao toque e ao rato.
+   O botão afunda ligeiramente em vez de subir — é o gesto de carregar, e lê-se
+   como tal mesmo sem cor a mudar. */
+:root[data-ff-transicoes="1"] .control-press {
+  transition: transform var(--motion-fast) var(--ease-out),
+              box-shadow var(--motion-fast) var(--ease-out),
+              background-color var(--motion-fast) var(--ease-out),
+              border-color var(--motion-fast) var(--ease-out),
+              color var(--motion-fast) var(--ease-out);
+}
+
+:root[data-ff-transicoes="1"] .control-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Brilho de destaque: um reflexo que atravessa o elemento uma vez, quando ele é
+   apontado. Não repete — um brilho contínuo cansa e chama a atenção para onde ela
+   não é precisa. */
+:root[data-ff-transicoes="1"] .sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+:root[data-ff-transicoes="1"] .sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 0.16) 48%, transparent 58%);
+  transform: translate3d(-130%, 0, 0);
+  opacity: 0;
+}
+
+:root[data-ff-transicoes="1"] .sheen:hover::after,
+:root[data-ff-transicoes="1"] .sheen:focus-visible::after {
+  opacity: 1;
+  transform: translate3d(130%, 0, 0);
+  transition: transform var(--motion-slow) var(--ease-out), opacity var(--motion-fast) linear;
 }
 
 @keyframes catalog-marquee-ltr {

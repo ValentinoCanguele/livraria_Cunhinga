@@ -69,12 +69,12 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
   return (
     <div className={`group h-full flex ${isList ? 'flex-row gap-4' : 'flex-col'}`}>
       <Link to={`/product/${product.id}`} onClick={handleQuickView} className={`block flex-1 ${isList ? 'flex flex-row gap-4' : ''}`}>
-        <div className={`bg-card rounded-xl overflow-hidden card-hover border border-border h-full flex ${isList ? 'flex-row flex-1' : 'flex-col'}`}>
+        <div className={`bg-card rounded-xl overflow-hidden surface-raise border border-border h-full flex ${isList ? 'flex-row flex-1' : 'flex-col'}`}>
           <div className={`relative overflow-hidden bg-muted shrink-0 ${isList ? 'w-28 h-36' : 'aspect-[3/4]'}`}>
             <img
               src={product.image || PLACEHOLDER}
               alt={product.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="media-zoom w-full h-full object-cover"
               /* As primeiras da grelha carregam já — uma delas é o maior elemento visível e
                  define o LCP, e adiá-la seria atrasar justamente o que se quer medir. As
                  restantes esperam por chegar perto do ecrã: eram 24 capas a disputar a rede

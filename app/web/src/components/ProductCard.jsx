@@ -164,7 +164,7 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
             {product.type?.value && (
               <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full w-fit mb-2">{product.type.value}</span>
             )}
-            <div className="mt-auto pt-2 flex items-center justify-between gap-2">
+            <div className="mt-auto pt-2 flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <p className="text-primary font-bold">{price}</p>
                 {originalPrice && <p className="text-xs text-muted-foreground line-through">{originalPrice}</p>}
@@ -177,12 +177,14 @@ export default function ProductCard({ product, onCartOpen, index = 0, viewMode =
         </div>
       </Link>
       {inStock && !isList && (
+        // Num cartão de 160 px os dois botões lado a lado precisavam de 209 px e
+        // transbordavam. Em ecrã estreito fica só "Comprar": tocar no cartão já abre o livro.
         <div className="flex gap-2 mt-2">
           <Button size="sm" variant="outline" className="flex-1 rounded-lg border-primary/30 hover:bg-primary/10 text-xs" onClick={handleAddToCart} disabled={adding}>
             {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-1" />}
             Comprar
           </Button>
-          <Link to={`/product/${product.id}`} className="flex-1">
+          <Link to={`/product/${product.id}`} className="hidden sm:block flex-1">
             <Button size="sm" variant="secondary" className="w-full rounded-lg text-xs hover:bg-primary/10 hover:text-primary">
               Ver Detalhes
             </Button>

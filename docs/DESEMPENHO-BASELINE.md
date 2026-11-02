@@ -228,3 +228,33 @@ A visualização rápida e a partilha por WhatsApp estavam em
 `opacity-0 group-hover:opacity-100`. Num ecrã de toque não há "passar por cima": **nunca
 chegavam a aparecer**. Não era um problema de desempenho nem de estilo — eram duas funções
 invisíveis para quem usa telemóvel, que é a maior parte de quem compra livros em Angola.
+
+---
+
+# Fase 4 e estado final (commit `90da9a7`)
+
+| Indicador | Antes de tudo | Final | Objectivo | |
+|-----------|--------------:|------:|----------:|---|
+| LCP `/shop` mobile | 4148 ms | **1852–1884 ms** | ≤ 2500 ms | ✅ |
+| CLS `/shop` mobile | 0,257 | **0,059** | ≤ 0,1 | ✅ |
+| CLS `/shop` desktop | 0,573 | 0,061 | ≤ 0,1 | ✅ |
+| Long tasks | 2185 ms | 1222–1682 ms | — | ✅ |
+| Elementos no DOM | 3978 | 1910 | — | −52% |
+| Imagens | 386 | 90 | — | −77% |
+| Alvos de toque < 44 px | 169 | 78 | — | −54% |
+| INP | 272 ms | sem número fiável | ≤ 200 ms | ❓ |
+
+## O que foi medido e o que não foi
+
+**Medido em produção, com método repetível:** LCP, CLS, long tasks, tamanho do DOM, número
+de imagens, alvos de toque, sobreposição entre alvos, e o custo dos efeitos visuais com e
+sem eles (alternando a ordem para não medir o estado da cache).
+
+**Não medido:** o INP. As leituras oscilam entre 16 e 1552 ms para acções equivalentes, e
+este ambiente não isola o suficiente para distinguir melhoria de ruído. O que se pode dizer
+é o trabalho que deixou de existir — metade do DOM, um quarto das imagens, menos long tasks.
+
+**Nunca medido em campo.** Todos estes números vêm de uma máquina de desenvolvimento com
+ligação fixa. O público desta loja está em Angola, em rede móvel e em equipamentos mais
+modestos. Ligar o CrUX ou uma ferramenta de RUM é o passo que falta para saber como isto se
+comporta a sério — e é também a única forma de obter o INP.

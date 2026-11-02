@@ -118,6 +118,33 @@ Por escolher (são decisões de imagem, não de código): quais das opções da 
 slides, nos banners e nas capas das colecções. As capas das 4 colecções ainda apontam para
 fotos genéricas do Unsplash.
 
+## Cabeçalho, equipa e rodapé (2026-11-02)
+
+- **"Sobre" no cabeçalho**, no menu principal (link simples, como o "Início") e no menu do
+  telemóvel. Confirmado no site publicado.
+- **Secção "A Nossa Equipa"** na página Sobre, por baixo da história: fotografia redonda,
+  nome e função, 2–4 por linha. **Sem ninguém na lista a secção não aparece**, e é esse o
+  estado actual — os nomes, funções e fotografias são dados de pessoas reais e não foram
+  inventados. Preenche-se em **Configurações → Marca → "Equipa na página Sobre"**
+  (acrescentar, remover, subir, descer; fotografia por URL ou envio). Migração
+  `20261102052614_equipa_sobre`, já aplicada (coluna `about_team` confirmada por
+  `GET /rest/v1/site_settings?select=about_team` = 200).
+  A rota pública `/settings` limita o que devolve: 40 pessoas, 120 caracteres por campo, e
+  fotografia só se for http(s) ou caminho do próprio site.
+- **Rodapé** com três colunas revistas, só com caminhos que existem: apoio (rastreio,
+  envios, FAQ, contacto, lojas), comprar (catálogo, coleções, levantamento, pagamento na
+  entrega, sobre) e conta (entrar, encomendas, lista de desejos, dados, segurança).
+- **O perfil aceita o separador no URL** (`/profile?tab=wishlist`), como o painel já fazia.
+  É o que permite aos atalhos do rodapé abrirem já na secção certa.
+
+### Por correr (dados, não esquema)
+
+`docs/migracoes-pendentes/2_capas_das_colecoes.sql` troca as capas das quatro colecções —
+hoje fotos genéricas do Unsplash — por imagens feitas com as capas reais do catálogo,
+escolhidas pelo tema de cada uma. Corre-se no SQL Editor do Supabase (o `db push` é só para
+esquema). Em alternativa, dá-se dois cliques por colecção em Admin → Colecções → Capa →
+aba Galeria.
+
 ## Regras para continuar
 
 - **Migrações novas:** aplicar com a ferramenta `apply_migration` do Supabase. Depois ler a versão atribuída em `supabase_migrations.schema_migrations` e guardar o ficheiro com esse nome e **exactamente** o mesmo SQL. Se as versões não coincidirem, `supabase db push` no CI falha.

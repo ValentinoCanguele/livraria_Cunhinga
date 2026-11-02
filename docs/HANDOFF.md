@@ -134,6 +134,16 @@ fotos genéricas do Unsplash.
 - **Rodapé** com três colunas revistas, só com caminhos que existem: apoio (rastreio,
   envios, FAQ, contacto, lojas), comprar (catálogo, coleções, levantamento, pagamento na
   entrega, sobre) e conta (entrar, encomendas, lista de desejos, dados, segurança).
+- **Rodapé com funções, não só links** (bloco entre as colunas e as lojas):
+  - *Rastrear encomenda* ali mesmo — número e email, e o `/track` abre já preenchido
+    (via `location.state`, como vindo do checkout). Testado no site publicado: leva a
+    `/track` com o número no campo.
+  - *Como compra e recebe* — limiar de portes grátis lido das Configurações, levantamento
+    em loja quando alguma loja o tem activo, assinatura na recepção, e WhatsApp directo
+    quando há número.
+  - *Pagamentos aceites* — os métodos activos, pela mesma rota pública do checkout, para
+    não ser uma lista à mão que fica velha. Atenção: `getPaymentMethods()` devolve
+    `{ methods }`, não um array.
 - **O perfil aceita o separador no URL** (`/profile?tab=wishlist`), como o painel já fazia.
   É o que permite aos atalhos do rodapé abrirem já na secção certa.
 

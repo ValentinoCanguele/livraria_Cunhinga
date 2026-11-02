@@ -11,29 +11,37 @@ import BrandLogo from '@/components/BrandLogo';
 import { BRAND } from '@/lib/brand';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Só caminhos que existem no App.jsx. O separador do perfil vai no URL (/profile?tab=…),
+// como no painel, para estes atalhos abrirem já na secção certa.
 const DEFAULT_FOOTER_COLUMNS = [
   {
     title: 'Apoio ao Cliente',
     links: [
-      { label: 'FAQ', url: '/faq', internal: true },
-      { label: 'Envios e Devoluções', url: '/shipping-returns', internal: true },
-      { label: 'Rastrear Encomenda', url: '/track', internal: true },
-      { label: 'Contacte-nos', url: '/contact', internal: true },
+      { label: 'Rastrear encomenda', url: '/track', internal: true },
+      { label: 'Envios e devoluções', url: '/shipping-returns', internal: true },
+      { label: 'Perguntas frequentes', url: '/faq', internal: true },
+      { label: 'Falar connosco', url: '/contact', internal: true },
+      { label: 'Lojas físicas e horários', url: '/lojas', internal: true },
     ],
   },
   {
-    title: 'Loja',
+    title: 'Comprar',
     links: [
-      { label: 'Explorar Livros', url: '/shop', internal: true },
+      { label: 'Todos os livros', url: '/shop', internal: true },
       { label: 'Coleções', url: '/colecoes', internal: true },
-      { label: 'Sobre Nós', url: '/about', internal: true },
+      { label: 'Levantamento na loja', url: '/lojas', internal: true },
+      { label: 'Pagamento na entrega', url: '/shipping-returns', internal: true },
+      { label: 'Sobre nós', url: '/about', internal: true },
     ],
   },
   {
-    title: 'Conta',
+    title: 'A minha conta',
     links: [
-      { label: 'Entrar / Registar', url: '/login', internal: true },
-      { label: 'Minha Conta', url: '/profile', internal: true },
+      { label: 'Entrar ou criar conta', url: '/login', internal: true },
+      { label: 'As minhas encomendas', url: '/profile?tab=orders', internal: true },
+      { label: 'Lista de desejos', url: '/profile?tab=wishlist', internal: true },
+      { label: 'Dados e notificações', url: '/profile?tab=settings', internal: true },
+      { label: 'Palavra-passe e segurança', url: '/profile?tab=security', internal: true },
     ],
   },
 ];

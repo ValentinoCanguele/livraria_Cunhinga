@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   User, Mail, Shield, ShoppingBag, Settings, LogOut, Loader2,
@@ -40,7 +40,20 @@ const ProfilePage = () => {
   const { toast } = useToast();
   const { settings } = useSiteSettings();
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState(location.state?.tab || 'orders');
+  // O separador fica no URL (/profile?tab=wishlist), como no painel: permite ligar-lhe
+  // directamente do rodapé e do menu, e sobrevive a um recarregamento.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const PROFILE_TABS = ['orders', 'settings', 'security', 'wishlist', 'workspace', 'crm'];
+  const tabFromUrl = PROFILE_TABS.includes(searchParams.get('tab') || '') ? searchParams.get('tab') : '';
+  const [activeTab, setActiveTab] = useState(tabFromUrl || location.state?.tab || 'orders');
+
+  const changeTab = (tab) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    if (tab === 'orders') next.delete('tab');
+    else next.set('tab', tab);
+    setSearchParams(next, { replace: true });
+  };
 
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
@@ -99,8 +112,9 @@ const ProfilePage = () => {
   }, [isAuthed, navigate]);
 
   useEffect(() => {
-    if (location.state?.tab) setActiveTab(location.state.tab);
-  }, [location.state?.tab]);
+    if (tabFromUrl) setActiveTab(tabFromUrl);
+    else if (location.state?.tab) setActiveTab(location.state.tab);
+  }, [tabFromUrl, location.state?.tab]);
 
   useEffect(() => {
     if (user) {
@@ -280,7 +294,7 @@ const ProfilePage = () => {
             </div>
 
             {/* Tabs principais */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={changeTab} className="w-full">
               <TabsList className="mb-6 flex flex-wrap gap-2">
                 <TabsTrigger value="orders"><ShoppingBag className="h-4 w-4 mr-2" />Encomendas</TabsTrigger>
                 <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-2" />Definições</TabsTrigger>

@@ -380,6 +380,14 @@ export default function MegaMenu() {
             </div>
           );
         })}
+        {/* Link simples, como o "Início": a página Sobre não precisa de painel. */}
+        <Link
+          to="/about"
+          className={`px-3 py-2 rounded-full text-sm font-semibold transition-colors hover:text-[#22d3ee] ${location.pathname === '/about' ? 'text-[#22d3ee]' : 'text-white/80'}`}
+          onMouseEnter={() => schedule(null, CLOSE_DELAY)}
+        >
+          Sobre
+        </Link>
       </nav>
 
       <AnimatePresence>

@@ -27,6 +27,7 @@ const empty = {
   login_bg_url: '',
   about_top_image_url: '',
   about_side_image_url: '',
+  about_team: [],
   contact_email: '',
   contact_phone: '',
   contact_address: '',
@@ -136,6 +137,7 @@ export default function SettingsTab() {
   // existirem, os campos não aparecem e não são gravados: enviá-los faria o PostgREST
   // recusar o registo inteiro e partir o gravar das Configurações.
   const [hasAboutImages, setHasAboutImages] = useState(false);
+  const [hasAboutTeam, setHasAboutTeam] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -147,6 +149,7 @@ export default function SettingsTab() {
         const r = list[0];
         setRecordId(r.id);
         setHasAboutImages('about_top_image_url' in r);
+        setHasAboutTeam('about_team' in r);
         setHadLogoFile(!!r.logo);
         setHadFaviconFile(!!r.favicon);
         setLogoRemoved(false);
@@ -164,6 +167,7 @@ export default function SettingsTab() {
           login_bg_url: r.login_bg_url || '',
           about_top_image_url: r.about_top_image_url || '',
           about_side_image_url: r.about_side_image_url || '',
+          about_team: Array.isArray(r.about_team) ? r.about_team : [],
           contact_email: r.contact_email || '',
           contact_phone: r.contact_phone ? formatAngolaPhone(r.contact_phone) : '',
           contact_address: r.contact_address || '',
@@ -241,6 +245,22 @@ export default function SettingsTab() {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Equipa da página Sobre
+  const teamSet = (index, key, value) => setForm((f) => {
+    const team = [...(f.about_team || [])];
+    team[index] = { ...team[index], [key]: value };
+    return { ...f, about_team: team };
+  });
+  const teamAdd = () => setForm((f) => ({ ...f, about_team: [...(f.about_team || []), { name: '', role: '', photo_url: '' }] }));
+  const teamRemove = (index) => setForm((f) => ({ ...f, about_team: (f.about_team || []).filter((_, i) => i !== index) }));
+  const teamMove = (index, dir) => setForm((f) => {
+    const team = [...(f.about_team || [])];
+    const j = index + dir;
+    if (j < 0 || j >= team.length) return f;
+    [team[index], team[j]] = [team[j], team[index]];
+    return { ...f, about_team: team };
+  });
+
   // Alterações por gravar: compara com o estado carregado do servidor.
   const [baseline, setBaseline] = useState('');
   useEffect(() => {
@@ -269,6 +289,16 @@ export default function SettingsTab() {
         ...(hasAboutImages ? {
           about_top_image_url: sanitizeImageUrlForSave(form.about_top_image_url),
           about_side_image_url: sanitizeImageUrlForSave(form.about_side_image_url),
+        } : {}),
+        ...(hasAboutTeam ? {
+          // Sem nome não é ninguém: essas linhas não são gravadas.
+          about_team: (form.about_team || [])
+            .map((m) => ({
+              name: (m.name || '').trim().slice(0, 120),
+              role: (m.role || '').trim().slice(0, 120),
+              photo_url: sanitizeImageUrlForSave(m.photo_url || ''),
+            }))
+            .filter((m) => m.name),
         } : {}),
         shop_bg_image_url: sanitizeImageUrlForSave(form.shop_bg_image_url),
         shipping_free_threshold: Number(form.shipping_free_threshold),
@@ -459,6 +489,71 @@ export default function SettingsTab() {
             uploadFolder="site_settings"
           />
           </>
+          )}
+
+          {hasAboutTeam && (
+            <div className="space-y-3 rounded-xl border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="text-base">Equipa na página Sobre</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Nome, função e fotografia de cada pessoa. Sem ninguém na lista, a secção não
+                    aparece no site. Linhas sem nome não são gravadas.
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={teamAdd}>Acrescentar</Button>
+              </div>
+
+              {(form.about_team || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">Ainda não há ninguém na lista.</p>
+              ) : (
+                <div className="space-y-4">
+                  {(form.about_team || []).map((member, i) => (
+                    <div key={i} className="grid gap-3 sm:grid-cols-[auto,1fr] items-start border-t pt-4 first:border-t-0 first:pt-0">
+                      <div className="w-32">
+                        <ImageField
+                          label="Fotografia"
+                          value={member.photo_url || ''}
+                          onChange={(v) => teamSet(i, 'photo_url', v)}
+                          aspect="1:1"
+                          previewClassName="h-20 w-20 rounded-full"
+                          showDrive={false}
+                          driveConfig={driveImageConfig}
+                          uploadFolder="site_settings"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Nome</Label>
+                            <Input
+                              value={member.name || ''}
+                              onChange={(e) => teamSet(i, 'name', e.target.value)}
+                              maxLength={120}
+                              placeholder="Nome da pessoa"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Função</Label>
+                            <Input
+                              value={member.role || ''}
+                              onChange={(e) => teamSet(i, 'role', e.target.value)}
+                              maxLength={120}
+                              placeholder="Ex.: Atendimento ao cliente"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="ghost" size="sm" onClick={() => teamMove(i, -1)} disabled={i === 0}>Subir</Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => teamMove(i, 1)} disabled={i === (form.about_team || []).length - 1}>Descer</Button>
+                          <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => teamRemove(i)}>Remover</Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </TabsContent>
 

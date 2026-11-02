@@ -549,7 +549,7 @@ route("GET", "/settings", async () => {
       header_cta_text: "Explorar novidades", header_cta_link: "/shop", footer_tagline: "", footer_copyright: "",
       footer_columns: null, show_stores_in_footer: true, ui_glass_enabled: true, ui_glass_opacity: 0.72,
       shop_bg_mode: "image", shop_bg_image_url: DEFAULT_SHOP_BG, shop_bg_video_url: "", shop_bg_overlay: 0.55,
-      about_top_image_url: DEFAULT_ABOUT_TOP, about_side_image_url: DEFAULT_ABOUT_SIDE,
+      about_top_image_url: DEFAULT_ABOUT_TOP, about_side_image_url: DEFAULT_ABOUT_SIDE, about_team: [],
     });
   }
   const brandImage = (urlField: string, fileField: string) => {
@@ -618,6 +618,15 @@ route("GET", "/settings", async () => {
     // Vazio (ou coluna ainda sem a migração `imagens_sobre`) = a imagem que vem com o site.
     about_top_image_url: rec.about_top_image_url || DEFAULT_ABOUT_TOP,
     about_side_image_url: rec.about_side_image_url || DEFAULT_ABOUT_SIDE,
+    // Equipa da página Sobre. Só sai o que é mostrado, e com tamanho limitado: a coluna é
+    // escrita pelo painel, mas esta rota é pública e não deve devolver lixo nem campos extra.
+    about_team: Array.isArray(rec.about_team)
+      ? rec.about_team.slice(0, 40).map((m: Row) => ({
+          name: String(m?.name ?? "").slice(0, 120),
+          role: String(m?.role ?? "").slice(0, 120),
+          photo_url: /^(https?:\/\/|\/)/.test(String(m?.photo_url ?? "")) ? String(m.photo_url).slice(0, 600) : "",
+        })).filter((m: Row) => m.name)
+      : [],
     google_maps_embed_key: rec.google_maps_embed_key || "",
     order_email_enabled: !!rec.order_email_enabled,
     push_enabled: !!rec.push_enabled,

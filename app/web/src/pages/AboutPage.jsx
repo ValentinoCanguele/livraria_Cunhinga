@@ -22,6 +22,8 @@ const AboutPage = () => {
   // vem com o site.
   const topImage = settings.about_top_image_url || '/images/site/sobre-topo.webp';
   const sideImage = settings.about_side_image_url || '/images/site/sobre-livros.webp';
+  // Equipa definida em Configurações → Página Sobre. Sem ninguém, a secção não aparece.
+  const team = (Array.isArray(settings.about_team) ? settings.about_team : []).filter((m) => m?.name);
 
   return (
     <>
@@ -68,6 +70,46 @@ const AboutPage = () => {
             </div>
           </div>
         </section>
+
+        {team.length > 0 && (
+          <section className="section-spacing">
+            <div className="container-custom">
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
+                <h2 className="text-4xl md:text-5xl font-bold mb-4">A Nossa Equipa</h2>
+                <p className="text-muted-foreground text-lg">Quem o atende, na loja e nas entregas</p>
+              </motion.div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                {team.map((member, index) => (
+                  <motion.div
+                    key={`${member.name}-${index}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: Math.min(index, 7) * 0.05 }}
+                    className="text-center"
+                  >
+                    <div className="mx-auto mb-3 h-28 w-28 rounded-full overflow-hidden bg-muted border border-border">
+                      {member.photo_url ? (
+                        <img
+                          src={member.photo_url}
+                          alt={member.name}
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-2xl font-semibold text-muted-foreground">
+                          {member.name.trim().charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold leading-tight">{member.name}</h3>
+                    {member.role && <p className="text-sm text-muted-foreground mt-0.5">{member.role}</p>}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         <section className="section-spacing bg-muted/30">
           <div className="container-custom">

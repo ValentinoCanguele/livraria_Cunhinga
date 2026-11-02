@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { ThemeProvider } from '@/hooks/useTheme';
-import { Navigate, Route, Routes, BrowserRouter as Router } from 'react-router-dom';
+import { Navigate, Route, Routes, BrowserRouter as Router, useParams } from 'react-router-dom';
 import { CartProvider } from '@/hooks/useCart';
 import { AuthProvider } from '@/hooks/useAuth';
 import { SiteSettingsProvider } from '@/hooks/useSiteSettings';
@@ -40,6 +40,16 @@ function PageLoader() {
   );
 }
 
+function LegacyCategoryRedirect() {
+  const { category } = useParams();
+  return <Navigate to={category ? `/shop/${encodeURIComponent(category)}` : '/shop'} replace />;
+}
+
+function LegacyCollectionRedirect() {
+  const { slug } = useParams();
+  return <Navigate to={slug ? `/colecoes/${encodeURIComponent(slug)}` : '/colecoes'} replace />;
+}
+
 function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="livraria-theme">
@@ -53,26 +63,46 @@ function App() {
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
+
             <Route path="/shop" element={<ShopPage />} />
+            <Route path="/loja" element={<Navigate to="/shop" replace />} />
+            <Route path="/catalog" element={<Navigate to="/shop" replace />} />
+            <Route path="/catalog/:category" element={<LegacyCategoryRedirect />} />
+            <Route path="/shop/:category" element={<CategoryPage />} />
+
             <Route path="/colecoes" element={<CollectionsPage />} />
             <Route path="/colecoes/:slug" element={<CollectionsPage />} />
-            <Route path="/shop/:category" element={<CategoryPage />} />
+            <Route path="/colecao/:slug" element={<LegacyCollectionRedirect />} />
+
             <Route path="/product/:id" element={<ProductDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/sobre" element={<Navigate to="/about" replace />} />
             <Route path="/lojas" element={<StoresPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/contacto" element={<Navigate to="/contact" replace />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/shipping-returns" element={<ShippingReturnsPage />} />
+            <Route path="/envios-devolucoes" element={<Navigate to="/shipping-returns" replace />} />
+            <Route path="/envios-e-devolucoes" element={<Navigate to="/shipping-returns" replace />} />
+
             <Route path="/success" element={<SuccessPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/track" element={<TrackOrderPage />} />
+            <Route path="/rastreio" element={<Navigate to="/track" replace />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/perfil" element={<Navigate to="/profile" replace />} />
+
             <Route path="/admin" element={<AdminPage />} />
-            {/* O painel de vendas era uma página à parte; os links antigos abrem o separador do admin. */}
+            <Route path="/admin.html" element={<Navigate to="/admin" replace />} />
+            <Route path="/painel" element={<Navigate to="/admin" replace />} />
+            <Route path="/painel-admin" element={<Navigate to="/admin" replace />} />
             <Route path="/painel-vendas.html" element={<Navigate to="/admin?tab=vendas-huambo" replace />} />
             <Route path="/painel-vendas" element={<Navigate to="/admin?tab=vendas-huambo" replace />} />
+            <Route path="/painel-vendas-huambo.html" element={<Navigate to="/admin?tab=vendas-huambo" replace />} />
+            <Route path="/painel-vendas-huambo" element={<Navigate to="/admin?tab=vendas-huambo" replace />} />
+
             <Route path="*" element={
               <div className="min-h-screen flex items-center justify-center bg-background">
                 <div className="text-center">

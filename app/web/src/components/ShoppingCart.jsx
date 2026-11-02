@@ -78,18 +78,19 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
   });
 
   useEffect(() => {
-    if (isCartOpen) {
-      getPaymentMethods().then((res) => {
-        const methods = res.methods || [];
-        setPaymentMethods(methods);
-        if (methods.length > 0 && !methods.find((m) => m.code === form.paymentMethod)) {
-          setForm((f) => ({ ...f, paymentMethod: methods[0].code }));
-        }
-      });
-      // Só as lojas que aceitam levantamento aparecem no checkout.
-      getPhysicalStores().then((list) => setPhysicalStores(list.filter((st) => st.pickup_enabled)));
-    }
-  }, [isCartOpen]);
+    if (!isCartOpen) return;
+
+    getPaymentMethods().then((res) => {
+      const methods = res.methods || [];
+      setPaymentMethods(methods);
+      if (methods.length > 0 && !methods.find((m) => m.code === form.paymentMethod)) {
+        setForm((f) => ({ ...f, paymentMethod: methods[0].code }));
+      }
+    }).catch(() => setPaymentMethods([]));
+
+    // Só as lojas que aceitam levantamento aparecem no checkout.
+    getPhysicalStores().then((list) => setPhysicalStores(list.filter((st) => st.pickup_enabled))).catch(() => setPhysicalStores([]));
+  }, [isCartOpen, form.paymentMethod]);
 
   const subtotalCents = getCartTotalCents();
   const FREE_SHIPPING_THRESHOLD = (Number(settings.shipping_free_threshold) || 20000) * 100;

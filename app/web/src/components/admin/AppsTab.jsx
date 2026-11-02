@@ -247,7 +247,7 @@ export default function AppsTab() {
   useEffect(() => { load(); }, [load]);
 
   // Registo de comunicações (tabela notification_logs no Supabase, escrita pela Edge Function).
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoadingLogs(true);
     try {
       const { data, error } = await supabase
@@ -263,13 +263,13 @@ export default function AppsTab() {
     } finally {
       setLoadingLogs(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     if (activeSubTab === 'logs') {
       loadLogs();
     }
-  }, [activeSubTab]);
+  }, [activeSubTab, loadLogs]);
 
   const toggle = async (app, enabled) => {
     try {

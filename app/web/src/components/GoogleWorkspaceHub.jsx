@@ -72,7 +72,7 @@ const GoogleWorkspaceHub = () => {
   }, []);
 
   // Dados do separador activo, lidos directamente das APIs do Google
-  const fetchData = async (currentSubTab = subTab) => {
+  const fetchData = React.useCallback(async (currentSubTab = subTab) => {
     setLoadingData(true);
     try {
       if (!token) throw new Error('Sem sessão Google');
@@ -89,11 +89,11 @@ const GoogleWorkspaceHub = () => {
     } finally {
       setLoadingData(false);
     }
-  };
+  }, [subTab, token]);
 
   useEffect(() => {
     fetchData(subTab);
-  }, [token, subTab]);
+  }, [fetchData, subTab]);
 
   const handleConnect = async () => {
     setActionLoading(true);

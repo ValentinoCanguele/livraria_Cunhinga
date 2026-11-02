@@ -11,6 +11,8 @@ import Footer from '@/components/Footer';
 import ShoppingCart from '@/components/ShoppingCart';
 import { pageTitle } from '@/lib/brand';
 import { useAuth } from '@/hooks/useAuth';
+import SessionGate from '@/components/SessionGate.jsx';
+import { sessionDecision } from '@/lib/authSession';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -31,7 +33,7 @@ import { isPushSupported, subscribeToPush, requestPushPermission } from '@/lib/p
 
 
 const ProfilePage = () => {
-  const { user, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout, updateProfile, changePassword, fetchUserOrders, updateAvatar } = useAuth();
+  const { user, ready, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout, updateProfile, changePassword, fetchUserOrders, updateAvatar } = useAuth();
   // As mesmas permissões que o servidor exige em /contacts/*.
   const canManageContacts = isAdmin || hasPermission('manage_marketing') || hasPermission('manage_users');
   const { wishlist, loading: loadingWishlist, removeFromWishlist } = useWishlist();
@@ -107,9 +109,14 @@ const ProfilePage = () => {
     }
   };
 
+  // `sessionDecision` garante a ordem: nada é decidido antes de se saber se há sessão. Era
+  // aqui que o login com a Google acabava de volta no ecrã de entrada, por a sessão vir no
+  // endereço e só ser guardada depois de o supabase-js a processar.
+  const access = sessionDecision({ ready, isAuthed });
+
   useEffect(() => {
-    if (!isAuthed) navigate('/login');
-  }, [isAuthed, navigate]);
+    if (access === 'login') navigate('/login', { state: { from: '/profile' } });
+  }, [access, navigate]);
 
   useEffect(() => {
     if (tabFromUrl) setActiveTab(tabFromUrl);
@@ -204,7 +211,8 @@ const ProfilePage = () => {
     }
   };
 
-  if (!isAuthed) return null;
+  if (access === 'wait') return <SessionGate />;
+  if (access !== 'allow') return null;
 
   return (
     <>

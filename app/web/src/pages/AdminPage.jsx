@@ -11,7 +11,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { pageTitle } from '@/lib/brand';
 import pb from '@/lib/dataClient';
 import { supabase } from '@/lib/supabaseClient';
+import { setOrderPaymentStatus } from '@/api/PlatformApi';
 import { useAuth } from '@/hooks/useAuth';
+import SessionGate from '@/components/SessionGate.jsx';
+import { sessionDecision } from '@/lib/authSession';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +55,7 @@ const ORDER_LIST_FIELDS = [
 ];
 
 const AdminPage = () => {
-  const { user, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout } = useAuth();
+  const { user, ready, isAuthed, isAdmin, canAccessAdmin, hasPermission, logout } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -77,10 +80,14 @@ const AdminPage = () => {
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [lowStockBooks, setLowStockBooks] = useState([]);
 
+  // `sessionDecision` garante a ordem: nada é decidido antes de se saber se há sessão.
+  // Decidir antes disso expulsava para `/login` quem tinha sessão válida mas ainda não lida.
+  const access = sessionDecision({ ready, isAuthed, allowed: canAccessAdmin });
+
   useEffect(() => {
-    if (!isAuthed) navigate('/login', { state: { from: '/admin' } });
-    else if (!canAccessAdmin) navigate('/profile');
-  }, [isAuthed, canAccessAdmin, navigate]);
+    if (access === 'login') navigate('/login', { state: { from: '/admin' } });
+    else if (access === 'forbidden') navigate('/profile');
+  }, [access, navigate]);
 
   const canManageCatalog = isAdmin || hasPermission('manage_catalog');
   const canManageOrders = isAdmin || hasPermission('manage_orders');
@@ -267,8 +274,15 @@ const AdminPage = () => {
 
   const handlePaymentStatus = async (order, paymentStatus) => {
     try {
-      await pb.collection('orders').update(order.id, { payment_status: paymentStatus });
-      toast({ title: 'Pagamento actualizado', description: getPaymentStatusLabel(paymentStatus) });
+      // Pela API, e não por `orders.update`: é no servidor que o cliente é avisado de que o
+      // pagamento foi confirmado. A gravação directa mudava o estado em silêncio.
+      const res = await setOrderPaymentStatus(order.id, paymentStatus);
+      toast({
+        title: 'Pagamento actualizado',
+        description: res?.email_sent
+          ? `${getPaymentStatusLabel(paymentStatus)} · cliente avisado por email`
+          : getPaymentStatusLabel(paymentStatus),
+      });
       loadAll();
     } catch (err) {
       toast({ variant: 'destructive', title: 'Erro', description: err.message });
@@ -326,6 +340,9 @@ const AdminPage = () => {
     next.set('tab', value);
     return next;
   }, { replace: true });
+
+  if (access === 'wait') return <SessionGate />;
+  if (access !== 'allow') return null;
 
   return (
     <>

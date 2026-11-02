@@ -25,11 +25,14 @@ const LOG_STATUS = {
 
 const LOG_CONTEXT = {
   order: 'Encomenda',
+  order_status: 'Estado da encomenda',
+  payment: 'Pagamento',
   receipt: 'Recibo',
   test: 'Teste',
   contact: 'Contacto',
   campaign: 'Campanha',
   account: 'Conta',
+  welcome: 'Boas-vindas',
 };
 
 // Integrações com efeito real no site (lidas pela Edge Function ou pelo painel).

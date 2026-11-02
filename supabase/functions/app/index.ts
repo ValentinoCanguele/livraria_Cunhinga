@@ -3,6 +3,17 @@
 // Deploy com verify_jwt=false: a autenticação é feita aqui (token do Supabase Auth, quando existe).
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.49.4";
 import nodemailer from "npm:nodemailer@6.9.16";
+import { brandFromSettings, emailDocument, formatKz, type Brand } from "./emails.ts";
+import {
+  accessLinkLetter,
+  noticeLetter,
+  orderCreatedLetter,
+  orderStatusLetter,
+  paymentConfirmedLetter,
+  testLetter,
+  welcomeLetter,
+  type Letter,
+} from "./emailTemplates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const db: SupabaseClient = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -82,11 +93,12 @@ const normalizeEmail = (email: string) => (email || "").trim().toLowerCase();
 // Igualdade sem distinguir maiúsculas (ilike sem curingas).
 const likeExact = (value: string) => value.replace(/[\\%_]/g, (c) => "\\" + c);
 const normalizePhone = (phone: string) => (phone || "").replace(/\D/g, "");
-const fmtMoneyKz = (amount: unknown) =>
-  Number(amount || 0).toLocaleString("pt-AO", { minimumFractionDigits: 2 }) + " Kz";
-const escapeHtml = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+// Formatação determinista (ver `formatKz`): o `toLocaleString("pt-AO")` devolvia o
+// separador de milhares que o ICU daquele runtime tivesse, e os valores dos recibos e das
+// mensagens de WhatsApp mudavam de formato com a máquina.
+const fmtMoneyKz = formatKz;
 
-type NotifyMeta = { context?: string; customer_name?: string; order_number?: string };
+type NotifyMeta = { context?: string; customer_name?: string; order_number?: string; dedupe?: string };
 
 /** Regista o resultado real de cada envio em notification_logs (visível no admin → Integrações). */
 async function logNotification(entry: Row) {
@@ -160,9 +172,45 @@ async function getIntegration(code: string): Promise<Row | null> {
 // ---------------------------------------------------------------------------
 // Email
 // ---------------------------------------------------------------------------
-async function sendTransactionalEmail(settings: Row | null, to: string, subject: string, html: string, meta: NotifyMeta = {}) {
+/** Já saiu um email para este acontecimento? Impede duplicados em repetições e reinícios. */
+async function alreadySent(dedupe: string) {
+  if (!dedupe) return false;
+  const { data, error } = await db.from("notification_logs")
+    .select("id").eq("dedupe_key", dedupe).eq("status", "sent").limit(1);
+  // Numa falha de leitura segue-se o envio: perder uma confirmação é pior do que repetir uma.
+  if (error) {
+    console.log("alreadySent:", error.message);
+    return false;
+  }
+  return !!data?.length;
+}
+
+/**
+ * Envia uma mensagem transaccional e registo do resultado real em `notification_logs`.
+ *
+ * Leva sempre as duas versões, HTML e texto simples: clientes que não mostram HTML, e os
+ * filtros de correio, contam com a segunda, e um email só com HTML tem mais probabilidade de
+ * acabar no lixo.
+ */
+async function sendTransactionalEmail(
+  settings: Row | null,
+  to: string,
+  subject: string,
+  html: string,
+  meta: NotifyMeta = {},
+  text = "",
+) {
   if (!to) return false;
-  const base = { type: "email", context: meta.context || "order", recipient: to, customer_name: meta.customer_name || "", order_number: meta.order_number || "", subject, content: html };
+  const dedupe = meta.dedupe || "";
+  if (dedupe && await alreadySent(dedupe)) {
+    console.log("Email repetido ignorado:", dedupe);
+    return true;
+  }
+  const base = {
+    type: "email", context: meta.context || "order", recipient: to,
+    customer_name: meta.customer_name || "", order_number: meta.order_number || "",
+    subject, content: html, ...(dedupe ? { dedupe_key: dedupe } : {}),
+  };
   if (!settings) {
     await logNotification({ ...base, status: "skipped", detail: "Configurações do site em falta." });
     return false;
@@ -177,6 +225,12 @@ async function sendTransactionalEmail(settings: Row | null, to: string, subject:
         await logNotification({ ...base, status: "skipped", provider, detail: "Chave SendGrid em falta." });
         return false;
       }
+      // A ordem importa: o SendGrid usa a última parte como a preferida, por isso o HTML vem
+      // depois do texto simples.
+      const content = [
+        ...(text ? [{ type: "text/plain", value: text }] : []),
+        { type: "text/html", value: html },
+      ];
       const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
         method: "POST",
         headers: { Authorization: `Bearer ${settings.sendgrid_api_key}`, "Content-Type": "application/json" },
@@ -184,7 +238,7 @@ async function sendTransactionalEmail(settings: Row | null, to: string, subject:
           personalizations: [{ to: [{ email: to }] }],
           from: { email: fromEmail, name: fromName },
           subject,
-          content: [{ type: "text/html", value: html }],
+          content,
         }),
       });
       const detail = res.ok ? `SendGrid ${res.status}` : `SendGrid ${res.status}: ${await res.text()}`;
@@ -202,7 +256,10 @@ async function sendTransactionalEmail(settings: Row | null, to: string, subject:
       secure: port === 465,
       auth: settings.smtp_user ? { user: settings.smtp_user, pass: settings.smtp_password || "" } : undefined,
     });
-    const info = await transport.sendMail({ from: { name: fromName, address: fromEmail }, to, subject, html });
+    const info = await transport.sendMail({
+      from: { name: fromName, address: fromEmail },
+      to, subject, html, ...(text ? { text } : {}),
+    });
     await logNotification({ ...base, status: "sent", provider: "smtp", detail: `${settings.smtp_host}:${port} · ${info?.response || "aceite"}` });
     return true;
   } catch (err) {
@@ -210,6 +267,17 @@ async function sendTransactionalEmail(settings: Row | null, to: string, subject:
     await logNotification({ ...base, status: "failed", provider, detail: (err as Error)?.message || String(err) });
     return false;
   }
+}
+
+/** Identidade visual da loja para os emails, com o endereço público configurado no painel. */
+function emailBrand(settings: Row | null): Brand {
+  return brandFromSettings(settings, String(settings?.site_url || Deno.env.get("SITE_URL") || ""));
+}
+
+/** Envia um modelo pronto (`emailTemplates.ts`), com HTML e texto simples. */
+async function sendLetter(settings: Row | null, to: string, letter: Letter, meta: NotifyMeta = {}) {
+  const { html, text } = emailDocument(emailBrand(settings), letter.doc);
+  return sendTransactionalEmail(settings, to, letter.subject, html, meta, text);
 }
 
 /** Link de pagamento do método da encomenda (ex.: Multicaixa Express), se o pagamento ainda não estiver confirmado. */
@@ -220,41 +288,50 @@ async function orderPaymentLink(order: Row) {
   return /^https:\/\//.test(link) ? link : "";
 }
 
-function buildOrderEmailHtml(order: Row, siteName: string, paymentLink = "") {
-  const rows = (order.items || []).map((it: Row) => {
-    const line = (Number(it.quantity) || 1) * (Number(it.price) || 0);
-    return `<tr><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(it.quantity || 1)}× ${escapeHtml(it.title || "Livro")}</td><td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${fmtMoneyKz(line)}</td></tr>`;
-  }).join("");
-  return [
-    '<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">',
-    '<h2 style="color:#0ea5c9">Encomenda Confirmada</h2>',
-    `<p>Olá <strong>${escapeHtml(order.customer_name)}</strong>,</p>`,
-    `<p>Obrigado pela sua compra na <strong>${escapeHtml(siteName || "Livraria Adventista")}</strong>.</p>`,
-    `<p><strong>Nº:</strong> ${escapeHtml(order.order_number || order.id)}</p>`,
-    '<table style="width:100%;border-collapse:collapse;margin:16px 0">',
-    '<thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #0ea5c9">Livro</th><th style="text-align:right;padding:8px;border-bottom:2px solid #0ea5c9">Total</th></tr></thead>',
-    "<tbody>", rows, "</tbody>",
-    "</table>",
-    `<p>Envio: ${fmtMoneyKz(order.shipping_cost)}</p>`,
-    `<p style="font-size:18px"><strong>Total: ${fmtMoneyKz(order.total)}</strong></p>`,
-    paymentLink
-      ? `<p><a href="${escapeHtml(paymentLink)}" style="display:inline-block;padding:10px 18px;background:#0ea5c9;color:#fff;border-radius:8px;text-decoration:none">Pagar com ${escapeHtml(order.payment_method_name || "o método escolhido")}</a></p><p style="color:#666;font-size:13px">Se já pagou, ignore este botão: confirmamos o pagamento com a referência indicada.</p>`
-      : "",
-    '<p style="color:#666;font-size:13px">Acompanhe em /track com o número e email utilizados na compra.</p>',
-  ].join("");
-}
-
 async function sendOrderConfirmationEmail(order: Row, settings: Row | null) {
   if (!settings?.order_email_enabled || !order.customer_email) return false;
-  const siteName = settings.site_name || "Livraria Adventista";
   const paymentLink = await orderPaymentLink(order);
-  return sendTransactionalEmail(settings, order.customer_email, `Confirmação de encomenda ${order.order_number || ""}`, buildOrderEmailHtml(order, siteName, paymentLink), {
-    context: "order", customer_name: order.customer_name, order_number: order.order_number,
+  const letter = orderCreatedLetter(emailBrand(settings), order, paymentLink);
+  return sendLetter(settings, order.customer_email, letter, {
+    context: "order",
+    customer_name: order.customer_name,
+    order_number: order.order_number,
+    // Uma só confirmação por encomenda, mesmo que o checkout seja repetido.
+    dedupe: `order:created:${order.id}`,
   });
 }
 
-const plainHtml = (body: string) =>
-  `<div style="font-family:sans-serif;line-height:1.6">${escapeHtml(body).replace(/\n/g, "<br>")}</div>`;
+/**
+ * Avisa o cliente de uma mudança de estado da encomenda.
+ *
+ * Só envia quando o estado muda de facto e quando há texto para esse estado: um email por
+ * cada gravação no painel, ou por um estado que nada diz ao cliente, seria ruído. A chave de
+ * idempotência é a encomenda mais o estado, por isso voltar a pôr a encomenda no mesmo
+ * estado não repete a mensagem.
+ */
+async function sendOrderStatusEmail(order: Row, settings: Row | null, status: string, event?: Row) {
+  if (!settings?.order_email_enabled || !order.customer_email) return false;
+  const letter = orderStatusLetter(emailBrand(settings), order, status, event);
+  if (!letter) return false;
+  return sendLetter(settings, order.customer_email, letter, {
+    context: "order_status",
+    customer_name: order.customer_name,
+    order_number: order.order_number,
+    dedupe: `order:status:${order.id}:${status}`,
+  });
+}
+
+/** Avisa o cliente de que o pagamento ficou confirmado. */
+async function sendPaymentConfirmedEmail(order: Row, settings: Row | null) {
+  if (!settings?.order_email_enabled || !order.customer_email) return false;
+  const letter = paymentConfirmedLetter(emailBrand(settings), order);
+  return sendLetter(settings, order.customer_email, letter, {
+    context: "payment",
+    customer_name: order.customer_name,
+    order_number: order.order_number,
+    dedupe: `order:paid:${order.id}`,
+  });
+}
 
 // ---------------------------------------------------------------------------
 // WhatsApp Business (Meta Cloud API)
@@ -514,7 +591,13 @@ async function notifyContact(contact: Row, opts: Row) {
   }
   if (channel === "email" || channel === "both") {
     if (hasEmail && settings) {
-      emailSent = await sendTransactionalEmail(settings, contact.email, subject, plainHtml(body), { context: opts.campaignId ? "campaign" : "contact", customer_name: contact.name });
+      // Campanhas e avisos levam a mesma moldura das restantes mensagens, e no rodapé a
+      // razão certa: as de marketing dizem como deixar de as receber.
+      const isCampaign = !!opts.campaignId;
+      emailSent = await sendLetter(
+        settings, contact.email, noticeLetter(emailBrand(settings), subject, body, isCampaign),
+        { context: isCampaign ? "campaign" : "contact", customer_name: contact.name },
+      );
       if (channel === "email") status = emailSent ? "sent" : "failed";
       else if (emailSent) status = "sent";
     } else if (channel === "email") {
@@ -831,6 +914,15 @@ route("POST", "/confirm-delivery", async ({ body, ip }) => {
     const { data, error: e2 } = await db.from("orders").update({ delivery_status: "delivered" }).eq("id", order.id).select().single();
     if (e2) throw e2;
     final = data;
+    // Comprovativo da entrega para o cliente. A chave de idempotência é a mesma que o
+    // painel usaria ao marcar "Entregue", por isso a confirmação não gera dois emails.
+    try {
+      await sendOrderStatusEmail(final, await getSettings(), "delivered", {
+        description: `Recepção confirmada por ${recipientName}.`,
+      });
+    } catch (err) {
+      console.log("Email de entrega confirmada:", err);
+    }
   }
   return json({
     order_number: final.order_number, delivery_status: final.delivery_status,
@@ -838,6 +930,45 @@ route("POST", "/confirm-delivery", async ({ body, ip }) => {
     delivery_recipient_name: final.delivery_recipient_name, delivery_signature_data: final.delivery_signature_data,
     timeline: final.delivery_timeline,
   });
+});
+
+/**
+ * Muda o estado do pagamento de uma encomenda e avisa o cliente quando fica pago.
+ *
+ * Esta rota existe porque o painel actualizava `payment_status` directamente na tabela, e
+ * nesse caminho não passa nenhum código que possa enviar um email: o cliente nunca sabia que
+ * o pagamento tinha sido aceite. Aqui a mudança e o aviso ficam no mesmo sítio, do lado do
+ * servidor, que é também quem tem a permissão para decidir.
+ */
+route("POST", "/admin/orders/payment-status", async ({ auth, body }) => {
+  requirePermission(auth, "manage_orders");
+  const id = String(body.orderId || "").trim();
+  const status = String(body.status || "").trim();
+  if (!id) throw bad("orderId obrigatório.");
+  if (!["pending", "awaiting_confirmation", "paid", "failed"].includes(status)) {
+    throw bad("Estado de pagamento inválido.");
+  }
+  const { data: order } = await db.from("orders").select("*").eq("id", id).maybeSingle();
+  if (!order) throw new HttpError(404, "Encomenda não encontrada.");
+
+  let saved = order;
+  if (order.payment_status !== status) {
+    const { data, error } = await db.from("orders").update({ payment_status: status }).eq("id", id).select().single();
+    if (error) throw error;
+    saved = data;
+  }
+
+  // Só o pagamento aceite gera mensagem: "pendente" ou "falhou" são estados internos, e o
+  // cliente é avisado disso pelo meio por onde está a pagar, não por um email da loja.
+  let emailSent = false;
+  if (status === "paid" && order.payment_status !== "paid") {
+    try {
+      emailSent = await sendPaymentConfirmedEmail(saved, await getSettings());
+    } catch (err) {
+      console.log("Email de pagamento confirmado:", err);
+    }
+  }
+  return json({ payment_status: saved.payment_status, email_sent: emailSent });
 });
 
 route("POST", "/delivery-event", async ({ auth, body }) => {
@@ -854,11 +985,25 @@ route("POST", "/delivery-event", async ({ auth, body }) => {
   if (body.estimated_delivery) patch.estimated_delivery = body.estimated_delivery;
   let { data: saved, error } = await db.from("orders").update(patch).eq("id", order.id).select().single();
   if (error) throw error;
+  let statusChanged = false;
   if (body.status && body.status !== order.delivery_status) {
     ({ data: saved, error } = await db.from("orders").update({ delivery_status: body.status }).eq("id", order.id).select().single());
     if (error) throw error;
+    statusChanged = true;
   }
-  return json({ timeline: saved.delivery_timeline });
+  // O email vai só quando o estado muda de facto: gravar a mesma etapa outra vez no painel
+  // não é novidade para o cliente. A falha de envio não desfaz a actualização da encomenda.
+  let emailSent = false;
+  if (statusChanged) {
+    try {
+      emailSent = await sendOrderStatusEmail(saved, await getSettings(), body.status, {
+        description: body.description || "",
+      });
+    } catch (err) {
+      console.log("Email de estado da encomenda:", err);
+    }
+  }
+  return json({ timeline: saved.delivery_timeline, email_sent: emailSent });
 });
 
 route("POST", "/checkout", async ({ body: data, ip }) => {
@@ -1105,8 +1250,7 @@ route("POST", "/admin/email/test", async ({ auth, body }) => {
   const to = normalizeEmail(body.to || auth?.email || "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) throw bad("Indique um email de teste válido.");
   const settings = await getSettings();
-  const html = plainHtml("✅ Teste — Livraria Adventista\n\nSe recebeu este email, o envio automático de confirmações de encomenda está a funcionar.");
-  const ok = await sendTransactionalEmail(settings, to, "Teste de email — Livraria Adventista", html, { context: "test" });
+  const ok = await sendLetter(settings, to, testLetter(emailBrand(settings)), { context: "test" });
   if (!ok) throw bad("O email não foi enviado. Veja o motivo no registo de comunicações.");
   return json({ message: `Email de teste enviado para ${to}.` });
 });
@@ -1357,22 +1501,32 @@ async function sendAccessLink(email: string, name: string, kind: "invite" | "res
   if (error) throw bad(error.message);
   const link = data?.properties?.action_link || "";
   const settings = await getSettings();
-  const site = settings?.site_name || "Livraria Adventista";
-  const subject = kind === "invite" ? `A sua conta na ${site}` : `Definir nova palavra-passe — ${site}`;
-  const intro = kind === "invite"
-    ? `Foi criada uma conta para si na <strong>${escapeHtml(site)}</strong>. Defina a sua palavra-passe para entrar.`
-    : `Recebemos um pedido para definir uma nova palavra-passe na <strong>${escapeHtml(site)}</strong>.`;
-  const html = [
-    `<div style="font-family:sans-serif;line-height:1.6;max-width:560px">`,
-    `<p>Olá ${escapeHtml(name || "")},</p>`,
-    `<p>${intro}</p>`,
-    `<p><a href="${escapeHtml(link)}" style="display:inline-block;padding:10px 18px;background:#0ea5c9;color:#fff;border-radius:8px;text-decoration:none">Definir palavra-passe</a></p>`,
-    `<p style="color:#64748b;font-size:13px">O link é pessoal e expira. Se não pediu isto, ignore este email.</p>`,
-    `</div>`,
-  ].join("");
-  const emailSent = await sendTransactionalEmail(settings, email, subject, html, { context: "account", customer_name: name });
+  const letter = accessLinkLetter(emailBrand(settings), name, kind, link);
+  // Sem `dedupe`: um pedido novo de recuperação tem de gerar um email novo, porque o link
+  // anterior deixa de servir.
+  const emailSent = await sendLetter(settings, email, letter, { context: "account", customer_name: name });
   return { link, emailSent };
 }
+
+/**
+ * Email de boas-vindas, pedido pela própria conta no primeiro acesso.
+ *
+ * O Supabase Auth cria a conta sem passar por aqui, por isso não há gancho no servidor para
+ * o registo. A alternativa é esta: o cliente pede uma vez, e a chave de idempotência (a
+ * conta) garante que só sai um email, por mais vezes que o pedido se repita. Vai sempre para
+ * o email da sessão, nunca para um endereço vindo no corpo do pedido.
+ */
+route("POST", "/account/welcome", async ({ auth }) => {
+  if (!auth?.email) throw new HttpError(401, "Sessão necessária.");
+  const settings = await getSettings();
+  const { data: profile } = await db.from("profiles").select("name").eq("id", auth.id).maybeSingle();
+  const sent = await sendLetter(settings, auth.email, welcomeLetter(emailBrand(settings), profile?.name || ""), {
+    context: "welcome",
+    customer_name: profile?.name || "",
+    dedupe: `account:welcome:${auth.id}`,
+  });
+  return json({ email_sent: sent });
+});
 
 route("GET", "/admin/users", async ({ auth, url }) => {
   requirePermission(auth, "manage_users");

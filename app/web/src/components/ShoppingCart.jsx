@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart as ShoppingCartIcon, X, Loader2, ChevronLeft, Truck, CreditCard, MapPin, Shield, Lock, MessageCircle, ChevronDown, ChevronUp, PenLine,
@@ -20,6 +20,7 @@ import { formatCurrency } from '@/api/EcommerceApi';
 import { openWhatsAppOrder } from '@/lib/whatsapp';
 import { calcShippingCents, SHIPPING_METHODS, getShippingLabel } from '@/lib/shipping';
 import { saveLastOrder } from '@/lib/receipt';
+import { currentPathWithQuery } from '@/lib/authSession';
 import AngolaAddressSelector, { validateAngolaAddress, angolaAddressToPayload } from '@/components/AngolaAddressSelector';
 import SignaturePad from '@/components/SignaturePad';
 import PhoneInput from '@/components/PhoneInput';
@@ -29,6 +30,9 @@ import { FloatingScrollTop } from '@/components/ui/FloatingScrollTop';
 const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
   const { toast } = useToast();
   const { user, updateProfile } = useAuth();
+  // O carrinho é um painel sobre a página, não tem endereço próprio: quem sai daqui para
+  // entrar volta à página onde estava, com o carrinho intacto (fica no armazenamento local).
+  const loginReturnTo = currentPathWithQuery(useLocation());
   const { settings } = useSiteSettings();
   const { integrations } = useIntegrations();
   const waApiActive = !!(integrations?.whatsapp_business?.enabled && integrations?.whatsapp_business?.config?.configured);
@@ -647,7 +651,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                   form.shippingMethod === 'pickup' ? (
                     <div className="text-xs p-3 rounded-lg bg-muted/60 border border-border text-muted-foreground">
                       A levantar na loja não precisa de conta: pague e leve o recibo no balcão.{' '}
-                      <Link to="/login" className="text-[#0ea5c9] font-medium hover:underline" onClick={() => setIsCartOpen(false)}>
+                      <Link to="/login" state={{ from: loginReturnTo }} className="text-[#0ea5c9] font-medium hover:underline" onClick={() => setIsCartOpen(false)}>
                         Entrar
                       </Link>{' '}guarda os seus dados para a próxima.
                     </div>
@@ -655,7 +659,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                     <div className="text-xs p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-900">
                       <strong>A entrega ao domicílio precisa de conta</strong>, para poder acompanhar a
                       encomenda e confirmar a recepção.{' '}
-                      <Link to="/login" className="font-semibold underline" onClick={() => setIsCartOpen(false)}>
+                      <Link to="/login" state={{ from: loginReturnTo }} className="font-semibold underline" onClick={() => setIsCartOpen(false)}>
                         Entrar ou criar conta
                       </Link>
                       {' '}— ou escolha <strong>Levantamento na loja</strong>, que não pede nada disto.

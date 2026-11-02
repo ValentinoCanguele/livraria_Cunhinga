@@ -4,6 +4,7 @@ import { canAccessAdmin, hasPermission, getUserPermissions } from '@/lib/permiss
 import { escapeFilterValue } from '@/lib/sanitizeHtml';
 import { supabase } from '@/lib/supabaseClient';
 import { normalizeLoginEmail, parsePbAuthError } from '@/lib/pbAuth';
+import { requestWelcomeEmail, safeInternalPath } from '@/lib/authSession';
 
 const AuthContext = createContext(null);
 
@@ -11,14 +12,31 @@ export const AuthProvider = ({ children }) => {
   // A sessão é sempre do Supabase Auth (email/palavra-passe ou Google).
   // O Firebase fica só para as ferramentas do Google Workspace, que pedem o seu próprio acesso.
   const [user, setUser] = useState(() => (pb.authStore.isValid ? pb.authStore.record : null));
+  // `ready` é falso até o arranque determinar se existe sessão. Quem protege uma página tem
+  // de esperar por ele: decidir antes disso expulsava para `/login` quem tinha sessão válida
+  // mas ainda não lida — o caso de todas as voltas do login com a Google, que trazem a sessão
+  // no endereço e não no armazenamento.
+  const [ready, setReady] = useState(() => pb.authStore.isReady);
 
   useEffect(() => {
     const unsub = pb.authStore.onChange((_token, record) => setUser(record || null), true);
-    return () => unsub();
+    const unsubReady = pb.authStore.onReady(() => setReady(true));
+    return () => {
+      unsub();
+      unsubReady();
+    };
   }, []);
+
+  // Boas-vindas no primeiro acesso de cada conta. Serve tanto o registo por email como a
+  // primeira entrada com a Google, que cria a conta sem passar pela nossa API.
+  useEffect(() => {
+    if (!ready || !user?.id) return;
+    requestWelcomeEmail(pb, user.id);
+  }, [ready, user?.id]);
 
   const value = {
     user,
+    ready,
     isAuthed: pb.authStore.isValid,
     isAdmin: user?.role === 'admin',
     canAccessAdmin: canAccessAdmin(user),
@@ -65,10 +83,14 @@ export const AuthProvider = ({ children }) => {
       }
     },
     // Redirecciona para a Google; ao voltar, o Supabase cria a sessão e o perfil.
+    // O destino é validado aqui também, e não só em quem chama: é o que acaba em
+    // `redirectTo`, e um caminho não verificado levava o utilizador para fora da loja
+    // logo a seguir a autenticar-se.
     loginWithGoogle: async (redirectPath = '/profile') => {
+      const target = safeInternalPath(redirectPath, '/profile');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: `${window.location.origin}${redirectPath}` },
+        options: { redirectTo: `${window.location.origin}${target}` },
       });
       if (error) throw error;
     },

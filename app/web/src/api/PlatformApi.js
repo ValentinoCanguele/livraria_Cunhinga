@@ -176,6 +176,19 @@ export async function addDeliveryEvent(orderId, event, token) {
   return data;
 }
 
+/**
+ * Muda o estado do pagamento de uma encomenda.
+ *
+ * Passa pela API e não pela tabela porque é aí que o aviso ao cliente é enviado: a gravação
+ * directa em `orders` mudava o estado sem que ninguém soubesse que o pagamento foi aceite.
+ */
+export async function setOrderPaymentStatus(orderId, status) {
+  return pb.send('/admin/orders/payment-status', {
+    method: 'POST',
+    body: { orderId, status },
+  });
+}
+
 export function getSettingsFileUrl(record, field) {
   if (!record?.[field]) return null;
   return pb.files.getURL(record, record[field]);

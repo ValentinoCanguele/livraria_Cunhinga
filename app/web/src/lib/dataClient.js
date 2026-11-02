@@ -8,6 +8,7 @@
  * - Ficheiros vão para o bucket "media" em <colecção>/<id>/<ficheiro>; a coluna guarda o nome.
  */
 import { supabase, mediaUrl, APP_API_URL } from '@/lib/supabaseClient';
+import { createReadyGate } from '@/lib/authSession';
 
 const TABLE_FOR = { users: 'profiles' };
 
@@ -335,6 +336,9 @@ const authStore = {
     setAuth('', null);
     supabase.auth.signOut().catch(() => {});
   },
+  /** `true` quando o arranque já determinou se existe sessão (com ou sem utilizador). */
+  get isReady() { return authGate.ready; },
+  onReady(callback) { return authGate.onReady(callback); },
 };
 
 function setAuth(token, record) {
@@ -363,15 +367,23 @@ if (stored?.access_token && stored?.user && cachedProfile?.id === stored.user.id
   authStore.record = cachedProfile;
 }
 
+// Enquanto o supabase-js arranca (lê o armazenamento, renova o token ou consome o
+// `#access_token=…` que a Google devolve) ainda não se sabe se há sessão. As guardas das
+// páginas protegidas esperam por este sinal em vez de assumirem que não há ninguém: era aí
+// que o login com a Google acabava de volta no ecrã de entrada.
+const authGate = createReadyGate();
+
 supabase.auth.onAuthStateChange((_event, session) => {
   if (!session?.user) {
     setAuth('', null);
+    authGate.resolve();
     return;
   }
   // Fora do callback: o supabase-js não permite chamadas ao cliente dentro dele.
   setTimeout(async () => {
     const record = await loadProfile(session.user).catch(() => authStore.record);
     setAuth(session.access_token, record);
+    authGate.resolve();
   }, 0);
 });
 

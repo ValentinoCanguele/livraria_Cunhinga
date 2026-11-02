@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -12,12 +12,13 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 import BrandLogo from '@/components/BrandLogo';
 import { pageTitle } from '@/lib/brand';
 import { withCacheBust } from '@/lib/imageUrl';
+import { safeInternalPath } from '@/lib/authSession';
 
 const LoginPage = () => {
   const location = useLocation();
   // ?redirect= só aceita caminhos internos (evita redireccionar para outros sites).
   const redirectParam = new URLSearchParams(location.search).get('redirect');
-  const redirectTo = location.state?.from || (redirectParam?.startsWith('/') && !redirectParam.startsWith('//') ? redirectParam : null);
+  const redirectTo = safeInternalPath(location.state?.from || redirectParam, '');
 
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState(() => sessionStorage.getItem('livraria_login_email') || '');
@@ -26,7 +27,7 @@ const LoginPage = () => {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] = useState('');
-  const { login, signup, loginWithGoogle } = useAuth();
+  const { login, signup, loginWithGoogle, ready, isAuthed, user } = useAuth();
   const { settings } = useSiteSettings();
   const navigate = useNavigate();
 
@@ -37,15 +38,15 @@ const LoginPage = () => {
 
   const afterAuthNavigate = (authRecord) => {
     if (redirectTo) {
-      navigate(redirectTo);
+      navigate(redirectTo, { replace: true });
       return;
     }
     const role = authRecord?.role;
     if (role === 'admin' || role === 'manager') {
-      navigate('/admin');
+      navigate('/admin', { replace: true });
       return;
     }
-    navigate('/profile');
+    navigate('/profile', { replace: true });
   };
 
   const handleSubmit = async (e) => {
@@ -82,6 +83,15 @@ const LoginPage = () => {
       setLoading(false);
     }
   };
+
+  // Quem já tem sessão não volta a ver o formulário: segue para onde ia (ou para a sua área).
+  // Antes disto, abrir `/login` com sessão válida — ou voltar da Google para cá — mostrava o
+  // ecrã de entrada a quem já estava autenticado.
+  useEffect(() => {
+    if (!ready || !isAuthed) return;
+    afterAuthNavigate(user);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, isAuthed]);
 
   const handleGoogle = async () => {
     setLoading(true);

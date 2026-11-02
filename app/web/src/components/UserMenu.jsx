@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   User, ShoppingBag, LayoutDashboard, LogOut, ChevronDown, Settings, Shield,
 } from 'lucide-react';
@@ -16,6 +16,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { useAuth } from '@/hooks/useAuth';
 import { getUserDisplayName, getUserFirstName } from '@/lib/userUtils';
 import { cn } from '@/lib/utils';
+import { currentPathWithQuery } from '@/lib/authSession';
 
 export function UserMenu({ compact = false, className }) {
   const { user, isAdmin, canAccessAdmin, logout } = useAuth();
@@ -108,6 +109,8 @@ export function UserMenu({ compact = false, className }) {
 
 export function GuestAuthButton({ className, fullWidth = false }) {
   const navigate = useNavigate();
+  // Quem entra pelo cabeçalho volta à página onde estava, em vez de cair sempre no perfil.
+  const returnTo = currentPathWithQuery(useLocation());
 
   return (
     <div className={cn('flex items-center gap-2', fullWidth && 'flex-col w-full', className)}>
@@ -115,7 +118,7 @@ export function GuestAuthButton({ className, fullWidth = false }) {
         variant="outline"
         size="sm"
         className={cn('rounded-full bg-transparent border-[#0ea5c9]/30 hover:bg-[#0ea5c9]/10', fullWidth && 'w-full')}
-        onClick={() => navigate('/login')}
+        onClick={() => navigate('/login', { state: { from: returnTo } })}
       >
         <User className="h-4 w-4 mr-2" />
         Entrar
@@ -123,7 +126,7 @@ export function GuestAuthButton({ className, fullWidth = false }) {
       <Button
         size="sm"
         className={cn('btn-primary rounded-full hidden sm:inline-flex', fullWidth && 'w-full sm:flex')}
-        onClick={() => navigate('/login')}
+        onClick={() => navigate('/login', { state: { from: returnTo } })}
       >
         Criar Conta
       </Button>

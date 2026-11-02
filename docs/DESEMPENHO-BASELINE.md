@@ -186,3 +186,45 @@ recalcular a posição do resto da página, e as duas primeiras correm no compos
 
 O INP continua sem número fiável: as leituras oscilam entre 16 e 1552 ms para acções
 equivalentes neste ambiente. Precisa de dados de campo.
+
+---
+
+# Fase 3 — mobile (commit `1d665f2`)
+
+## Auditoria antes de mexer
+
+| | |
+|---|---|
+| Alvos de toque abaixo de 44 px | **169 de 260** (65%) |
+| Mais comuns | 48× 26×26 ("Visualizar"), 24× 28×28 (favoritos), 19× 160×32 ("Comprar") |
+| `safe-area-inset` no CSS | **nenhuma referência**, apesar de `viewport-fit=cover` no HTML |
+| Deslocamento horizontal | 0 (já estava bem) |
+
+## Depois
+
+| Indicador | Baseline | Agora | Objectivo | |
+|-----------|---------:|------:|----------:|---|
+| LCP `/shop` mobile | 4148 ms | **2084–2152 ms** | ≤ 2500 ms | ✅ |
+| CLS `/shop` mobile | 0,257 | **0,059–0,095** | ≤ 0,1 | ✅ |
+| Long tasks | 2185 ms | 1811–2102 ms | — | ✅ |
+| Alvos abaixo de 44 px | 169 | **78** | — | −54% |
+| Alvos com área estendida | 0 | 72 | — | |
+| Pares de alvos sobrepostos | — | **0** | — | ✅ |
+
+## A armadilha das áreas de toque invisíveis
+
+Estender a área de um alvo por baixo resolve o acerto do dedo sem inchar o desenho — mas
+dois alvos próximos passam a disputar o mesmo espaço. À primeira tentativa, "Visualizar" e
+"Partilhar" ficaram com **24 pares sobrepostos**: tocar entre eles activava o errado, pior do
+que o problema de origem.
+
+A conta é simples e vale a pena deixá-la escrita: com botões de 26 px e áreas de 44 px, os
+centros têm de ficar a 44 px ou mais, logo o intervalo mínimo é 44 − 26 = **18 px**.
+`gap-5` (20 px) resolve. Confirmado depois: 0 pares.
+
+## Acções que não existiam no telemóvel
+
+A visualização rápida e a partilha por WhatsApp estavam em
+`opacity-0 group-hover:opacity-100`. Num ecrã de toque não há "passar por cima": **nunca
+chegavam a aparecer**. Não era um problema de desempenho nem de estilo — eram duas funções
+invisíveis para quem usa telemóvel, que é a maior parte de quem compra livros em Angola.

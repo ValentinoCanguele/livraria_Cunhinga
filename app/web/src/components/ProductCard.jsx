@@ -1,6 +1,6 @@
-import React, { useState, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Loader2, Eye, MessageCircle, Heart, Star, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MessageCircle, Heart, Star, AlertTriangle, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,10 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
   const { toast } = useToast();
   const { settings } = useSiteSettings();
   const [adding, setAdding] = useState(false);
+  // Confirmação no próprio botão, logo onde o dedo esteve. O aviso que sobe do fundo do
+  // ecrã diz a mesma coisa, mas longe do sítio onde se carregou — e em telemóvel pode ficar
+  // tapado pelo teclado ou pela barra do sistema.
+  const [added, setAdded] = useState(false);
   const { isInWishlist, toggleWishlist } = useWishlist();
   const isWish = isInWishlist(product.id);
 
@@ -43,12 +47,21 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
         onCartOpen
       });
       if (onCartOpen) onCartOpen();
+      setAdded(true);
     } catch (err) {
       toast({ variant: 'destructive', title: 'Stock insuficiente', description: err.message });
     } finally {
       setAdding(false);
     }
   };
+
+  // Volta ao normal sozinho. O temporizador é limpo se o cartão sair do ecrã antes disso —
+  // sem a limpeza, o React avisa que se tentou mexer num componente já desmontado.
+  useEffect(() => {
+    if (!added) return undefined;
+    const t = setTimeout(() => setAdded(false), 1600);
+    return () => clearTimeout(t);
+  }, [added]);
 
   const handleShare = (e) => {
     e.preventDefault();
@@ -190,9 +203,19 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
         // Num cartão de 160 px os dois botões lado a lado precisavam de 209 px e
         // transbordavam. Em ecrã estreito fica só "Comprar": tocar no cartão já abre o livro.
         <div className="flex gap-2 mt-2">
-          <Button size="sm" variant="outline" className="flex-1 rounded-lg border-primary/30 hover:bg-primary/10 text-xs" onClick={handleAddToCart} disabled={adding}>
-            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4 mr-1" />}
-            Comprar
+          <Button
+            size="sm"
+            variant="outline"
+            className={`flex-1 rounded-lg text-xs ${added ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'border-primary/30 hover:bg-primary/10'}`}
+            onClick={handleAddToCart}
+            disabled={adding}
+          >
+            {adding
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : added
+                ? <Check className="h-4 w-4 mr-1" />
+                : <ShoppingCart className="h-4 w-4 mr-1" />}
+            {added ? 'No carrinho' : 'Comprar'}
           </Button>
           <Link to={`/product/${product.id}`} className="hidden sm:block flex-1">
             <Button size="sm" variant="secondary" className="w-full rounded-lg text-xs hover:bg-primary/10 hover:text-primary">

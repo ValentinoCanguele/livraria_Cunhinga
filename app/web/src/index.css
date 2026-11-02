@@ -148,16 +148,20 @@
     @apply py-16 md:py-20 lg:py-24;
   }
 
+  /* Sem `transition` própria: a animação destas três vem das regras de `control-press`,
+     que as nomeia junto com a classe. Antes cada uma tinha `transition-all` com a sua
+     duração — três compassos diferentes na mesma interface, e a animar também
+     propriedades capazes de obrigar o navegador a recalcular posições. */
   .btn-primary {
-    @apply bg-primary text-white hover:bg-primary/90 transition-all duration-300 active:scale-[0.98];
+    @apply bg-primary text-white hover:bg-primary/90;
   }
 
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all duration-300 active:scale-[0.98];
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
   }
 
   .input-focus {
-    @apply focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-all duration-200;
+    @apply focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
 
   /* Opacidade suave estilo macOS — só translúcido + blur */
@@ -304,7 +308,10 @@
 /* Controlos: resposta ao toque e ao rato.
    O botão afunda ligeiramente em vez de subir — é o gesto de carregar, e lê-se
    como tal mesmo sem cor a mudar. */
-:root[data-ff-transicoes="1"] .control-press {
+:root[data-ff-transicoes="1"] .control-press,
+:root[data-ff-transicoes="1"] .btn-primary,
+:root[data-ff-transicoes="1"] .btn-secondary,
+:root[data-ff-transicoes="1"] .input-focus {
   transition: transform var(--motion-fast) var(--ease-out),
               box-shadow var(--motion-fast) var(--ease-out),
               background-color var(--motion-fast) var(--ease-out),
@@ -312,7 +319,9 @@
               color var(--motion-fast) var(--ease-out);
 }
 
-:root[data-ff-transicoes="1"] .control-press:active:not(:disabled) {
+:root[data-ff-transicoes="1"] .control-press:active:not(:disabled),
+:root[data-ff-transicoes="1"] .btn-primary:active:not(:disabled),
+:root[data-ff-transicoes="1"] .btn-secondary:active:not(:disabled) {
   transform: scale(0.97);
 }
 
@@ -341,6 +350,56 @@
   opacity: 1;
   transform: translate3d(130%, 0, 0);
   transition: transform var(--motion-slow) var(--ease-out), opacity var(--motion-fast) linear;
+}
+
+/* Painéis que flutuam sobre a página: modais, gavetas, menus.
+   A sombra do Tailwind é uma mancha única; esta tem as duas camadas dos restantes níveis,
+   mais fundas, porque estes elementos estão mais acima. O contorno claríssimo por cima
+   separa o painel do que está por baixo quando os dois são claros — sem ele, a aresta
+   desaparece num fundo branco e o painel parece colado à página. */
+.elev-overlay {
+  box-shadow: var(--elev-3), 0 0 0 1px rgb(0 0 0 / 0.04);
+}
+
+/* Indicador de carregamento da loja.
+   Três barras com a proporção de um livro de pé, a subir e descer desencontradas — lê-se
+   como "a buscar livros" e não como o círculo a girar que qualquer sítio usa. Anima só
+   `transform`, por isso não custa mais do que o círculo que substitui.
+   `scaleY` a partir da base: sem `transform-origin`, as barras cresciam para os dois lados
+   e pareciam respirar em vez de se levantarem. */
+.book-loader {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 22px;
+}
+
+.book-loader span {
+  display: block;
+  width: 5px;
+  height: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.85;
+  transform-origin: bottom center;
+  animation: book-loader-bar 1s var(--ease-out) infinite;
+}
+
+.book-loader span:nth-child(2) { animation-delay: 0.14s; }
+.book-loader span:nth-child(3) { animation-delay: 0.28s; }
+
+@keyframes book-loader-bar {
+  0%, 100% { transform: scaleY(0.45); }
+  40%      { transform: scaleY(1); }
+}
+
+/* Com menos movimento pedido, as barras ficam quietas e de alturas diferentes: continua a
+   ler-se como indicador, sem nada a mexer. A regra global encurta a animação, e sem isto
+   as barras ficavam todas no mesmo tamanho, parecendo um bloco. */
+@media (prefers-reduced-motion: reduce) {
+  .book-loader span { transform: scaleY(0.6); }
+  .book-loader span:nth-child(2) { transform: scaleY(1); }
+  .book-loader span:nth-child(3) { transform: scaleY(0.75); }
 }
 
 @keyframes catalog-marquee-ltr {

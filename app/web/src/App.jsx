@@ -8,7 +8,7 @@ import { IntegrationsProvider } from '@/hooks/useIntegrations';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import ScrollToTop from '@/components/ScrollToTop.jsx';
-import { Spinner } from '@/components/ui/spinner';
+import { BookLoader } from '@/components/ui/book-loader';
 
 const HomePage = lazy(() => import('@/pages/HomePage.jsx'));
 const ShopPage = lazy(() => import('@/pages/ShopPage.jsx'));
@@ -37,7 +37,7 @@ const LivrariaAssistant = lazy(() => import('@/components/LivrariaAssistant.jsx'
 function PageLoader() {
   return (
     <div className="min-h-[50vh] flex items-center justify-center p-8">
-      <Spinner className="size-8 text-primary animate-spin" />
+      <BookLoader label="A carregar a página" />
     </div>
   );
 }

@@ -243,16 +243,70 @@ minutos — uma função que morreu a meio do envio.
 
 ### Quem a faz correr
 
-Esta Edge Function não tem processo entre pedidos: alguém tem de chamar
-`POST /admin/email/queue/run`. Hoje é o botão **Tentar agora** no painel. Para correr
-sozinha, falta um agendador — `pg_cron` com `pg_net` a chamar a rota, ou uma tarefa agendada
-externa. **Até isso existir, a fila só avança quando alguém carregar no botão.**
+Esta Edge Function não tem processo entre pedidos, por isso alguém tem de a chamar. Há dois
+caminhos:
+
+- **À mão**, no painel: botão **Tentar agora** → `POST /admin/email/queue/run`.
+- **Sozinha**, pelo `pg_cron`, de 5 em 5 minutos → `POST /cron/email-queue`.
+
+O agendador usa uma rota própria, e não a do painel, porque o `pg_cron` não tem sessão nem
+token do Supabase Auth. Autentica-se com um segredo partilhado que não abre mais nada da API.
+Sem esse segredo definido, a rota responde 404 como qualquer caminho desconhecido — responder
+"falta configurar" anunciava a quem passasse que existe ali algo por fechar.
+
+A comparação do segredo é feita em tempo constante (`secretsMatch`): um `===` sai no primeiro
+caracter diferente, e essa diferença de tempo permite descobrir o segredo caracter a caracter.
+
+#### Pôr o agendador a funcionar
+
+A migração cria a extensão, a função e o agendamento, mas **não traz segredos** — o
+repositório é público. Faltam três passos, uma vez:
+
+**1. Gerar um token** (qualquer valor longo e aleatório):
+
+```bash
+openssl rand -hex 32
+```
+
+**2. Dá-lo à Edge Function.** No painel do Supabase → Edge Functions → `app` → Secrets:
+
+```
+EMAIL_QUEUE_TOKEN = <o valor gerado>
+```
+
+**3. Guardar o endereço e o mesmo token no Vault**, no SQL Editor do Supabase:
+
+```sql
+select vault.create_secret(
+  'https://<ref>.supabase.co/functions/v1/app/cron/email-queue',
+  'email_queue_url'
+);
+select vault.create_secret('<o valor gerado>', 'email_queue_token');
+```
+
+O painel diz em que estado está — sem agendador, agendado mas sem segredos, ou a correr —
+na secção **Fila de recuperação**. Para ver pelo SQL:
+
+```sql
+select jobname, schedule, active from cron.job where jobname = 'fila-de-emails';
+select status, return_message from cron.job_run_details
+ where jobid = (select jobid from cron.job where jobname = 'fila-de-emails')
+ order by start_time desc limit 5;
+```
+
+#### A migração não bloqueia deploys
+
+Cada passo de `20261102140000_agendador_fila_emails.sql` está envolvido em tratamento de
+erro. Se o `pg_cron` ou o `pg_net` não estiverem disponíveis, fica um aviso no registo e as
+migrações seguintes continuam. Uma migração que rebenta bloqueia todas as outras, e o preço
+de a fila ficar manual é muito menor do que o de o `db push` parar.
 
 ## 8. Por fazer
 
-- **Agendador para a fila.** Está construída e funciona, mas só corre quando alguém carrega
-  em "Tentar agora": falta o `pg_cron` com `pg_net`, ou uma tarefa externa, a chamar
-  `POST /admin/email/queue/run`.
+- **Verificar o agendador num projecto a sério.** O `pg_cron` e o `pg_net` estão agendados
+  pela migração, mas isto nunca correu contra uma base de dados: a migração foi escrita para
+  não falhar se as extensões não existirem, e só o `db push` dirá qual dos casos se aplica a
+  este projecto.
 - **Webhooks do fornecedor** (entregue, devolvido, marcado como spam): o estado de entrega
   real não é conhecido.
 - **Painel de comunicações**: falta activar ou desactivar categorias opcionais, editar os

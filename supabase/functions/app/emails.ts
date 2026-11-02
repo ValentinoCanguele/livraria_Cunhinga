@@ -487,3 +487,20 @@ export function retryDelaySeconds(attempts: number): number {
   const index = Math.min(Math.max(attempts - 1, 0), ladder.length - 1);
   return ladder[index];
 }
+
+/**
+ * Compara dois segredos sem deixar o tempo de resposta dizer quanto do valor estava certo.
+ *
+ * Um `===` sai no primeiro caracter diferente, e a diferença de tempo entre "errou logo" e
+ * "errou no fim" permite descobrir o segredo caracter a caracter. Aqui percorre-se sempre
+ * todo o comprimento e só no fim se decide.
+ */
+export function secretsMatch(a: string, b: string): boolean {
+  const x = String(a ?? "");
+  const y = String(b ?? "");
+  if (x.length !== y.length) return false;
+  if (x.length === 0) return false;
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return diff === 0;
+}

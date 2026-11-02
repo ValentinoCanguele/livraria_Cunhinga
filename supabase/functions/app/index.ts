@@ -5,7 +5,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.4
 import nodemailer from "npm:nodemailer@6.9.16";
 import {
   brandFromSettings, categoryStates, emailDocument, formatKz, isCategoryEnabled,
-  isRetriableFailure, retryDelaySeconds, type Brand, type FailureSource,
+  isRetriableFailure, retryDelaySeconds, secretsMatch, type Brand, type FailureSource,
 } from "./emails.ts";
 import {
   accessLinkLetter,
@@ -1499,6 +1499,29 @@ route("POST", "/admin/email/categories", async ({ auth, body }) => {
   return json({ categories: categoryStates({ ...settings, email_categories: next }) });
 });
 
+/**
+ * Faz correr a fila a partir de um agendador, sem sessão de utilizador.
+ *
+ * O `pg_cron` não tem sessão nem token do Supabase Auth, por isso esta rota autentica-se com
+ * um segredo partilhado em `EMAIL_QUEUE_TOKEN` (definido nos segredos da Edge Function, não
+ * no repositório). É propositadamente uma rota separada da do painel: esta não dá acesso a
+ * mais nada, e o segredo que a abre não serve para o resto da API.
+ *
+ * Sem o segredo definido, responde 404 como qualquer caminho desconhecido — uma rota que
+ * respondesse "falta configurar" anunciava a quem passasse que existe aqui algo por fechar.
+ */
+route("POST", "/cron/email-queue", async ({ req, body, ip }) => {
+  const expected = Deno.env.get("EMAIL_QUEUE_TOKEN") || "";
+  if (!expected) return json({ message: "Rota não encontrada." }, 404);
+  if (!await checkRateLimit("cron-queue", ip, 30)) throw bad("Demasiados pedidos.");
+  const given = (req.headers.get("x-queue-token") || "").trim();
+  if (!secretsMatch(given, expected)) throw new HttpError(401, "Token inválido.");
+  const limit = Math.min(Math.max(Number(body.limit) || 25, 1), 50);
+  const summary = await processEmailQueue(limit);
+  console.log("Fila de emails (cron):", JSON.stringify(summary));
+  return json(summary);
+});
+
 /** Estado da fila de recuperação, para o painel. */
 route("GET", "/admin/email/queue", async ({ auth }) => {
   requirePermission(auth, "manage_settings");
@@ -1507,8 +1530,12 @@ route("GET", "/admin/email/queue", async ({ auth }) => {
     .order("created", { ascending: false })
     .limit(50);
   const rows = data || [];
+  // Se o agendador está mesmo a correr, ou se a fila só anda com o botão. Sem isto, o painel
+  // mostrava a fila a encher sem dizer porquê.
+  const { data: scheduler } = await db.rpc("email_queue_scheduler_status");
   return json({
     jobs: rows,
+    scheduler: scheduler || { available: false, reason: "Função de diagnóstico ainda não publicada." },
     summary: {
       pending: rows.filter((r: Row) => r.status === "pending").length,
       sending: rows.filter((r: Row) => r.status === "sending").length,

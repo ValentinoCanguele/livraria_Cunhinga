@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   OPTIONAL_CATEGORIES, SAFE_SYMBOLS, brandFromSettings, categoryStates, emailDocument,
-  formatKz, isCategoryEnabled, isRetriableFailure, retryDelaySeconds, type Brand,
+  formatKz, isCategoryEnabled, isRetriableFailure, retryDelaySeconds, secretsMatch, type Brand,
 } from "./emails.ts";
 import {
   accessLinkLetter,
@@ -657,5 +657,37 @@ describe("retryDelaySeconds", () => {
   it("aguenta valores fora do esperado", () => {
     expect(retryDelaySeconds(0)).toBe(60);
     expect(retryDelaySeconds(-5)).toBe(60);
+  });
+});
+
+describe("secretsMatch", () => {
+  const token = "f".repeat(64);
+
+  it("aceita o segredo certo", () => {
+    expect(secretsMatch(token, token)).toBe(true);
+    expect(secretsMatch("abc", "abc")).toBe(true);
+  });
+
+  it("recusa tudo o resto", () => {
+    expect(secretsMatch(token, "g".repeat(64))).toBe(false);
+    // Difere só no último caracter: o percurso é sempre completo, por isso o tempo de
+    // resposta não diz quanto do valor estava certo.
+    expect(secretsMatch(token, token.slice(0, 63) + "e")).toBe(false);
+    // E só no primeiro.
+    expect(secretsMatch(token, "e" + token.slice(1))).toBe(false);
+    expect(secretsMatch(token, token.slice(0, 63))).toBe(false);
+    expect(secretsMatch(token, token + "f")).toBe(false);
+  });
+
+  it("recusa o vazio dos dois lados", () => {
+    // Sem isto, um pedido sem cabeçalho passava quando o segredo não estivesse definido.
+    expect(secretsMatch("", "")).toBe(false);
+    expect(secretsMatch("", token)).toBe(false);
+    expect(secretsMatch(token, "")).toBe(false);
+  });
+
+  it("aguenta valores que não são texto", () => {
+    expect(secretsMatch(null as never, null as never)).toBe(false);
+    expect(secretsMatch(undefined as never, token)).toBe(false);
   });
 });

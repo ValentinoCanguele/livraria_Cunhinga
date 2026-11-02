@@ -213,6 +213,18 @@ export default function EmailTemplatesPanel() {
             </Button>
           </div>
 
+          {queue.scheduler && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {!queue.scheduler.available
+                ? 'Sem agendador neste projecto: a fila só avança com o botão acima.'
+                : !queue.scheduler.scheduled
+                  ? 'Agendador disponível mas não activo: a fila só avança com o botão acima.'
+                  : !queue.scheduler.secrets
+                    ? 'Agendador activo, mas faltam os segredos no Vault — por isso ainda não chama nada. Ver docs/AUTENTICACAO_E_EMAILS.md.'
+                    : `Agendador activo (${queue.scheduler.schedule}): a fila avança sozinha.`}
+            </p>
+          )}
+
           <div className="mt-4 flex flex-wrap gap-4 text-sm">
             <span><strong>{queue.summary?.pending ?? 0}</strong> <span className="text-muted-foreground">por repetir</span></span>
             <span><strong>{queue.summary?.sending ?? 0}</strong> <span className="text-muted-foreground">a enviar</span></span>

@@ -32,23 +32,6 @@
 	<body>
 		<div id="root"></div>
 		<script type="module" src="/src/main.jsx"></script>
-		<script>
-			if ('serviceWorker' in navigator) {
-				const isLocalDev = ['localhost', '127.0.0.1'].includes(location.hostname);
-				if (isLocalDev) {
-					// Em desenvolvimento, limpar SW/cache antigo que causa tela branca com Vite
-					navigator.serviceWorker.getRegistrations().then((regs) => {
-						regs.forEach((r) => r.unregister());
-					});
-					caches.keys().then((keys) => {
-						keys.forEach((k) => caches.delete(k));
-					});
-				} else {
-					window.addEventListener('load', () => {
-						navigator.serviceWorker.register('/sw.js').catch(() => {});
-					});
-				}
-			}
-		</script>
+		<script src="/sw-register.js" defer></script>
 	</body>
 </html>

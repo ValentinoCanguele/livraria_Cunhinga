@@ -11,6 +11,22 @@
   # A loja usa a localização para "lojas perto de mim" (StoresPage) e para as coordenadas das
   # lojas no painel. Câmara, microfone e sensores de pagamento nunca são usados.
   Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=()
+  # Política de segurança de conteúdo. As origens foram levantadas do que o navegador
+  # carrega de facto (`performance.getEntriesByType('resource')`), não só do código: a loja
+  # usa o Supabase e as fontes do Google, e o painel acrescenta as APIs do Google Workspace.
+  #
+  # `script-src` sem `unsafe-inline`: o único script embutido que havia — o registo do
+  # service worker — passou para `/sw-register.js` por causa disto. `unsafe-inline` em
+  # scripts tornaria a política quase decorativa, porque é precisamente assim que um script
+  # injectado numa descrição de livro correria.
+  #
+  # `style-src` mantém `unsafe-inline`, que não é opcional: o React e o Tailwind escrevem
+  # estilos directamente nos elementos, e o `style=` de cada um conta como estilo embutido.
+  # O risco de um estilo injectado é muito menor do que o de um script.
+  #
+  # `frame-ancestors 'self'` faz o mesmo que o `X-Frame-Options` acima, mas é a forma que os
+  # navegadores actuais respeitam; os dois ficam, para os antigos também.
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://apis.google.com https://accounts.google.com https://www.googleapis.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://drive.google.com https://lh3.googleusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://accounts.google.com https://*.firebaseio.com https://*.firebaseapp.com; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://drive.google.com; worker-src 'self' blob:; media-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
 
 # Ficheiros com hash no nome: o conteúdo nunca muda para o mesmo nome.
 /assets/*

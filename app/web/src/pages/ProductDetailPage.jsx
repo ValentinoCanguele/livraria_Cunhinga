@@ -11,7 +11,7 @@ import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ShoppingCart as ShoppingCartIcon, Loader2, ChevronLeft, ChevronRight, CheckCircle, 
-  XCircle, Minus, Plus, BookOpen, User, Layers, Eye, MessageCircle, Heart, Star, Calendar, Sparkles, Trash2 
+  XCircle, Minus, Plus, BookOpen, User, Layers, Eye, MessageCircle, Heart, Star, Calendar, Sparkles, Trash2, ThumbsUp
 } from 'lucide-react';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useAuth } from '@/hooks/useAuth';
@@ -73,7 +73,7 @@ function ProductDetailPage() {
 
   // Reviews and Google Calendar Events hooks and state
   const { isAuthed, user } = useAuth();
-  const { reviews, loading: loadingReviews, stats, hasPurchased, submitReview, deleteReview, userReview, submitting } = useReviews(product?.id);
+  const { reviews, loading: loadingReviews, stats, hasPurchased, submitReview, deleteReview, userReview, submitting, helpfulVotesEnabled, votingReviewId, toggleHelpfulVote } = useReviews(product?.id);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [editingReview, setEditingReview] = useState(false);
@@ -883,6 +883,25 @@ function ProductDetailPage() {
                           </div>
                           
                           <p className="text-sm text-muted-foreground leading-relaxed pl-1 whitespace-pre-wrap">{r.comment}</p>
+
+                          {helpfulVotesEnabled && (
+                            <div className="mt-3 flex justify-end">
+                              <Button
+                                type="button"
+                                variant={r.hasHelpfulVote ? 'secondary' : 'ghost'}
+                                size="sm"
+                                className="h-8 gap-1.5 px-2"
+                                aria-label={`Marcar comentário como útil, ${r.helpfulCount} votos`}
+                                aria-pressed={r.hasHelpfulVote}
+                                disabled={Boolean(votingReviewId) || r.userId === user?.id}
+                                onClick={() => toggleHelpfulVote(r)}
+                              >
+                                <ThumbsUp className="h-4 w-4" />
+                                <span>Útil</span>
+                                <span>{r.helpfulCount}</span>
+                              </Button>
+                            </div>
+                          )}
                           
                           {r.isVerified && (
                             <div className="mt-3">

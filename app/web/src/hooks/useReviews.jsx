@@ -17,6 +17,18 @@ function toReview(row) {
   };
 }
 
+export function mergeReviewHelpfulness(reviews, voteRows) {
+  const votesByReview = new Map((voteRows || []).map((row) => [row.review_id, row]));
+  return reviews.map((review) => {
+    const vote = votesByReview.get(review.id);
+    return {
+      ...review,
+      helpfulCount: Number(vote?.helpful_count) || 0,
+      hasHelpfulVote: Boolean(vote?.user_voted),
+    };
+  });
+}
+
 /**
  * Avaliações de um livro (tabela "book_reviews" do Supabase). O nome, a foto e a
  * "compra verificada" são definidos pela base de dados.
@@ -26,6 +38,8 @@ export const useReviews = (bookId) => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [votingReviewId, setVotingReviewId] = useState(null);
+  const [helpfulVotesEnabled, setHelpfulVotesEnabled] = useState(false);
   const [userOrders, setUserOrders] = useState([]);
   const { toast } = useToast();
 
@@ -41,7 +55,12 @@ export const useReviews = (bookId) => {
       .eq('book_id', bookId)
       .order('created', { ascending: false });
     if (error) throw error;
-    setReviews((data || []).map(toReview));
+    const mappedReviews = (data || []).map(toReview);
+    const { data: voteRows, error: voteError } = await supabase
+      .rpc('book_review_helpfulness', { p_book_id: bookId });
+    setHelpfulVotesEnabled(!voteError);
+    if (voteError) console.warn('Não foi possível carregar os votos úteis:', voteError);
+    setReviews(mergeReviewHelpfulness(mappedReviews, voteError ? [] : voteRows || []));
   }, [bookId]);
 
   useEffect(() => {
@@ -155,6 +174,41 @@ export const useReviews = (bookId) => {
     return true;
   };
 
+  const toggleHelpfulVote = async (review) => {
+    if (!isAuthed || !user?.id) {
+      toast({
+        variant: 'destructive',
+        title: 'Iniciar sessão necessário',
+        description: 'Inicie sessão para marcar um comentário como útil.',
+      });
+      return false;
+    }
+    if (review.userId === user.id) return false;
+
+    const nextHasVote = !review.hasHelpfulVote;
+    setVotingReviewId(review.id);
+    setReviews((prev) => prev.map((item) => item.id === review.id
+      ? { ...item, hasHelpfulVote: nextHasVote, helpfulCount: Math.max(0, item.helpfulCount + (nextHasVote ? 1 : -1)) }
+      : item));
+
+    try {
+      const result = review.hasHelpfulVote
+        ? await supabase.from('book_review_helpful_votes').delete().eq('review_id', review.id).eq('user_id', user.id)
+        : await supabase.from('book_review_helpful_votes').insert({ review_id: review.id, user_id: user.id });
+      if (result.error) throw result.error;
+      loadReviews().catch((error) => console.warn('Não foi possível atualizar a contagem de votos:', error));
+      return true;
+    } catch (error) {
+      setReviews((prev) => prev.map((item) => item.id === review.id
+        ? { ...item, hasHelpfulVote: review.hasHelpfulVote, helpfulCount: review.helpfulCount }
+        : item));
+      toast({ variant: 'destructive', title: 'Não foi possível registar o voto', description: error.message });
+      return false;
+    } finally {
+      setVotingReviewId(null);
+    }
+  };
+
   // 6. Apagar a própria avaliação
   const deleteReview = async () => {
     if (!isAuthed || !user?.id) return false;
@@ -183,5 +237,8 @@ export const useReviews = (bookId) => {
     submitReview,
     deleteReview,
     userReview,
+    helpfulVotesEnabled,
+    votingReviewId,
+    toggleHelpfulVote,
   };
 };

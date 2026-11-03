@@ -202,7 +202,7 @@ const ShopPage = () => {
               <Sparkles className="h-4 w-4" />
               <span>{heroBadge}</span>
               <span className="text-white/40">·</span>
-              <Link to="/" className="hover:text-white transition-colors">Início</Link>
+              <Link to="/" className="-my-1.5 inline-block py-1.5 hover:text-white transition-colors">Início</Link>
               <ChevronRight className="h-3 w-3" />
               <span className="text-white">Loja</span>
             </div>

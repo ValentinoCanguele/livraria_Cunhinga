@@ -57,9 +57,9 @@ const CategoryPage = () => {
 
       <PageBannerSlider contentClassName="text-left">
         <nav className="mb-4 flex items-center gap-2 text-sm text-white/75">
-          <Link to="/" className="transition-colors hover:text-white">Home</Link>
+          <Link to="/" className="-my-1.5 inline-block py-1.5 transition-colors hover:text-white">Home</Link>
           <ChevronRight className="h-4 w-4" />
-          <Link to="/shop" className="transition-colors hover:text-white">Shop</Link>
+          <Link to="/shop" className="-my-1.5 inline-block py-1.5 transition-colors hover:text-white">Shop</Link>
           <ChevronRight className="h-4 w-4" />
           <span className="text-white">{categoryName}</span>
         </nav>

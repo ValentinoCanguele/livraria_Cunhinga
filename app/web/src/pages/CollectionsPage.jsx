@@ -131,9 +131,9 @@ export default function CollectionsPage() {
 
       <PageBannerSlider contentClassName="text-left">
         <div className="mb-4 flex items-center gap-2 text-sm text-white/75">
-          <Link to="/" className="hover:text-white">Início</Link>
+          <Link to="/" className="-my-1.5 inline-block py-1.5 hover:text-white">Início</Link>
           <ChevronRight className="h-4 w-4" />
-          <Link to="/colecoes" className="hover:text-white">Coleções</Link>
+          <Link to="/colecoes" className="-my-1.5 inline-block py-1.5 hover:text-white">Coleções</Link>
           {activeCollection && (
             <>
               <ChevronRight className="h-4 w-4" />

@@ -98,7 +98,10 @@ export default function PageBannerSlider({
           >
             <ChevronRight className="h-5 w-5" />
           </button>
-          <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+          {/* O ponto mede 8px: quem cresce é o botão à volta dele, até aos 24 que a WCAG
+              2.5.8 pede em AA. O intervalo sai do contentor porque o preenchimento de cada
+              botão já afasta os pontos — somados, davam uma fila larga de mais. */}
+          <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2">
             {slides.map((image, index) => (
               <button
                 key={image}
@@ -106,10 +109,14 @@ export default function PageBannerSlider({
                 onClick={() => setCurrent(index)}
                 aria-label={`Mostrar banner ${index + 1}`}
                 aria-pressed={activeIndex === index}
-                className={`h-2 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${
-                  activeIndex === index ? 'w-7 bg-white' : 'w-2 bg-white/60 hover:bg-white'
-                }`}
-              />
+                className="group grid h-6 place-items-center px-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              >
+                <span
+                  className={`block h-2 rounded-full transition-all ${
+                    activeIndex === index ? 'w-7 bg-white' : 'w-2 bg-white/60 group-hover:bg-white'
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>

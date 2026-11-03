@@ -165,7 +165,7 @@ const ShippingReturnsPage = () => {
           >
             <h3 className="text-xl font-semibold mb-3 text-foreground">Questions about shipping or returns?</h3>
             <p className="text-muted-foreground mb-4">Our customer support team is here to help</p>
-            <a href="/contact" className="text-primary hover:underline font-medium">
+            <a href="/contact" className="inline-block px-4 py-2 text-primary hover:underline font-medium">
               Contact Us
             </a>
           </motion.div>

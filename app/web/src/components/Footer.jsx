@@ -349,7 +349,7 @@ const Footer = () => {
             <h4 className="font-semibold text-lg mb-6 text-background flex items-center gap-2">
               <MapPin className="h-5 w-5 text-[#22d3ee]" />
               As Nossas Lojas
-              <Link to="/lojas" className="ml-auto text-xs font-normal text-[#22d3ee] hover:underline">Ver todas com mapa</Link>
+              <Link to="/lojas" className="-my-1.5 ml-auto inline-block py-1.5 text-xs font-normal text-[#22d3ee] hover:underline">Ver todas com mapa</Link>
             </h4>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {Object.entries(storesByProvince).map(([province, list]) => (
@@ -370,7 +370,7 @@ const Footer = () => {
                               href={store.maps_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-[#22d3ee] hover:underline mt-2"
+                              className="-mb-1.5 inline-flex items-center gap-1 py-1.5 text-xs text-[#22d3ee] hover:underline mt-0.5"
                             >
                               <ExternalLink className="h-3 w-3" /> Ver no mapa
                             </a>

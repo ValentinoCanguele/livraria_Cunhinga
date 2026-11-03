@@ -1206,7 +1206,7 @@ route("POST", "/delivery-event", async ({ auth, body }) => {
   return json({ timeline: saved.delivery_timeline, email_sent: emailSent });
 });
 
-route("POST", "/checkout", async ({ body: data, ip }) => {
+route("POST", "/checkout", async ({ body: data, ip, auth }) => {
   const settings = await getSettings();
   const rules = storeRules(settings);
   if (!await checkRateLimit("checkout", ip, rules.checkoutRate)) throw bad("Demasiadas tentativas de checkout. Aguarde um minuto.");
@@ -1278,6 +1278,7 @@ route("POST", "/checkout", async ({ body: data, ip }) => {
   const orderNum = rules.orderPrefix + Date.now().toString(36).toUpperCase().slice(-6) + randomPart;
 
   const order: Row = {
+    customer_id: auth?.id || null,
     order_number: orderNum,
     customer_email: email,
     customer_name: name,

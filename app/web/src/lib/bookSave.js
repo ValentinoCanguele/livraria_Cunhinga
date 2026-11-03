@@ -1,7 +1,7 @@
 import { sanitizeImageUrlForSave } from '@/lib/imageUrl';
 import { fromLocalInput } from '@/lib/pricing';
 
-/** Prepara payload de livro para PocketBase — evita blob: e URLs inválidas. */
+/** Prepara payload de livro para a API compatível — evita blob: e URLs inválidas. */
 export function sanitizeBookPayload(data) {
   const out = { ...data };
 

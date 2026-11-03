@@ -15,7 +15,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
 
-/** Base da API própria (Edge Function "app"), equivalente ao antigo /api/app do PocketBase. */
+/** Base da API própria (Edge Function "app"). */
 export const APP_API_URL = `${SUPABASE_URL}/functions/v1/app`;
 
 /** URL pública de um ficheiro guardado no bucket "media" (<tabela>/<id>/<ficheiro>). */

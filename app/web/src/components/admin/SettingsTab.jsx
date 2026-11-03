@@ -215,7 +215,7 @@ export default function SettingsTab() {
           shop_bg_overlay: r.shop_bg_overlay ?? empty.shop_bg_overlay,
           google_maps_embed_key: r.google_maps_embed_key || '',
           order_email_enabled: !!r.order_email_enabled,
-          email_provider: !r.email_provider || r.email_provider === 'pocketbase' ? 'smtp' : r.email_provider,
+          email_provider: !r.email_provider ? 'smtp' : r.email_provider,
           sendgrid_api_key: r.sendgrid_api_key || '',
           smtp_from_email: r.smtp_from_email || '',
           smtp_from_name: r.smtp_from_name || '',

@@ -10,15 +10,48 @@ export function normalizeForSearch(value) {
   return String(value ?? '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
-/** Pesquisa por palavras — todas as palavras devem aparecer no texto. */
+function editDistanceAtMostOne(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++;
+    else if (b.length > a.length) j++;
+    else {
+      i++;
+      j++;
+    }
+  }
+  return edits + Number(i < a.length || j < b.length) <= 1;
+}
+
+function tokenMatches(text, token) {
+  if (text.includes(token)) return true;
+  const words = text.split(' ');
+  return words.some((word) => (
+    word.startsWith(token)
+    || (token.length >= 5 && word.length >= 5 && editDistanceAtMostOne(word, token))
+  ));
+}
+
+/** Pesquisa por palavras sem acentos, tolerando prefixos e um erro simples de escrita. */
 export function matchesTokenizedSearch(haystack, query) {
   if (!query?.trim()) return true;
   const text = normalizeForSearch(haystack);
-  const tokens = normalizeForSearch(query).trim().split(/\s+/).filter(Boolean);
-  return tokens.every((t) => text.includes(t));
+  const tokens = normalizeForSearch(query).split(/\s+/).filter(Boolean);
+  return tokens.every((token) => tokenMatches(text, token));
 }
 
 export function buildProductSearchHaystack(product) {
@@ -35,6 +68,46 @@ export function buildProductSearchHaystack(product) {
     product.language,
     product.type?.value,
   ].filter(Boolean).join(' ');
+}
+
+const SEARCH_FIELDS = [
+  { get: (p) => p.title, weight: 100 },
+  { get: (p) => p.book_code, weight: 95 },
+  { get: (p) => p.isbn, weight: 95 },
+  { get: (p) => p.sku, weight: 90 },
+  { get: (p) => p.author || p.subtitle, weight: 80 },
+  { get: (p) => p.publisher, weight: 55 },
+  { get: (p) => p.collection_title, weight: 45 },
+  { get: (p) => p.type?.value, weight: 40 },
+  { get: (p) => p.language, weight: 30 },
+  { get: (p) => p.seo_keywords, weight: 25 },
+  { get: (p) => p.description, weight: 10 },
+];
+
+/** Pontua correspondências nos campos mais úteis antes dos detalhes menos específicos. */
+export function getSearchRelevance(product, query) {
+  const normalizedQuery = normalizeForSearch(query);
+  if (!normalizedQuery) return 0;
+  const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+  const fields = SEARCH_FIELDS.map(({ get, weight }) => ({
+    text: normalizeForSearch(get(product) || ''),
+    weight,
+  })).filter((field) => field.text);
+
+  if (!tokens.every((token) => fields.some(({ text }) => tokenMatches(text, token)))) return 0;
+
+  let score = 0;
+  for (const token of tokens) {
+    const best = fields.reduce((highest, { text, weight }) => (
+      tokenMatches(text, token) ? Math.max(highest, weight) : highest
+    ), 0);
+    score += best;
+  }
+
+  const title = normalizeForSearch(product.title || '');
+  if (title.includes(normalizedQuery)) score += 100;
+  else if (tokens.every((token) => tokenMatches(title, token))) score += 40;
+  return score;
 }
 
 /** Quantas sugestões mostrar. Mais do que isto tapa a página em vez de ajudar. */
@@ -56,39 +129,39 @@ export function buildSearchSuggestions(products, query, limit = MAX_SUGGESTIONS)
   const termo = normalizeForSearch(query).trim();
   if (termo.length < MIN_QUERY) return [];
 
-  const vistos = new Set();
-  const titulos = [];
-  const autores = [];
-  const editoras = [];
+  const livros = [];
+  const autores = new Map();
+  const editoras = new Map();
 
   for (const p of products || []) {
     if (!p) continue;
 
-    if (titulos.length < limit && normalizeForSearch(p.title).includes(termo)) {
-      const chave = `livro:${p.id}`;
-      if (!vistos.has(chave)) {
-        vistos.add(chave);
-        titulos.push({ tipo: 'livro', texto: String(p.title || ''), id: String(p.id), autor: String(p.author || '') });
-      }
+    const relevance = getSearchRelevance(p, termo);
+    if (relevance > 0 && p.id && p.title) {
+      livros.push({
+        tipo: 'livro',
+        texto: String(p.title),
+        id: String(p.id),
+        autor: String(p.author || p.subtitle || ''),
+        relevance,
+      });
     }
 
-    // Autores e editoras aparecem repetidos no catálogo: conta o nome, não o livro.
-    if (p.author && normalizeForSearch(p.author).includes(termo)) {
-      const chave = `autor:${normalizeForSearch(p.author)}`;
-      if (!vistos.has(chave)) {
-        vistos.add(chave);
-        autores.push({ tipo: 'autor', texto: String(p.author) });
-      }
+    const author = String(p.author || p.subtitle || '').trim();
+    if (author && matchesTokenizedSearch(author, termo)) {
+      const key = normalizeForSearch(author);
+      if (!autores.has(key)) autores.set(key, { tipo: 'autor', texto: author, relevance: getSearchRelevance({ title: '', author }, termo) });
     }
 
-    if (p.publisher && normalizeForSearch(p.publisher).includes(termo)) {
-      const chave = `editora:${normalizeForSearch(p.publisher)}`;
-      if (!vistos.has(chave)) {
-        vistos.add(chave);
-        editoras.push({ tipo: 'editora', texto: String(p.publisher) });
-      }
+    const publisher = String(p.publisher || '').trim();
+    if (publisher && matchesTokenizedSearch(publisher, termo)) {
+      const key = normalizeForSearch(publisher);
+      if (!editoras.has(key)) editoras.set(key, { tipo: 'editora', texto: publisher, relevance: getSearchRelevance({ publisher }, termo) });
     }
   }
 
-  return [...titulos, ...autores, ...editoras].slice(0, limit);
+  livros.sort((a, b) => b.relevance - a.relevance || a.texto.localeCompare(b.texto));
+  const extras = [...autores.values(), ...editoras.values()]
+    .sort((a, b) => b.relevance - a.relevance || a.texto.localeCompare(b.texto));
+  return [...livros, ...extras].slice(0, limit).map(({ relevance: _relevance, ...suggestion }) => suggestion);
 }

@@ -3,8 +3,8 @@
   "appId": "1:230460246055:web:5d55cdcb8fbeaac9c06602",
   "apiKey": "AIzaSyB6W7DlLvEvFxJhjnhGZxa3H-blxQfz0n0",
   "authDomain": "skilful-form-c5jvd.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-livrariaadventis-eadad385-7e7e-4a8e-85c2-cca050a77673",
   "storageBucket": "skilful-form-c5jvd.firebasestorage.app",
+  "notes": "Only Firebase Auth is used for Google Workspace logins. Firestore is intentionally disabled and all app data lives in Supabase.",
   "messagingSenderId": "230460246055",
   "measurementId": ""
 }

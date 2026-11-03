@@ -1,10 +1,9 @@
 /**
- * Cliente de dados com a mesma API do SDK do PocketBase (collection().getList/getFullList/
- * getOne/getFirstListItem/create/update/delete, files.getURL e authStore), implementado
- * sobre o Supabase. Permitiu migrar o backend sem reescrever cada ecrã.
+ * Adapter de dados com uma API compatível com a lógica antiga de coleção/filtragem,
+ * implementado sobre o Supabase para manter os ecrãs e integrações existentes.
  *
  * - Colecções = tabelas com o mesmo nome ("users" corresponde a "profiles").
- * - Filtros no formato do PocketBase (=, !=, >, >=, <, <=, ~, !~, &&, ||, parênteses).
+ * - Filtros no formato legado (=, !=, >, >=, <, <=, ~, !~, &&, ||, parênteses).
  * - Ficheiros vão para o bucket "media" em <colecção>/<id>/<ficheiro>; a coluna guarda o nome.
  */
 import { supabase, mediaUrl, APP_API_URL } from '@/lib/supabaseClient';
@@ -29,7 +28,7 @@ const RELATIONS = {
   contact_notifications: { contact: 'contacts', group: 'contact_groups', campaign: 'contact_campaigns' },
 };
 
-// Ao enviar um ficheiro, o PocketBase actualizava também o campo de URL correspondente.
+// Ao enviar um ficheiro, a camada antiga também reflectia a URL correspondente no campo público.
 const FILE_URL_MIRROR = { stock_books: { cover_image: 'cover' } };
 
 const PROFILE_COLUMNS = ['name', 'avatar', 'role', 'permissions', 'phone'];
@@ -53,7 +52,7 @@ function toDataError(error, fallbackStatus = 400) {
 }
 
 // ---------------------------------------------------------------------------
-// Filtros do PocketBase → filtros do PostgREST
+// Filtros legados → filtros do PostgREST
 // ---------------------------------------------------------------------------
 function tokenize(input) {
   const tokens = [];
@@ -171,7 +170,7 @@ function applyFilter(query, filter) {
 function applySort(query, sort) {
   const parts = String(sort || '').split(',').map((s) => s.trim()).filter(Boolean);
   if (!parts.length) {
-    // Ordem de inserção, como o PocketBase sem "sort".
+    // Ordem de inserção, mantendo um comportamento compatível sem "sort".
     return query.order('created', { ascending: true }).order('id', { ascending: false });
   }
   for (const part of parts) {
@@ -485,7 +484,7 @@ function collection(name) {
       return true;
     },
 
-    // --- Equivalentes da colecção "users" do PocketBase ---
+    // --- Equivalentes da colecção "users" para a camada compatível ---
     async authWithPassword(email, password) {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw translateAuthError(error);

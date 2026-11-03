@@ -66,6 +66,67 @@ function MarqueeBookCard({ product, onSelect, accent }) {
   );
 }
 
+/**
+ * Lugar reservado para a faixa, enquanto os livros não chegam.
+ *
+ * Sem isto a faixa nascia já com os dados e empurrava 480px de página para baixo a meio do
+ * carregamento — era a maior parte do CLS de 0,32 medido em `/shop` em telemóvel.
+ *
+ * Repete a marcação da faixa a sério em vez de fixar uma altura: as medidas mudam com a
+ * largura do ecrã (`sm:w-40`, `md:py-10`, `md:gap-5`) e um número escrito à mão só acertaria
+ * numa delas. O cabeçalho leva o texto verdadeiro, e não barras cinzentas, porque o título e
+ * a descrição são conhecidos antes dos dados: assim a altura dele sai igual sozinha — a
+ * descrição desta faixa ocupa duas linhas em 375px e uma em ecrã largo — e quem espera já lê
+ * o que vem a seguir. Fica neste ficheiro de propósito, ao lado do que copia, para que mexer
+ * num obrigue a olhar para o outro.
+ */
+export function CategoryBookMarqueeSkeleton({ title, description, accent = '#0ea5c9', cartoes = 6 }) {
+  return (
+    <section className="py-8 md:py-10" aria-busy="true">
+      <div className="container-custom flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
+        <div className="flex gap-3 items-start">
+          <div className="w-1 self-stretch rounded-full shrink-0 min-h-[3rem]" style={{ background: accent }} />
+          <div>
+            <h3 className="text-xl md:text-2xl font-bold tracking-tight">{title}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{description}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="h-10 sm:h-8 w-[88px] rounded-md border border-border bg-muted/60" />
+          <div className="h-10 sm:h-8 w-[107px] rounded-md bg-muted/60" />
+        </div>
+      </div>
+
+      <div className="relative overflow-hidden" aria-hidden="true">
+        <div className="flex gap-4 md:gap-5 w-max">
+          {Array.from({ length: cartoes }, (_, i) => (
+            <div key={i} className="flex-shrink-0 w-[132px] sm:w-40">
+              <div className="aspect-[3/4] rounded-xl border bg-muted" />
+              {/* Uma linha de código, duas de título, uma de preço — as mesmas classes do
+                  cartão a sério, para a altura vir da tipografia e não de um número. */}
+              <code className="text-[9px] font-mono mt-2 block">
+                <span className="block w-12 rounded bg-muted/60">&nbsp;</span>
+              </code>
+              <p className="text-xs font-semibold mt-0.5 leading-snug">
+                <span className="block rounded bg-muted/60">&nbsp;</span>
+                <span className="mt-0.5 block w-2/3 rounded bg-muted/60">&nbsp;</span>
+              </p>
+              {/* O subtítulo é opcional no cartão a sério, mas basta um livro o ter para
+                  ser ele a fixar a altura da fila — por isso conta aqui. */}
+              <p className="text-[10px] mt-0.5">
+                <span className="block w-1/2 rounded bg-muted/60">&nbsp;</span>
+              </p>
+              <p className="text-xs font-bold mt-1">
+                <span className="block w-16 rounded bg-muted/60">&nbsp;</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function CategoryBookMarquee({
   id,
   title,

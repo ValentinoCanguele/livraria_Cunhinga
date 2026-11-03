@@ -16,7 +16,7 @@ import Header, { openHeaderSearch } from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import ShopHeroBackground from '@/components/ShopHeroBackground';
-import CategoryBookMarquee from '@/components/home/CategoryBookMarquee';
+import CategoryBookMarquee, { CategoryBookMarqueeSkeleton } from '@/components/home/CategoryBookMarquee';
 import QuickViewModal from '@/components/QuickViewModal';
 import ProductCard from '@/components/ProductCard';
 import { getProduct } from '@/api/EcommerceApi';
@@ -203,6 +203,14 @@ const ShopPage = () => {
       </ShopHeroBackground>
 
       {/* Faixa infinita — livros disponíveis */}
+      {isLoading && !hasActiveBrowsing && (
+        <div className="border-b border-border bg-muted/10">
+          <CategoryBookMarqueeSkeleton
+            title="Disponíveis para Encomenda"
+            description="Deslize sem fim — toque para pausar · Toque para pausar"
+          />
+        </div>
+      )}
       {!hasActiveBrowsing && inStockProducts.length > 0 && (
         <div className="border-b border-border bg-muted/10">
           <CategoryBookMarquee
@@ -283,6 +291,17 @@ const ShopPage = () => {
       )}
 
       {/* Géneros rápidos */}
+      {isLoading && !availableFilters.genres?.length && (
+        <div className="border-b border-border bg-muted/20" aria-hidden="true">
+          {/* A mesma caixa da fila a sério: `py-3` à volta de um botão de 40px. */}
+          <div className="container-custom py-3 flex gap-2 items-center overflow-hidden">
+            <span className="h-4 w-14 shrink-0 rounded bg-muted" />
+            {[91, 138, 125, 177].map((largura) => (
+              <span key={largura} className="h-10 sm:h-8 shrink-0 rounded-full bg-muted" style={{ width: largura }} />
+            ))}
+          </div>
+        </div>
+      )}
       {availableFilters.genres?.length > 0 && (
         <div className="border-b border-border bg-muted/20 sticky top-[var(--header-offset,0px)] z-20 backdrop-blur-md bg-background/80">
           <div className="container-custom py-3 flex gap-2 overflow-x-auto scrollbar-hide items-center">

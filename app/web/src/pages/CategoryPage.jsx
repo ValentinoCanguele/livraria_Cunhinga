@@ -12,6 +12,7 @@ import Header from '@/components/Header.jsx';
 import { pageTitle } from '@/lib/brand';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
+import PageBannerSlider from '@/components/PageBannerSlider';
 
 const CategoryPage = () => {
   const { category } = useParams();
@@ -54,25 +55,19 @@ const CategoryPage = () => {
       <Header onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
+      <PageBannerSlider contentClassName="text-left">
+        <nav className="mb-4 flex items-center gap-2 text-sm text-white/75">
+          <Link to="/" className="transition-colors hover:text-white">Home</Link>
+          <ChevronRight className="h-4 w-4" />
+          <Link to="/shop" className="transition-colors hover:text-white">Shop</Link>
+          <ChevronRight className="h-4 w-4" />
+          <span className="text-white">{categoryName}</span>
+        </nav>
+        <h1 className="mb-3 text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">{categoryName}</h1>
+        <p className="text-base text-white/85 sm:text-lg">Explore our curated {categoryName.toLowerCase()} collection</p>
+      </PageBannerSlider>
+
       <main className="container-custom py-12 min-h-screen">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-8"
-        >
-          <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <Link to="/" className="hover:text-primary transition-colors">Home</Link>
-            <ChevronRight className="h-4 w-4" />
-            <Link to="/shop" className="hover:text-primary transition-colors">Shop</Link>
-            <ChevronRight className="h-4 w-4" />
-            <span className="text-foreground">{categoryName}</span>
-          </nav>
-
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">{categoryName}</h1>
-          <p className="text-muted-foreground text-lg">Explore our curated {categoryName.toLowerCase()} collection</p>
-        </motion.div>
-
         <div className="flex flex-col lg:flex-row gap-8">
           <aside className="hidden lg:block w-64 flex-shrink-0">
             <div className="sticky top-24 bg-card border border-border rounded-xl p-6">

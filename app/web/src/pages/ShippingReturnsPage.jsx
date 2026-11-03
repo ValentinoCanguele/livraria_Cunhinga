@@ -6,6 +6,7 @@ import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
 import { pageTitle } from '@/lib/brand';
+import PageBannerSlider from '@/components/PageBannerSlider';
 
 const ShippingReturnsPage = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -20,18 +21,13 @@ const ShippingReturnsPage = () => {
       <Header onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
+      <PageBannerSlider>
+        <h1 className="mb-3 text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">Envios e Devoluções</h1>
+        <p className="text-base text-white/85 sm:text-lg">Tudo o que precisa saber sobre entregas e devoluções</p>
+      </PageBannerSlider>
+
       <main className="section-spacing bg-background">
         <div className="container-custom max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Envios e Devoluções</h1>
-            <p className="text-muted-foreground text-lg">Tudo o que precisa saber sobre entregas e devoluções</p>
-          </motion.div>
-
           <div className="space-y-12">
             <motion.section
               initial={{ opacity: 0, y: 20 }}

@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
+import PageBannerSlider from '@/components/PageBannerSlider';
 import { pageTitle, BRAND } from '@/lib/brand';
 import { APP_API_URL } from '@/lib/supabaseClient';
 
@@ -68,18 +69,13 @@ const ContactPage = () => {
       <Header onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
+      <PageBannerSlider>
+        <h1 className="mb-3 text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">Contacte-nos</h1>
+        <p className="text-base text-white/85 sm:text-lg">Teremos todo o gosto em ouvir de si</p>
+      </PageBannerSlider>
+
       <main className="section-spacing bg-background overflow-x-clip">
         <div className="container-custom">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-12"
-          >
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Contacte-nos</h1>
-            <p className="text-muted-foreground text-lg">Teremos todo o gosto em ouvir de si</p>
-          </motion.div>
-
           <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
             <motion.div
               initial={{ opacity: 0, x: -30 }}

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet';
-import { motion } from 'framer-motion';
 import { MapPin, Clock, Phone, Mail, Navigation, MessageCircle, PackageCheck, Store, Search, LocateFixed, Loader2 } from 'lucide-react';
 import Header from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
@@ -12,6 +11,7 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { pageTitle } from '@/lib/brand';
 import { displayAngolaPhone } from '@/lib/angolaPhone';
 import { hasCoords, mapsUrl, directionsUrl, mapEmbedUrl, whatsappLink } from '@/lib/stores';
+import PageBannerSlider from '@/components/PageBannerSlider';
 
 // Distância aproximada em km (fórmula de Haversine).
 function distanceKm(a, b) {
@@ -81,19 +81,15 @@ export default function StoresPage() {
       <Header onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
-      <main className="bg-muted/20 min-h-screen">
-        <section className="bg-gradient-to-br from-[#0c4a6e] to-[#0ea5c9] text-white">
-          <div className="container-custom py-12 md:py-16">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <p className="text-sm font-semibold uppercase tracking-wider text-white/70 mb-2 flex items-center gap-2"><Store className="h-4 w-4" /> Lojas físicas</p>
-              <h1 className="text-3xl md:text-5xl font-bold font-serif mb-3">Visite-nos</h1>
-              <p className="text-white/85 max-w-xl">
-                Encontre a loja mais perto de si, veja o horário e combine o levantamento das suas encomendas.
-              </p>
-            </motion.div>
-          </div>
-        </section>
+      <PageBannerSlider contentClassName="text-left">
+        <p className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/80"><Store className="h-4 w-4" /> Lojas físicas</p>
+        <h1 className="mb-3 font-serif text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">Visite-nos</h1>
+        <p className="max-w-xl text-sm text-white/85 sm:text-base">
+          Encontre a loja mais perto de si, veja o horário e combine o levantamento das suas encomendas.
+        </p>
+      </PageBannerSlider>
 
+      <main className="bg-muted/20 min-h-screen">
         <div className="container-custom py-8">
           {stores === null ? (
             <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

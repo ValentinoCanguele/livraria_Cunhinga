@@ -4,6 +4,7 @@ import { getShopSlides } from '@/api/EcommerceApi';
 import { sortSlides, getTransition, getSlideDuration } from '@/lib/slideTransitions';
 import { resolveShopBgMode } from '@/lib/shopTheme';
 import ShopHeroMotion from '@/components/ShopHeroMotion';
+import PageBannerSlider, { SHOP_BANNER_IMAGES } from '@/components/PageBannerSlider';
 
 function ShopSlideMedia({ slide }) {
   if (slide.media_type === 'video' && slide.video_url) {
@@ -57,6 +58,18 @@ export default function ShopHeroBackground({ settings, children }) {
     return () => clearInterval(t);
   }, [mode, slides.length, paused, duration, next]);
 
+  if (mode === 'image' && settings.shop_bg_image_url) {
+    return (
+      <PageBannerSlider
+        images={[settings.shop_bg_image_url, ...SHOP_BANNER_IMAGES]}
+        overlayOpacity={overlay}
+        contentClassName="text-left"
+      >
+        {children}
+      </PageBannerSlider>
+    );
+  }
+
   const gradientStyle = {
     background: 'linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-primary) 100%)',
   };
@@ -71,13 +84,6 @@ export default function ShopHeroBackground({ settings, children }) {
         <>
           <div className="absolute inset-0" style={gradientStyle} />
           <ShopHeroMotion />
-        </>
-      )}
-
-      {mode === 'image' && settings.shop_bg_image_url && (
-        <>
-          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${settings.shop_bg_image_url})` }} />
-          <div className="absolute inset-0" style={{ background: `rgba(12, 74, 110, ${overlay})` }} />
         </>
       )}
 
@@ -98,13 +104,6 @@ export default function ShopHeroBackground({ settings, children }) {
       )}
 
       {mode === 'slides' && slides.length === 0 && (
-        <>
-          <div className="absolute inset-0" style={gradientStyle} />
-          <ShopHeroMotion />
-        </>
-      )}
-
-      {mode === 'image' && !settings.shop_bg_image_url && (
         <>
           <div className="absolute inset-0" style={gradientStyle} />
           <ShopHeroMotion />

@@ -13,6 +13,7 @@ import { getCollections } from '@/api/PlatformApi';
 import pb from '@/lib/dataClient';
 import { escapeFilterValue } from '@/lib/sanitizeHtml';
 import { Button } from '@/components/ui/button';
+import PageBannerSlider from '@/components/PageBannerSlider';
 
 // Normalized helper to avoid accent differences matching (e.g. "Religião" vs "religiao")
 const getNormalizedGenre = (genre) => {
@@ -128,32 +129,30 @@ export default function CollectionsPage() {
       <Header onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
-      <main className="min-h-screen bg-background">
-        <section className="bg-gradient-to-br from-[#0c4a6e] to-[#0ea5c9] text-white py-14">
-          <div className="container-custom">
-            <div className="flex items-center gap-2 text-sm text-white/70 mb-4">
-              <Link to="/" className="hover:text-white">Início</Link>
+      <PageBannerSlider contentClassName="text-left">
+        <div className="mb-4 flex items-center gap-2 text-sm text-white/75">
+          <Link to="/" className="hover:text-white">Início</Link>
+          <ChevronRight className="h-4 w-4" />
+          <Link to="/colecoes" className="hover:text-white">Coleções</Link>
+          {activeCollection && (
+            <>
               <ChevronRight className="h-4 w-4" />
-              <Link to="/colecoes" className="hover:text-white">Coleções</Link>
-              {activeCollection && (
-                <>
-                  <ChevronRight className="h-4 w-4" />
-                  <span>{activeCollection.title}</span>
-                </>
-              )}
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold flex items-center gap-3">
-              <Layers className="h-8 w-8" />
-              {activeCollection ? activeCollection.title : 'Coleções de Livros'}
-            </h1>
-            <p className="mt-3 text-white/80 max-w-2xl">
-              {activeCollection
-                ? (activeCollection.marketing_tagline || activeCollection.description?.replace(/<[^>]+>/g, '').slice(0, 200))
-                : 'Explore catálogos temáticos seleccionados para fortalecer a sua fé e conhecimento.'}
-            </p>
-          </div>
-        </section>
+              <span>{activeCollection.title}</span>
+            </>
+          )}
+        </div>
+        <h1 className="flex items-center gap-2 text-2xl font-bold leading-tight sm:gap-3 sm:text-3xl md:text-4xl">
+          <Layers className="h-6 w-6 shrink-0 sm:h-8 sm:w-8" />
+          {activeCollection ? activeCollection.title : 'Coleções de Livros'}
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm text-white/85 sm:text-base">
+          {activeCollection
+            ? (activeCollection.marketing_tagline || activeCollection.description?.replace(/<[^>]+>/g, '').slice(0, 200))
+            : 'Explore catálogos temáticos seleccionados para fortalecer a sua fé e conhecimento.'}
+        </p>
+      </PageBannerSlider>
 
+      <main className="min-h-screen bg-background">
         <section className="container-custom py-12">
           {loading ? (
             <p className="text-center text-muted-foreground py-20">A carregar...</p>

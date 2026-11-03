@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Menu, X, User, ShoppingBag, LogOut, LayoutDashboard, BarChart3 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { useHeaderReveal } from '@/hooks/useHeaderReveal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/hooks/useCart';
@@ -39,7 +41,11 @@ const Header = ({ onCartOpen }) => {
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hasFocus, setHasFocus] = useState(false);
   const searchInputRef = useRef(null);
+  const headerRef = useRef(null);
+
+  const revealed = useHeaderReveal(mobileOpen || searchOpen || hasFocus);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -61,6 +67,28 @@ const Header = ({ onCartOpen }) => {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
 
+  // As barras que colam por baixo (as letras do catálogo, os filtros da loja) precisam de
+  // saber onde o cabeçalho acaba, senão colam ao topo e ficam escondidas por trás dele.
+  // Antes `--header-offset` era lido em dois sítios mas nunca escrito, e cada um ficava
+  // pelo seu palpite — 64px num, 0px no outro. Agora é a medida real, que muda quando a
+  // pesquisa ou o menu abrem.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return undefined;
+    const publish = () => {
+      document.documentElement.style.setProperty('--header-offset', `${Math.round(el.offsetHeight)}px`);
+    };
+    publish();
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(publish) : null;
+    observer?.observe(el);
+    window.addEventListener('resize', publish);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', publish);
+      document.documentElement.style.removeProperty('--header-offset');
+    };
+  }, []);
+
   const handleSearch = (e) => {
     e.preventDefault();
     const query = search.trim();
@@ -79,7 +107,24 @@ const Header = ({ onCartOpen }) => {
   };
 
   return (
-    <header className="safe-top sticky top-0 z-40 border-b border-border shadow-sm glass-topbar text-white">
+    <header
+      ref={headerRef}
+      onFocusCapture={() => setHasFocus(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setHasFocus(false);
+      }}
+      className={cn(
+        // Fora do fluxo, e não `sticky`: assim esconder o cabeçalho não deixa uma faixa
+        // vazia por cima da imagem de entrada — a página começa no topo do ecrã e o
+        // cabeçalho entra por cima dela.
+        'safe-top fixed inset-x-0 top-0 z-40 border-b border-border shadow-sm glass-topbar text-white',
+        'transition-transform duration-300 ease-out',
+        // Com o menu aberto o cabeçalho pode passar da altura do ecrã; aí desloca-se por
+        // dentro em vez de cortar o fim da lista.
+        mobileOpen && 'max-h-dvh overflow-y-auto',
+        revealed ? 'translate-y-0' : '-translate-y-full'
+      )}
+    >
       {/* Barra superior — mensagem de boas-vindas */}
       <div className="hidden sm:block text-white/90 text-center text-xs py-1.5 px-4 border-b border-white/5 bg-white/5">
         {isAuthed ? (

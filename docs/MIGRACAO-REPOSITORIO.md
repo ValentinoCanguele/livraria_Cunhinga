@@ -3,14 +3,32 @@
 A 2026-11-03 o projecto passou de **`ValentinoCanguele/livraria_Cunhinga`** (público) para
 **[`fernandotunas6-bot/Livraria-Editora-Adventista`](https://github.com/fernandotunas6-bot/Livraria-Editora-Adventista)** (privado).
 
-O `git push --mirror` leva commits, ramos e etiquetas. **Não leva mais nada.** Este documento
-lista o que ficou atrás e o que tem de ser refeito à mão.
+Um push leva commits, ramos e etiquetas. **Não leva mais nada.** Este documento lista o que
+ficou atrás e o que tem de ser refeito à mão.
 
 ## O que migrou
 
-- Todo o histórico (desde o primeiro commit), os ramos e a etiqueta `v0.2.0`.
-- O `main` com a migração do Supabase integrada (`f4d9885`, 2026-11-02).
-- Os workflows em `.github/workflows/` (os ficheiros; não a configuração que eles precisam).
+Todo o histórico, desde o primeiro commit, mais sete ramos e a etiqueta `v0.2.0`:
+
+| Ramo | Commit | Nota |
+|------|--------|------|
+| `main` | `f4d9885` | igual ao `main` antigo; a migração do Supabase já integrada (2026-11-02) |
+| `claude/youthful-heisenberg-rq5gnw` | `da8546b` | o ramo de trabalho, 49 commits à frente do `main` |
+| `supabase/migracao` | `4c52064` | já integrado no `main` |
+| `deploy/atendimento-20261103` | `dda616d` | — |
+| `a5/refino` | `7c26aa1` | — |
+| `cursor/fix-sw-dev-blank-screen` | `dd33668` | sem backend |
+| `cursor/fix-pocketbase-payment-hooks` | `553a5b9` | era PocketBase |
+
+Não migraram o `main` **local** antigo (era PocketBase, 114 commits atrás) nem o
+`publicar-tmp`, que é um worktree temporário do script de publicação.
+
+Em cima do `main` foi feito um commit só para o README da página de entrada não apontar para o
+repositório antigo (`e8c55c7`). A revisão completa da documentação está no ramo de trabalho e
+chega ao `main` com o PR desse ramo.
+
+Os workflows em `.github/workflows/` migraram como ficheiros — não a configuração de que
+precisam (secção 1).
 
 ## O que NÃO migrou — por fazer no repositório novo
 
@@ -85,16 +103,43 @@ Nada a mudar: o projecto `bggqkjjqbjhbjsckzopj` não conhece o repositório. Só
 
 ## Cópias de trabalho locais
 
-Em cada máquina que já tinha o projecto:
+Nesta máquina o repositório novo já está como remoto `novo`; o `origin` continua a apontar
+para o antigo, de propósito: havia uma sessão a publicar e trocar o `origin` por baixo dela
+parte o `deploy-site.sh`, que faz `git fetch origin` e exige que o HEAD seja a ponta do ramo
+remoto. Quando não houver nenhum deploy a correr, trocar:
+
+```bash
+git remote rename origin antigo
+git remote rename novo origin
+git fetch origin
+```
+
+Noutra máquina, ou num clone novo:
 
 ```bash
 git remote set-url origin https://github.com/fernandotunas6-bot/Livraria-Editora-Adventista.git
 git fetch origin
 ```
 
-Cuidado com o `main` **local**: em cópias antigas ainda aponta para a era PocketBase, 114
-commits atrás do `origin/main`. Usar sempre `origin/main` como referência, e nunca publicar a
-partir de um `main` local sem o actualizar.
+Dois avisos:
+
+- **Autenticação.** O repositório é privado e da conta `fernandotunas6-bot`. Um `git` com
+  credenciais de outra conta do GitHub guardadas leva 403. Resolve-se com
+  `gh auth switch -u fernandotunas6-bot && gh auth setup-git`.
+- **O `main` local.** Em cópias antigas ainda aponta para a era PocketBase, 114 commits atrás
+  do `origin/main`. Usar sempre `origin/main` como referência, e nunca publicar a partir de um
+  `main` local sem o actualizar.
+
+### Se o push se desligar a meio
+
+Nesta máquina o primeiro push morreu com `send-pack: unexpected disconnect while reading
+sideband packet`. É o HTTP/2 do git no macOS, não o repositório. Com HTTP/1.1 passa:
+
+```bash
+git -c http.version=HTTP/1.1 push origin <ramo>
+```
+
+Se acontecer com frequência, fixar: `git config --global http.version HTTP/1.1`.
 
 ## O repositório antigo
 

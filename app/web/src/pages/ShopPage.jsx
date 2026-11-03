@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useProductFilters } from '@/hooks/useProductFilters.jsx';
 import ProductsList from '@/components/ProductsList.jsx';
 import FilterPanel from '@/components/FilterPanel.jsx';
+import AdvancedSearchPanel from '@/components/AdvancedSearchPanel.jsx';
 import Header, { openHeaderSearch } from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
@@ -23,6 +24,7 @@ import { getProduct } from '@/api/EcommerceApi';
 import { pageTitle } from '@/lib/brand';
 import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { applyShopTheme, shopDefaults } from '@/lib/shopTheme';
+import { getSearchRelevance } from '@/lib/searchUtils';
 
 const SORT_OPTIONS = [
   { value: 'featured', label: 'Destaques' },
@@ -32,13 +34,20 @@ const SORT_OPTIONS = [
   { value: 'newest', label: 'Novidades' },
 ];
 
-function sortProducts(products, sortBy) {
+function sortProducts(products, sortBy, search = '') {
   return [...products].sort((a, b) => {
     if (sortBy === 'price-low') return a.price_in_cents - b.price_in_cents;
     if (sortBy === 'price-high') return b.price_in_cents - a.price_in_cents;
     if (sortBy === 'title') return (a.title || '').localeCompare(b.title || '');
     if (sortBy === 'newest') return (b.order || 0) - (a.order || 0);
-    if (sortBy === 'featured') return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || (b.order || 0) - (a.order || 0);
+    if (sortBy === 'featured') {
+      const relevance = search
+        ? getSearchRelevance(b, search) - getSearchRelevance(a, search)
+        : 0;
+      return relevance
+        || (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
+        || (b.order || 0) - (a.order || 0);
+    }
     return (b.order || 0) - (a.order || 0);
   });
 }
@@ -116,8 +125,8 @@ const ShopPage = () => {
   } = useProductFilters();
 
   const sortedProducts = useMemo(
-    () => sortProducts(filteredProducts, sortBy),
-    [filteredProducts, sortBy]
+    () => sortProducts(filteredProducts, sortBy, activeFilters.search),
+    [filteredProducts, sortBy, activeFilters.search]
   );
 
   const perPage = shop.shop_per_page;
@@ -371,6 +380,21 @@ const ShopPage = () => {
             </>
           )}
         </div>
+
+        <AdvancedSearchPanel
+          className="mb-6"
+          activeFilters={activeFilters}
+          updateFilter={updateFilter}
+          onClear={clearFilters}
+          onSearch={() => gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          bookCollections={bookCollections}
+          publishers={availableFilters.publishers}
+          resultCount={filteredProducts.length}
+          filterCount={filterCount}
+          quickGenres={availableFilters.genres}
+          catalog={allProducts}
+          showQuickGenres={false}
+        />
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar filtros */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, LogOut, Loader2, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, Store, Search, Star, Copy } from 'lucide-react';
+import { Plus, Pencil, Trash2, LogOut, Loader2, PackageSearch, Image, ShoppingBag, ChevronDown, ChevronUp, Phone, MapPin, Settings, Users, CreditCard, Plug, Layers, AlertTriangle, BarChart3, Megaphone, Store, Search, Star, Copy, MessageCircle } from 'lucide-react';
 import { sanitizeBookPayload } from '@/lib/bookSave';
 import { pbErrorMessage } from '@/lib/mediaSave';
 import BrandLogo from '@/components/BrandLogo';
@@ -37,6 +37,7 @@ const PaymentsTab = lazy(() => import('@/components/admin/PaymentsTab'));
 const AppsTab = lazy(() => import('@/components/admin/AppsTab'));
 const StoresTab = lazy(() => import('@/components/admin/StoresTab'));
 const ContactsManager = lazy(() => import('@/components/ContactsManager'));
+const SupportCenter = lazy(() => import('@/components/SupportCenter'));
 const SalesReportsPanel = lazy(() => import('@/components/admin/SalesReportsPanel'));
 const VendasHuamboTab = lazy(() => import('@/components/admin/VendasHuamboTab'));
 
@@ -340,6 +341,7 @@ const AdminPage = () => {
     { label: 'Clientes', tabs: [
       canManageUsers && { value: 'users', label: 'Utilizadores e Clientes', icon: Users },
       canManageMarketing && { value: 'contacts', label: 'Contactos e campanhas', icon: Megaphone },
+      canManageOrders && { value: 'support', label: 'Atendimento', icon: MessageCircle },
     ] },
     { label: 'Sistema', tabs: [
       canManageSettings && { value: 'settings', label: 'Configurações', icon: Settings },
@@ -463,6 +465,13 @@ const AdminPage = () => {
               <TabsContent value="contacts">
                 <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <ContactsManager />
+                </Suspense>
+              </TabsContent>
+            )}
+            {canManageOrders && (
+              <TabsContent value="support">
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+                  <SupportCenter />
                 </Suspense>
               </TabsContent>
             )}

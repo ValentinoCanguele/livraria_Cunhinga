@@ -11,6 +11,7 @@ import { buildSearchSuggestions } from '@/lib/searchUtils';
 export default function AdvancedSearchPanel({
   activeFilters,
   updateFilter,
+  onClear,
   onSearch,
   className,
   variant = 'default',
@@ -20,9 +21,11 @@ export default function AdvancedSearchPanel({
   filterCount = 0,
   quickGenres = [],
   catalog = [],
+  showQuickGenres = true,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [sugestoesAbertas, setSugestoesAbertas] = useState(false);
+  const [sugestaoActiva, setSugestaoActiva] = useState(-1);
   const campoRef = useRef(null);
   const [local, setLocal] = useState({
     search: activeFilters.search || '',
@@ -58,6 +61,8 @@ export default function AdvancedSearchPanel({
     [catalog, local.search],
   );
 
+  useEffect(() => setSugestaoActiva(-1), [local.search]);
+
   // Fechar ao tocar fora. Num telemóvel a lista tapa metade do ecrã, e ficar presa ali até
   // alguém escolher alguma coisa seria uma armadilha.
   useEffect(() => {
@@ -83,11 +88,20 @@ export default function AdvancedSearchPanel({
     if (variant !== 'hero') setExpanded(false);
   };
 
+  const selectSuggestion = (suggestion) => {
+    setLocal((s) => ({ ...s, search: suggestion.texto }));
+    setSugestoesAbertas(false);
+    setSugestaoActiva(-1);
+    updateFilter('search', suggestion.texto);
+    onSearch?.();
+  };
+
   const clear = () => {
     const empty = {
       search: '', author: '', isbn: '', publisher: '', language: '', collection: '',
       yearFrom: '', yearTo: '', featuredOnly: false, inStockOnly: false,
     };
+    onClear?.();
     setLocal(empty);
     Object.entries(empty).forEach(([k, v]) => updateFilter(k, v));
   };
@@ -115,14 +129,36 @@ export default function AdvancedSearchPanel({
             onChange={(e) => { setLocal((s) => ({ ...s, search: e.target.value })); setSugestoesAbertas(true); }}
             onFocus={() => setSugestoesAbertas(true)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') { setSugestoesAbertas(false); apply(); }
-              if (e.key === 'Escape') setSugestoesAbertas(false);
+              if (e.key === 'ArrowDown' && sugestoes.length > 0) {
+                e.preventDefault();
+                setSugestoesAbertas(true);
+                setSugestaoActiva((current) => (current + 1) % sugestoes.length);
+              }
+              if (e.key === 'ArrowUp' && sugestoes.length > 0) {
+                e.preventDefault();
+                setSugestoesAbertas(true);
+                setSugestaoActiva((current) => (current <= 0 ? sugestoes.length - 1 : current - 1));
+              }
+              if (e.key === 'Enter') {
+                if (sugestoesAbertas && sugestaoActiva >= 0 && sugestoes[sugestaoActiva]) {
+                  e.preventDefault();
+                  selectSuggestion(sugestoes[sugestaoActiva]);
+                } else {
+                  setSugestoesAbertas(false);
+                  apply();
+                }
+              }
+              if (e.key === 'Escape') {
+                setSugestoesAbertas(false);
+                setSugestaoActiva(-1);
+              }
             }}
             placeholder="Título, autor, ISBN, código..."
             className={inputClass}
             role="combobox"
             aria-expanded={sugestoesAbertas && sugestoes.length > 0}
             aria-controls="sugestoes-pesquisa"
+            aria-activedescendant={sugestaoActiva >= 0 ? `sugestao-pesquisa-${sugestaoActiva}` : undefined}
             aria-autocomplete="list"
           />
 
@@ -133,17 +169,18 @@ export default function AdvancedSearchPanel({
               aria-label="Sugestões de pesquisa"
               className="elev-overlay absolute left-0 right-0 top-full z-50 mt-2 max-h-72 overflow-y-auto rounded-xl border border-border bg-popover py-1 text-left"
             >
-              {sugestoes.map((sug) => (
-                <li key={`${sug.tipo}-${sug.id || sug.texto}`} role="option" aria-selected="false">
+              {sugestoes.map((sug, index) => (
+                <li
+                  key={`${sug.tipo}-${sug.id || sug.texto}`}
+                  id={`sugestao-pesquisa-${index}`}
+                  role="option"
+                  aria-selected={index === sugestaoActiva}
+                >
                   <button
                     type="button"
-                    className="control-press flex w-full items-baseline gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted"
-                    onClick={() => {
-                      setLocal((s) => ({ ...s, search: sug.texto }));
-                      setSugestoesAbertas(false);
-                      updateFilter('search', sug.texto);
-                      if (onSearch) onSearch();
-                    }}
+                    className={`control-press flex w-full items-baseline gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted ${index === sugestaoActiva ? 'bg-muted' : ''}`}
+                    onMouseEnter={() => setSugestaoActiva(index)}
+                    onClick={() => selectSuggestion(sug)}
                   >
                     <span className="min-w-0 flex-1 truncate text-foreground">{sug.texto}</span>
                     <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -182,7 +219,7 @@ export default function AdvancedSearchPanel({
         </p>
       )}
 
-      {!expanded && (quickGenres.length > 0 || BOOK_GENRES.length > 0) && (
+      {!expanded && showQuickGenres && (quickGenres.length > 0 || BOOK_GENRES.length > 0) && (
         <div className="mt-4">
           <p className="mb-2 text-xs font-medium text-muted-foreground">Categorias rápidas</p>
           <div className="flex flex-wrap gap-2">

@@ -1,124 +1,16 @@
 {
-  "entities": {
-    "WishlistItem": {
-      "title": "WishlistItem",
-      "description": "Represents a book saved to the user's wishlist",
-      "type": "object",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "The Firebase Auth UID of the owner"
-        },
-        "bookId": {
-          "type": "string",
-          "description": "The unique ID of the book in PocketBase"
-        },
-        "bookTitle": {
-          "type": "string",
-          "description": "The title of the book"
-        },
-        "bookCover": {
-          "type": "string",
-          "description": "The cover image URL of the book"
-        },
-        "bookPrice": {
-          "type": "number",
-          "description": "The price of the book"
-        },
-        "addedAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The server-side timestamp when added"
-        }
-      },
-      "required": ["userId", "bookId", "bookTitle", "bookCover", "bookPrice", "addedAt"]
-    },
-    "BookReview": {
-      "title": "BookReview",
-      "description": "A user review and rating for a specific book",
-      "type": "object",
-      "properties": {
-        "userId": {
-          "type": "string",
-          "description": "The Firebase Auth UID of the reviewer"
-        },
-        "userName": {
-          "type": "string",
-          "description": "The display name of the reviewer"
-        },
-        "userAvatar": {
-          "type": "string",
-          "description": "Optional avatar URL of the reviewer"
-        },
-        "bookId": {
-          "type": "string",
-          "description": "The book's PocketBase ID"
-        },
-        "rating": {
-          "type": "number",
-          "description": "Rating from 1 to 5"
-        },
-        "comment": {
-          "type": "string",
-          "description": "Review text"
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp of creation"
-        },
-        "isVerified": {
-          "type": "boolean",
-          "description": "Whether the user purchased the book before reviewing"
-        }
-      },
-      "required": ["userId", "userName", "bookId", "rating", "comment", "createdAt"]
-    },
-    "Book": {
-      "title": "Book",
-      "description": "Represents a book in the Firestore store catalog",
-      "type": "object",
-      "properties": {
-        "title": {
-          "type": "string",
-          "description": "The title of the book"
-        },
-        "author": {
-          "type": "string",
-          "description": "The author of the book"
-        },
-        "price": {
-          "type": "number",
-          "description": "The price of the book in Kwanza (Kz)"
-        },
-        "cover": {
-          "type": "string",
-          "description": "The cover image URL of the book"
-        },
-        "description": {
-          "type": "string",
-          "description": "Detailed description of the book"
-        },
-        "genre": {
-          "type": "string",
-          "description": "Genre/category of the book"
-        }
-      },
-      "required": ["title", "author", "price", "cover"]
-    }
-  },
+  "project": "Livraria Adventista IASD",
+  "status": "firestore_disabled",
+  "summary": "Application data is stored in Supabase. Firestore is intentionally closed to prevent legacy data access and keep the auth/session model consistent with Supabase Auth.",
+  "notes": [
+    "Firebase remains only for Google Workspace login flows and related admin tooling.",
+    "No customer catalog, order, wishlist, review, or notification data is stored in Firestore.",
+    "The source of truth for schema and permissions is Supabase plus the Edge Function app API."
+  ],
+  "entities": {},
   "firestore": {
-    "/wishlists/{wishlistItemId}": {
-      "schema": "WishlistItem",
-      "description": "Collection storing all user wishlists"
-    },
-    "/reviews/{reviewId}": {
-      "schema": "BookReview",
-      "description": "Collection storing book reviews and star ratings"
-    },
-    "/books/{bookId}": {
-      "schema": "Book",
-      "description": "Collection storing books catalog in Firestore"
-    }
+    "status": "closed",
+    "description": "All collections are blocked by rule: allow read, write: if false; see firestore.rules.",
+    "collections": []
   }
 }

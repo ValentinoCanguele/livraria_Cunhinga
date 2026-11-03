@@ -194,13 +194,13 @@ export function useProductFilters(initialCategory = null) {
       if (activeFilters.collection && product.collection_id !== activeFilters.collection) return false;
 
       if (activeFilters.categories.length > 0) {
-        const productType = (product.type?.value || '').toLowerCase();
+        const productType = product.type?.value || '';
         const productCategoryNames = (product.collections || []).map((c) =>
-          (categoriesMap[c.collection_id] || c.title || '').toLowerCase()
+          categoriesMap[c.collection_id] || c.title || ''
         );
         const matchesCategory = activeFilters.categories.some((cat) => {
-          const searchCat = cat.toLowerCase();
-          return productType.includes(searchCat) || productCategoryNames.some((name) => name.includes(searchCat));
+          return matchesTokenizedSearch(productType, cat)
+            || productCategoryNames.some((name) => matchesTokenizedSearch(name, cat));
         });
         if (!matchesCategory) return false;
       }
@@ -214,14 +214,17 @@ export function useProductFilters(initialCategory = null) {
         if (!matchesTokenizedSearch(authorHay, activeFilters.author)) return false;
       }
       if (activeFilters.isbn) {
-        const q = activeFilters.isbn.toLowerCase();
-        const codes = [product.isbn, product.book_code, product.sku].filter(Boolean).join(' ').toLowerCase();
-        if (!codes.includes(q)) return false;
+        const codes = [product.isbn, product.book_code, product.sku].filter(Boolean).join(' ');
+        if (!matchesTokenizedSearch(codes, activeFilters.isbn)) return false;
       }
-      if (activeFilters.publisher && !(product.publisher || '').toLowerCase().includes(activeFilters.publisher.toLowerCase())) return false;
+      if (activeFilters.publisher && !matchesTokenizedSearch(product.publisher, activeFilters.publisher)) return false;
       if (activeFilters.language && (product.language || '') !== activeFilters.language) return false;
-      if (activeFilters.yearFrom && Number(product.year) < Number(activeFilters.yearFrom)) return false;
-      if (activeFilters.yearTo && Number(product.year) > Number(activeFilters.yearTo)) return false;
+      if (activeFilters.yearFrom || activeFilters.yearTo) {
+        const year = Number(product.year);
+        if (!Number.isFinite(year)) return false;
+        if (activeFilters.yearFrom && year < Number(activeFilters.yearFrom)) return false;
+        if (activeFilters.yearTo && year > Number(activeFilters.yearTo)) return false;
+      }
       if (activeFilters.featuredOnly && !product.featured) return false;
       if (activeFilters.inStockOnly && !product.purchasable) return false;
 

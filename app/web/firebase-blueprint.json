@@ -1,60 +1,16 @@
 {
-  "entities": {
-    "User": {
-      "title": "User Profile",
-      "description": "User profile metadata",
-      "type": "object",
-      "properties": {
-        "uid": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "displayName": { "type": "string", "maxLength": 100 },
-        "email": { "type": "string", "maxLength": 120 },
-        "photoURL": { "type": "string", "maxLength": 2048 },
-        "lastLogin": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["uid", "email"]
-    },
-    "Order": {
-      "title": "Customer Order",
-      "description": "Order records for books purchased",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "order_number": { "type": "string", "maxLength": 50 },
-        "userId": { "type": "string" },
-        "customer_email": { "type": "string", "maxLength": 120 },
-        "customer_name": { "type": "string", "maxLength": 100 },
-        "phone": { "type": "string", "maxLength": 30 },
-        "address": { "type": "string", "maxLength": 500 },
-        "city": { "type": "string", "maxLength": 100 },
-        "delivery_province": { "type": "string", "maxLength": 100 },
-        "delivery_municipality": { "type": "string", "maxLength": 100 },
-        "delivery_locality": { "type": "string", "maxLength": 100 },
-        "delivery_street": { "type": "string", "maxLength": 200 },
-        "delivery_reference": { "type": "string", "maxLength": 300 },
-        "payment_method": { "type": "string", "maxLength": 50 },
-        "payment_status": { "type": "string", "maxLength": 50 },
-        "delivery_status": { "type": "string", "maxLength": 50 },
-        "status": { "type": "string", "maxLength": 50 },
-        "shipping_method": { "type": "string", "maxLength": 50 },
-        "pickup_store": { "type": "string", "maxLength": 100 },
-        "notes": { "type": "string", "maxLength": 1000 },
-        "shipping_cost": { "type": "number" },
-        "total": { "type": "number" },
-        "created": { "type": "string", "format": "date-time" },
-        "signature": { "type": "string" }
-      },
-      "required": ["id", "customer_email", "customer_name", "total"]
-    }
-  },
+  "project": "Livraria Adventista IASD",
+  "status": "firestore_disabled",
+  "summary": "All application data is stored in Supabase. Firestore is intentionally disabled and the rules block every collection to avoid legacy data leaks and auth/session mismatches.",
+  "notes": [
+    "Firebase is only used for Google Workspace login flows in the admin panel.",
+    "No customer orders, wishlists, reviews, communication logs, or product data are stored in Firestore.",
+    "The authoritative schema lives in Supabase tables and the Edge Function app API."
+  ],
+  "entities": {},
   "firestore": {
-    "users/{userId}": {
-      "schema": "User",
-      "description": "Stores basic public profile data of registered users"
-    },
-    "orders/{orderId}": {
-      "schema": "Order",
-      "description": "Stores user and guest purchase orders"
-    }
+    "status": "closed",
+    "description": "Every Firestore collection is denied by rule: allow read, write: if false; see firestore.rules.",
+    "collections": []
   }
 }

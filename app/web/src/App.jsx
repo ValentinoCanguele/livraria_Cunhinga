@@ -102,7 +102,7 @@ function RouteErrorBoundary({ children }) {
 
 function GlobalWidgets() {
   const { pathname } = useLocation();
-  const showAssistant = pathname !== '/login' && !pathname.startsWith('/admin');
+  const showAssistant = pathname !== '/login';
 
   return (
     <Suspense fallback={null}>

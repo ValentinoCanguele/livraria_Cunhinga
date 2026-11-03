@@ -40,8 +40,8 @@ function declaredRoutes() {
 }
 
 /**
- * Rotas que o frontend chama. Normaliza o que é ruído e não caminho: o prefixo `/api/app`
- * herdado do PocketBase, a query string, e tudo a partir de uma interpolação.
+ * Rotas que o frontend chama. Normaliza o que é ruído e não caminho: o prefixo `/api/app`,
+ * a query string e tudo a partir de uma interpolação.
  */
 function calledRoutes() {
   const calls = new Map();

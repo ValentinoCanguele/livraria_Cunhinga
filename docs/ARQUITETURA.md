@@ -35,6 +35,7 @@ flowchart TB
 | Livros, colecções, slides, lojas, métodos de pagamento | Postgres (PostgREST) | Leitura pública do que está activo; escrita conforme a permissão |
 | Checkout, rastreio, confirmação de entrega | Edge Function `app` | Transacção em `place_order` (stock, preços e totais no servidor) |
 | Email (SMTP/SendGrid) e WhatsApp Business API | Edge Function `app` | Segredos só no servidor; cada envio fica em `notification_logs` |
+| Atendimento cliente-equipa e alertas pessoais | Postgres + RLS/RPCs | Migração `20261103165632_centro_atendimento_notificacoes` aplicada; clientes vêem apenas as suas conversas/alertas e a equipa usa `manage_orders` |
 | CRM: contactos, grupos, campanhas | Postgres + Edge Function `/contacts/*` | Permissão `manage_users` ou `manage_marketing`, ou dono do contacto |
 | Utilizadores e clientes | Edge Function `/admin/users*` + `admin_users_list` | Ver "Permissões" abaixo |
 | Lista de desejos e avaliações | Postgres (`wishlists`, `book_reviews`) | "Compra verificada" definida por trigger |
@@ -50,7 +51,7 @@ O frontend usa `app/web/src/lib/dataClient.js`, uma camada com a API ao estilo `
 |-------|------------|
 | `admin` | Tudo, incluindo a equipa, papéis, permissões, integrações e o registo de comunicações |
 | `manager` | Só as áreas activas em `profiles.permissions` |
-| `member` | Cliente: as suas encomendas, lista de desejos, avaliações e perfil |
+| `member` | Cliente: as suas encomendas, lista de desejos, avaliações, perfil e atendimento |
 
 Permissões dos gestores: `manage_catalog`, `manage_orders`, `manage_settings`, `manage_users`, `manage_payments`, `manage_marketing`.
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Menu, X, User, ShoppingBag, LogOut, LayoutDashboard, BarChart3 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -14,6 +14,8 @@ import MegaMenu from '@/components/header/MegaMenu';
 import UserAvatar from '@/components/UserAvatar';
 import { UserMenu, GuestAuthButton } from '@/components/UserMenu';
 import { getUserDisplayName, getUserFirstName } from '@/lib/userUtils';
+import { getProducts } from '@/api/EcommerceApi';
+import { buildSearchSuggestions } from '@/lib/searchUtils';
 
 // Menu do telemóvel: as mesmas secções do mega menu, em lista.
 const NAV_LINKS = [
@@ -42,12 +44,20 @@ const Header = ({ onCartOpen, pinned = false }) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hasFocus, setHasFocus] = useState(false);
+  const [searchCatalog, setSearchCatalog] = useState([]);
+  const [searchSuggestionsOpen, setSearchSuggestionsOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
   const searchInputRef = useRef(null);
   const headerRef = useRef(null);
 
   const revealed = useHeaderReveal(pinned || mobileOpen || searchOpen || hasFocus);
+  const searchFormRef = useRef(null);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const searchSuggestions = useMemo(
+    () => buildSearchSuggestions(searchCatalog, search),
+    [searchCatalog, search],
+  );
 
   useEffect(() => {
     setSearch(new URLSearchParams(location.search).get('search') || '');
@@ -89,12 +99,51 @@ const Header = ({ onCartOpen, pinned = false }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!searchOpen || searchCatalog.length > 0) return undefined;
+    let active = true;
+    getProducts({})
+      .then(({ products }) => { if (active) setSearchCatalog(products || []); })
+      .catch((err) => console.warn('Não foi possível carregar sugestões de pesquisa:', err));
+    return () => { active = false; };
+  }, [searchOpen, searchCatalog.length]);
+
+  useEffect(() => {
+    setActiveSuggestion(-1);
+  }, [search]);
+
+  useEffect(() => {
+    if (!searchSuggestionsOpen) return undefined;
+    const closeOutside = (event) => {
+      if (searchFormRef.current && !searchFormRef.current.contains(event.target)) {
+        setSearchSuggestionsOpen(false);
+        setActiveSuggestion(-1);
+      }
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [searchSuggestionsOpen]);
+
   const handleSearch = (e) => {
     e.preventDefault();
     const query = search.trim();
     if (!query) return;
     navigate(`/shop?search=${encodeURIComponent(query)}`);
     setMobileOpen(false);
+    setSearchOpen(false);
+    setSearchSuggestionsOpen(false);
+    setActiveSuggestion(-1);
+  };
+
+  const chooseSearchSuggestion = (suggestion) => {
+    setSearch(suggestion.texto);
+    setSearchSuggestionsOpen(false);
+    setActiveSuggestion(-1);
+    if (suggestion.tipo === 'livro' && suggestion.id) {
+      navigate(`/product/${suggestion.id}`);
+    } else {
+      navigate(`/shop?search=${encodeURIComponent(suggestion.texto)}`);
+    }
     setSearchOpen(false);
   };
 
@@ -229,12 +278,13 @@ const Header = ({ onCartOpen, pinned = false }) => {
         </div>
 
         <form
+          ref={searchFormRef}
           id="header-search"
           onSubmit={handleSearch}
           role="search"
           aria-label="Pesquisa de livros"
           aria-hidden={!searchOpen}
-          className={`grid transition-[grid-template-rows,opacity] duration-300 ${
+          className={`relative grid transition-[grid-template-rows,opacity] duration-300 ${
             searchOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
           }`}
         >
@@ -245,9 +295,32 @@ const Header = ({ onCartOpen, pinned = false }) => {
                 type="search"
                 placeholder="Pesquisar livros, autores..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setSearchSuggestionsOpen(true); }}
+                onFocus={() => setSearchSuggestionsOpen(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown' && searchSuggestions.length > 0) {
+                    e.preventDefault();
+                    setSearchSuggestionsOpen(true);
+                    setActiveSuggestion((current) => (current + 1) % searchSuggestions.length);
+                  } else if (e.key === 'ArrowUp' && searchSuggestions.length > 0) {
+                    e.preventDefault();
+                    setSearchSuggestionsOpen(true);
+                    setActiveSuggestion((current) => (current <= 0 ? searchSuggestions.length - 1 : current - 1));
+                  } else if (e.key === 'Enter' && searchSuggestionsOpen && activeSuggestion >= 0) {
+                    e.preventDefault();
+                    chooseSearchSuggestion(searchSuggestions[activeSuggestion]);
+                  } else if (e.key === 'Escape') {
+                    setSearchSuggestionsOpen(false);
+                    setActiveSuggestion(-1);
+                  }
+                }}
                 className="min-w-0 flex-1 rounded-full bg-white/10 border-white/10 text-white placeholder-white/50 focus-visible:ring-[#22d3ee]"
                 aria-label="Pesquisar livros, autores e coleções"
+                role="combobox"
+                aria-expanded={searchSuggestionsOpen && searchSuggestions.length > 0}
+                aria-controls="header-search-suggestions"
+                aria-activedescendant={activeSuggestion >= 0 ? `header-search-suggestion-${activeSuggestion}` : undefined}
+                aria-autocomplete="list"
                 tabIndex={searchOpen ? 0 : -1}
               />
               <Button type="submit" className="rounded-full bg-[#22d3ee] text-neutral-950 hover:bg-[#22d3ee]/90">
@@ -255,6 +328,36 @@ const Header = ({ onCartOpen, pinned = false }) => {
               </Button>
             </div>
           </div>
+          {searchOpen && searchSuggestionsOpen && searchSuggestions.length > 0 && (
+            <ul
+              id="header-search-suggestions"
+              role="listbox"
+              aria-label="Sugestões de pesquisa"
+              className="elev-overlay absolute left-0 right-0 top-full z-50 max-h-72 overflow-y-auto rounded-xl border border-border bg-popover py-1 text-left text-foreground shadow-xl"
+            >
+              {searchSuggestions.map((suggestion, index) => (
+                <li
+                  key={`${suggestion.tipo}-${suggestion.id || suggestion.texto}`}
+                  id={`header-search-suggestion-${index}`}
+                  role="option"
+                  aria-selected={index === activeSuggestion}
+                >
+                  <button
+                    type="button"
+                    tabIndex={searchOpen ? 0 : -1}
+                    onMouseEnter={() => setActiveSuggestion(index)}
+                    onClick={() => chooseSearchSuggestion(suggestion)}
+                    className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted ${index === activeSuggestion ? 'bg-muted' : ''}`}
+                  >
+                    <span className="min-w-0 flex-1 truncate font-medium">{suggestion.texto}</span>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {suggestion.tipo === 'livro' ? 'livro' : suggestion.tipo === 'autor' ? 'autor' : 'editora'}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </form>
 
         <div

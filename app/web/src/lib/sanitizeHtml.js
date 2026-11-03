@@ -56,7 +56,7 @@ export function sanitizeHtml(html) {
   return DOMPurify.sanitize(html, CONFIG);
 }
 
-/** Escapa valores para filtros PocketBase (evita injecção em filter strings). */
+/** Escapa valores para filtros da camada compatível (evita injecção em filter strings). */
 export function escapeFilterValue(value) {
   if (value == null) return '';
   return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');

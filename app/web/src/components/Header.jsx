@@ -105,7 +105,7 @@ const Header = ({ onCartOpen }) => {
 
       <div className="container-custom">
         <div className="flex items-center justify-between h-16 gap-3">
-          <BrandLogo variant="light" />
+          <BrandLogo variant="light" collapseToIcon />
 
           <div className="hidden lg:block">
             <MegaMenu />

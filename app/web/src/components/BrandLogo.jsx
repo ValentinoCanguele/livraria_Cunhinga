@@ -6,7 +6,7 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 import { withCacheBust } from '@/lib/imageUrl';
 import { BRAND } from '@/lib/brand';
 
-export function BrandLogo({ className, linkTo = '/', variant = 'default', showText = true }) {
+export function BrandLogo({ className, linkTo = '/', variant = 'default', showText = true, collapseToIcon = false }) {
   const { settings } = useSiteSettings();
   const isLight = variant === 'light';
   const isIconOnly = variant === 'icon';
@@ -44,9 +44,21 @@ export function BrandLogo({ className, linkTo = '/', variant = 'default', showTe
     '/logo.svg', '/logo-light.svg', '/logo.png', '/logo-light.png',
   ];
   const isHorizontalLogo = !hasCustomLogo || DEFAULT_HORIZONTAL.includes(settings.logo_url);
+  // Em telemóvel o lockup mede 164px e os ícones do cabeçalho 188px, o que não cabe nos
+  // 343px da barra: o logótipo ficava encostado aos ícones. Aí fica só o emblema, e a
+  // assinatura volta a partir de `sm`. Só com o logótipo da casa — de um carregado pelo
+  // administrador não há emblema separado.
+  const collapses = collapseToIcon && !hasCustomLogo;
 
   const content = (
     <div className={cn('flex items-center gap-2.5', className)}>
+      {collapses && (
+        <img
+          src={isLight ? '/logo-icon-light.svg' : '/logo-icon.svg'}
+          alt={siteName}
+          className="h-11 w-11 object-contain shrink-0 sm:hidden"
+        />
+      )}
       {isHorizontalLogo ? (
         <img
           key={logoUrl}
@@ -54,6 +66,7 @@ export function BrandLogo({ className, linkTo = '/', variant = 'default', showTe
           alt={siteName}
           className={cn(
             'h-9 sm:h-10 w-auto max-w-[190px] sm:max-w-[220px] object-contain shrink-0',
+            collapses && 'hidden sm:block',
             isLight && hasCustomLogo && 'brightness-110 drop-shadow-[0_1px_2px_rgba(255,255,255,0.2)]'
           )}
         />

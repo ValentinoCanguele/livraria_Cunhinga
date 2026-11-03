@@ -36,6 +36,65 @@ export function hexToHsl(hex) {
   return `${h} ${s}% ${l}%`;
 }
 
+/** Luminância relativa, como a WCAG a define. */
+export function relativeLuminance({ r, g, b }) {
+  const canal = (v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b);
+}
+
+/** Razão de contraste entre duas cores. 1 é igual, 21 é preto sobre branco. */
+export function contrastRatio(a, b) {
+  const l1 = relativeLuminance(a);
+  const l2 = relativeLuminance(b);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+
+const BRANCO = { r: 255, g: 255, b: 255 };
+
+const toHex = ({ r, g, b }) =>
+  `#${[r, g, b].map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('')}`;
+
+/**
+ * Alvo de contraste, com folga sobre os 4,5 da WCAG.
+ *
+ * Os 4,5 são o mínimo contra branco puro, mas nem todos os fundos da loja o são: a faixa de
+ * livros assenta sobre um cinzento muito claro, e aí a mesma cor media 4,41 — falhava por
+ * nove centésimas. A folga cobre esses fundos levemente tingidos sem escurecer a cor ao
+ * ponto de ela deixar de parecer a cor da marca.
+ */
+const CONTRASTE_ALVO = 4.8;
+
+/**
+ * A mesma cor, escurecida só o suficiente para se ler sobre branco.
+ *
+ * A cor da marca desta loja (`#0ea5c9`) dá uma razão de 2,9 sobre branco — abaixo dos 4,5
+ * que a WCAG pede para texto normal. Era a cor dos **preços**, que numa loja é o que mais
+ * precisa de se ler, e do texto branco dentro dos botões e etiquetas que a usam como fundo.
+ *
+ * Escurece-se proporcionalmente, mantendo o tom: o azul continua o mesmo azul, só mais
+ * fundo. Calcular em vez de fixar um valor faz com que isto continue certo se alguém mudar
+ * a cor da marca no painel — que é precisamente o que o painel permite fazer.
+ *
+ * Devolve a cor original quando ela já passa.
+ */
+export function ensureContrastOnWhite(hex, minimo = CONTRASTE_ALVO) {
+  const original = hexToRgb(hex);
+  if (contrastRatio(original, BRANCO) >= minimo) return toHex(original);
+  for (let p = 98; p >= 20; p -= 2) {
+    const tentativa = {
+      r: original.r * (p / 100),
+      g: original.g * (p / 100),
+      b: original.b * (p / 100),
+    };
+    if (contrastRatio(tentativa, BRANCO) >= minimo) return toHex(tentativa);
+  }
+  // Uma cor que nem a 20% chega é quase preta; aí o preto resolve e lê-se sempre.
+  return '#000000';
+}
+
 export function applyShopTheme(settings = {}) {
   const primary = settings.primary_color || '#1b365d';
   const dark = settings.pwa_theme_color || '#0c4a6e';
@@ -43,9 +102,18 @@ export function applyShopTheme(settings = {}) {
   const root = document.documentElement;
   root.style.setProperty('--brand-primary', primary);
   root.style.setProperty('--brand-primary-rgb', `${r}, ${g}, ${b}`);
+  // A cor viva da marca fica para decoração: barras, bordas, fundos de áreas grandes.
   root.style.setProperty('--brand-primary-hsl', hexToHsl(primary));
   root.style.setProperty('--brand-accent-hsl', hexToHsl(settings.accent_color || primary));
   root.style.setProperty('--brand-dark', dark);
+
+  // `--brand-ink` é a variante legível, e é o `index.css` que decide onde ela entra: no tema
+  // claro vai para `--primary`, no escuro fica a cor viva. Escrito aqui por `style`, ganhava
+  // a qualquer regra do tema escuro e deixava texto escuro sobre fundo escuro no dia em que
+  // alguém o activasse.
+  const ink = ensureContrastOnWhite(primary);
+  root.style.setProperty('--brand-ink', ink);
+  root.style.setProperty('--brand-ink-hsl', hexToHsl(ink));
 
   const glassOn = settings.ui_glass_enabled !== false;
   const opacity = Number(settings.ui_glass_opacity) || 0.72;

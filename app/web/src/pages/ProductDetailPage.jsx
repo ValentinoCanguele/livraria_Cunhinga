@@ -340,11 +340,11 @@ function ProductDetailPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="relative overflow-hidden rounded-2xl bg-muted aspect-square mb-4">
+            <div className="relative overflow-hidden rounded-2xl bg-muted aspect-[3/4] sm:aspect-square mb-4">
               <img
                 src={!currentImage?.url ? placeholderImage : currentImage.url}
                 alt={product.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-3 sm:object-cover sm:p-0"
               />
 
               {hasMultipleImages && (
@@ -367,7 +367,7 @@ function ProductDetailPage() {
               )}
 
               {product.ribbon_text && (
-                <div className="absolute top-4 left-4 bg-primary text-primary-foreground text-sm font-bold px-4 py-2 rounded-full">
+                <div className="absolute top-4 left-4 bg-brand-solid text-sm font-bold px-4 py-2 rounded-full">
                   {product.ribbon_text}
                 </div>
               )}
@@ -379,7 +379,7 @@ function ProductDetailPage() {
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
+                    className={`flex-shrink-0 w-16 h-20 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 transition-colors ${
                       index === currentImageIndex ? 'border-primary' : 'border-border hover:border-primary/50'
                     }`}
                   >
@@ -443,7 +443,7 @@ function ProductDetailPage() {
             )}
 
             <div className="flex items-baseline gap-3 mb-8">
-              <span className="text-4xl font-bold text-primary">{price}</span>
+              <span className="text-4xl font-bold text-brand-ink">{price}</span>
               {selectedVariant?.sale_price_in_cents && (
                 <span className="text-2xl text-muted-foreground line-through">{originalPrice}</span>
               )}
@@ -595,7 +595,7 @@ function ProductDetailPage() {
             )}
 
             {isStockManaged && canAddToCart && product.purchasable && (
-              <p className="text-sm text-primary flex items-center justify-center gap-2 mb-4">
+              <p className="text-sm text-brand-ink flex items-center justify-center gap-2 mb-4">
                 <CheckCircle size={16} /> {availableStock} em stock
               </p>
             )}

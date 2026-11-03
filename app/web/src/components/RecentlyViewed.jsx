@@ -66,7 +66,7 @@ export default function RecentlyViewed({ currentId = null, title = 'Vistos há p
                 </div>
                 <div className="p-2">
                   <p className="line-clamp-2 text-xs font-semibold leading-snug">{item.title}</p>
-                  {item.price && <p className="mt-1 text-xs text-primary">{item.price}</p>}
+                  {item.price && <p className="mt-1 text-xs text-brand-ink">{item.price}</p>}
                 </div>
               </Link>
             </li>

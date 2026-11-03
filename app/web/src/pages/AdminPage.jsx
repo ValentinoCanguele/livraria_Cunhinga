@@ -313,6 +313,13 @@ const AdminPage = () => {
   const paymentLabelOf = (o) => o.payment_method_name || PAYMENT_METHODS[o.payment_method] || o.payment_method_code || o.payment_method || '';
   const totalRevenue = orders.filter((o) => o.status !== 'cancelled').reduce((s, o) => s + Number(o.total), 0);
 
+  const bookMetrics = [
+    { label: 'Livros no catálogo', value: books.length, icon: PackageSearch },
+    { label: 'Com stock', value: books.filter((book) => Number(book.stock) > 0).length, icon: ShoppingBag },
+    { label: 'Em destaque', value: books.filter((book) => book.featured).length, icon: Star },
+    { label: 'Sem capa', value: books.filter((book) => !String(book.cover || '').trim()).length, icon: Image },
+  ];
+
   const defaultTab = canManageCatalog ? 'books' : canManageOrders ? 'orders' : canManageSettings ? 'settings' : canManageUsers ? 'users' : 'payments';
 
   // Separadores agrupados por área; o separador activo fica no URL (/admin?tab=orders) para os atalhos do cabeçalho.
@@ -490,11 +497,20 @@ const AdminPage = () => {
                   <div className="flex justify-between mb-6">
                     <div>
                       <h2 className="text-2xl font-bold">Catálogo</h2>
-                      <p className="text-sm text-muted-foreground mt-1">{books.length} livros · {books.filter((b) => b.featured).length} em destaque</p>
+                      <p className="text-sm text-muted-foreground mt-1">Resumo e gestão das capas dos livros.</p>
                     </div>
                     <Button className="btn-primary" onClick={() => { setEditingBook(null); setDuplicatingBook(null); setShowBookForm(true); }} disabled={!canManageCatalog}>
                       <Plus className="h-4 w-4 mr-2" /> Adicionar
                     </Button>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6" aria-label="Estatísticas do catálogo">
+                    {bookMetrics.map(({ label, value, icon: Icon }) => (
+                      <div key={label} className="rounded-xl border bg-card p-4">
+                        <Icon className="h-4 w-4 text-muted-foreground mb-2" aria-hidden="true" />
+                        <p className="text-2xl font-bold">{value}</p>
+                        <p className="text-xs text-muted-foreground">{label}</p>
+                      </div>
+                    ))}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 mb-4">
                     <div className="relative flex-1">

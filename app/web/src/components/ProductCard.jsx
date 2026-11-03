@@ -79,11 +79,59 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
 
   const isList = viewMode === 'list';
 
+  const cardActions = (
+    <div className={`flex items-center gap-1 ${isList ? 'justify-start' : 'justify-center px-2 pt-3'}`}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => toggleWishlist(product)}
+            className="tap-target h-8 w-8 rounded-full border bg-background shadow-sm hover:bg-muted control-press sm:h-10 sm:w-10"
+            aria-label={isWish ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}
+          >
+            <Heart className={`mx-auto h-4 w-4 transition-colors ${isWish ? 'text-red-500 fill-red-500' : 'text-muted-foreground hover:text-red-500'}`} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">
+          {isWish ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handleQuickView}
+            className="tap-target h-8 w-8 rounded-full border bg-background shadow-sm hover:bg-muted control-press sm:h-10 sm:w-10"
+            aria-label="Visualizar"
+          >
+            <Eye className="mx-auto h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">Visualização Rápida</TooltipContent>
+      </Tooltip>
+      {waPhone && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="tap-target h-8 w-8 rounded-full bg-green-700 text-white shadow-sm hover:bg-green-800 control-press sm:h-10 sm:w-10"
+              aria-label="Partilhar no WhatsApp"
+            >
+              <MessageCircle className="mx-auto h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Partilhar no WhatsApp</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
+
   return (
     <div className={`group h-full flex ${isList ? 'flex-row gap-4' : 'flex-col'}`}>
-      <Link to={`/product/${product.id}`} onClick={handleQuickView} className={`block flex-1 ${isList ? 'flex flex-row gap-4' : ''}`}>
-        <div className={`bg-card rounded-xl overflow-hidden surface-raise border border-border h-full flex ${isList ? 'flex-row flex-1' : 'flex-col'}`}>
-          <div className={`relative overflow-hidden bg-muted shrink-0 ${isList ? 'w-28 h-36' : 'aspect-[3/4]'}`}>
+      <div className={`bg-card rounded-xl overflow-hidden surface-raise border border-border h-full flex flex-1 ${isList ? 'flex-row' : 'flex-col'}`}>
+          <div className={`relative overflow-hidden bg-muted shrink-0 ${isList ? 'w-28 h-36' : 'aspect-[2/3] sm:aspect-[3/4]'}`}>
+            <Link to={`/product/${product.id}`} onClick={handleQuickView} className="block h-full">
             <img
               src={product.image || PLACEHOLDER}
               alt={product.title}
@@ -96,6 +144,7 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
               decoding="async"
               onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER; }}
             />
+            </Link>
             {/* Ícones, não autocolantes de texto: o mesmo cartão chegava a dizer o stock
                 quatro vezes (marca na imagem, faixa do admin, etiqueta do preço e "últimas N").
                 Fica uma marca por estado aqui, e o número aparece uma única vez, junto ao
@@ -130,79 +179,38 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
                 </span>
               )}
             </div>
-            {/* Wishlist Heart Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleWishlist(product);
-                  }}
-                  className="tap-target absolute top-2 right-2 p-1.5 rounded-full bg-background/95 shadow-md hover:bg-background z-20 control-press cursor-pointer"
-                  aria-label={isWish ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
-                >
-                  <Heart className={`h-4 w-4 transition-colors ${isWish ? 'text-red-500 fill-red-500' : 'text-muted-foreground hover:text-red-500'}`} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                {isWish ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
-              </TooltipContent>
-            </Tooltip>
             {!inStock && (
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
                 <span className="bg-destructive text-white text-xs font-bold px-3 py-1 rounded-full">Esgotado</span>
               </div>
             )}
-            {/* Visíveis no telemóvel, escondidos até ao apontar no computador.
-                Estavam em `opacity-0 group-hover:opacity-100`, e num ecrã de toque não há
-                "passar por cima": a visualização rápida e a partilha nunca chegavam a
-                aparecer a quem usa telemóvel. */}
-            <div className="absolute bottom-2 right-2 flex gap-5 sm:gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button" onClick={handleQuickView} className="tap-target p-1.5 rounded-full bg-background/90 shadow hover:bg-background control-press" aria-label="Visualizar">
-                    <Eye className="h-3.5 w-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">Visualização Rápida</TooltipContent>
-              </Tooltip>
-              {waPhone && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button" onClick={handleShare} className="tap-target p-1.5 rounded-full bg-green-500 text-white shadow hover:bg-green-600 control-press" aria-label="Partilhar no WhatsApp">
-                      <MessageCircle className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Partilhar no WhatsApp</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
           </div>
+          {!isList && cardActions}
           <div className={`p-4 flex flex-col flex-grow ${isList ? 'justify-center' : ''}`}>
-            {product.book_code && <code className="text-[10px] text-primary font-mono mb-1">{product.book_code}</code>}
-            <h3 className="font-semibold text-foreground mb-0.5 line-clamp-2 group-hover:text-primary transition-colors">
-              {product.title}
-            </h3>
-            {product.subtitle && (
-              <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{product.subtitle}</p>
-            )}
-            {product.type?.value && (
-              <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full w-fit mb-2">{product.type.value}</span>
-            )}
-            <div className="mt-auto pt-2 flex items-center justify-between gap-2 flex-wrap">
-              <div>
-                <p className="text-primary font-bold">{price}</p>
-                {originalPrice && <p className="text-xs text-muted-foreground line-through">{originalPrice}</p>}
-              </div>
-              {inStock && isLowStock && qty > 0 && (
-                <span className="text-xs font-medium text-orange-600 whitespace-nowrap">Restam {qty}</span>
+            {isList && cardActions}
+            <Link to={`/product/${product.id}`} onClick={handleQuickView} className="flex flex-col flex-grow">
+              {product.book_code && <code className="text-[10px] text-brand-ink font-mono mb-1">{product.book_code}</code>}
+              <h3 className="font-semibold text-foreground mb-0.5 line-clamp-2 group-hover:text-primary transition-colors">
+                {product.title}
+              </h3>
+              {product.subtitle && (
+                <p className="text-xs text-muted-foreground mb-1 line-clamp-1">{product.subtitle}</p>
               )}
-            </div>
+              {product.type?.value && (
+                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full w-fit mb-2">{product.type.value}</span>
+              )}
+              <div className="mt-auto pt-2 flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <p className="text-brand-ink font-bold">{price}</p>
+                  {originalPrice && <p className="text-xs text-muted-foreground line-through">{originalPrice}</p>}
+                </div>
+                {inStock && isLowStock && qty > 0 && (
+                  <span className="text-xs font-medium text-orange-700 dark:text-orange-400 whitespace-nowrap">Restam {qty}</span>
+                )}
+              </div>
+            </Link>
           </div>
-        </div>
-      </Link>
+      </div>
       {inStock && !isList && (
         // Num cartão de 160 px os dois botões lado a lado precisavam de 209 px e
         // transbordavam. Em ecrã estreito fica só "Comprar": tocar no cartão já abre o livro.

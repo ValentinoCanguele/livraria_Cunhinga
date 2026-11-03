@@ -9,6 +9,12 @@ const PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9I
 
 const GRID_PREVIEW = 8;
 
+/**
+ * `accent` continua a pintar a barra lateral e o contorno — elementos gráficos, onde a cor
+ * da marca chega. O código e o preço usam `text-brand-ink`, a variante escurecida: a cor da
+ * marca dá 2,83 de contraste sobre branco, contra os 4,5 que a WCAG pede para texto, e o
+ * preço é o que mais precisa de se ler num cartão de livro.
+ */
 function MarqueeBookCard({ product, onSelect, accent }) {
   const variant = product.variants?.[0];
   const price = variant?.sale_price_formatted || variant?.price_formatted;
@@ -47,7 +53,7 @@ function MarqueeBookCard({ product, onSelect, accent }) {
         )}
       </div>
       {product.book_code && (
-        <code className="text-[9px] font-mono mt-2 block" style={{ color: accent }}>{product.book_code}</code>
+        <code className="text-brand-ink text-[9px] font-mono mt-2 block">{product.book_code}</code>
       )}
       <p className="text-xs font-semibold mt-0.5 line-clamp-2 leading-snug group-hover/card:text-[#0ea5c9] transition-colors">
         {product.title}
@@ -55,7 +61,7 @@ function MarqueeBookCard({ product, onSelect, accent }) {
       {product.subtitle && (
         <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{product.subtitle}</p>
       )}
-      <p className="text-xs font-bold mt-1" style={{ color: accent }}>{price}</p>
+      <p className="text-brand-ink text-xs font-bold mt-1">{price}</p>
     </button>
   );
 }

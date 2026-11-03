@@ -182,18 +182,21 @@ export default function AdvancedSearchPanel({
         </p>
       )}
 
-      {isHero && !expanded && (quickGenres.length > 0 || BOOK_GENRES.length > 0) && (
-        <div className="flex flex-wrap gap-2 mt-3">
+      {!expanded && (quickGenres.length > 0 || BOOK_GENRES.length > 0) && (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Categorias rápidas</p>
+          <div className="flex flex-wrap gap-2">
           {(quickGenres.length > 0 ? quickGenres : BOOK_GENRES).slice(0, 8).map((g) => (
             <button
               key={g}
               type="button"
               onClick={() => { updateFilter('categories', [g]); updateFilter('search', ''); }}
-              className="text-xs px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white/90 border border-white/15 transition-colors"
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${isHero ? 'bg-white/10 hover:bg-white/20 text-white/90 border-white/15' : 'bg-muted hover:bg-muted/70 text-foreground border-border'}`}
             >
               {g}
             </button>
           ))}
+          </div>
         </div>
       )}
 

@@ -32,8 +32,12 @@
     --ease-out: cubic-bezier(0.22, 0.8, 0.3, 1);
     --border: 210 18% 88%;
     --input: 210 20% 94%;
-    --ring: var(--brand-primary-hsl, 216 55% 24%);
-    --primary: var(--brand-primary-hsl, 216 55% 24%);
+    /* A variante legível da cor da marca (ver `ensureContrastOnWhite`): é este token que
+       serve os dois papéis onde o contraste conta — texto sobre fundo claro (`text-primary`,
+       os preços) e fundo com texto branco por cima (`bg-primary`, botões e chips). A cor
+       viva media 2,9 nos dois casos, contra os 4,5 que a WCAG pede. */
+    --ring: var(--brand-ink-hsl, var(--brand-primary-hsl, 216 55% 24%));
+    --primary: var(--brand-ink-hsl, var(--brand-primary-hsl, 216 55% 24%));
     --primary-foreground: 0 0% 100%;
     --secondary: 210 25% 92%;
     --secondary-foreground: 215 25% 15%;
@@ -45,7 +49,10 @@
     --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-    --destructive: 0 84% 60%;
+    /* Era 60% de luminosidade: com texto branco por cima dava 3,76 de contraste, abaixo
+       dos 4,5 exigidos — e é a cor de "Esgotado" e das mensagens de erro, onde a leitura
+       conta mais. A 48% dá 4,83 e continua o mesmo vermelho. */
+    --destructive: 0 74% 48%;
     --destructive-foreground: 0 0% 100%;
     --radius: 0.5rem;
     --sidebar-background: 0 0% 98%;
@@ -63,8 +70,9 @@
     --foreground: 0 0% 98%;
     --border: 0 0% 20%;
     --input: 0 0% 15%;
-    --ring: 157 18% 50%;
-    --primary: 157 18% 50%;
+    /* No escuro é ao contrário: a cor viva destaca-se do fundo, a escurecida desapareceria. */
+    --ring: var(--brand-primary-hsl, 157 18% 50%);
+    --primary: var(--brand-primary-hsl, 157 18% 50%);
     --primary-foreground: 0 0% 100%;
     --secondary: 30 20% 30%;
     --secondary-foreground: 0 0% 98%;
@@ -350,6 +358,26 @@
   opacity: 1;
   transform: translate3d(130%, 0, 0);
   transition: transform var(--motion-slow) var(--ease-out), opacity var(--motion-fast) linear;
+}
+
+/* Texto na cor da marca, legível sobre fundo claro.
+   `--brand-ink` é a cor da marca escurecida até passar os 4,5 de contraste que a WCAG pede
+   (ver `ensureContrastOnWhite`). A cor da marca em si fica para fundos e para áreas
+   grandes, onde o contraste exigido é menor.
+   No tema escuro volta a cor original: aí o fundo é escuro, e é a versão clara que se lê. */
+.text-brand-ink {
+  color: var(--brand-ink, hsl(var(--primary)));
+}
+
+.dark .text-brand-ink {
+  color: var(--brand-primary, hsl(var(--primary)));
+}
+
+/* Fundo na cor da marca com texto branco por cima. A cor da marca sozinha dava 2,9 de
+   contraste contra o branco — a mesma conta, do outro lado. */
+.bg-brand-solid {
+  background-color: var(--brand-ink, hsl(var(--primary)));
+  color: #fff;
 }
 
 /* ---------------------------------------------------------------------------

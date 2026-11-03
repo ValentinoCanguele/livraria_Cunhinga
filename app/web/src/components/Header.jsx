@@ -32,7 +32,7 @@ export const openHeaderSearch = () => {
   window.dispatchEvent(new Event(OPEN_HEADER_SEARCH_EVENT));
 };
 
-const Header = ({ onCartOpen }) => {
+const Header = ({ onCartOpen, pinned = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { cartItems } = useCart();
@@ -45,7 +45,7 @@ const Header = ({ onCartOpen }) => {
   const searchInputRef = useRef(null);
   const headerRef = useRef(null);
 
-  const revealed = useHeaderReveal(mobileOpen || searchOpen || hasFocus);
+  const revealed = useHeaderReveal(pinned || mobileOpen || searchOpen || hasFocus);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -114,15 +114,19 @@ const Header = ({ onCartOpen }) => {
         if (!e.currentTarget.contains(e.relatedTarget)) setHasFocus(false);
       }}
       className={cn(
-        // Fora do fluxo, e não `sticky`: assim esconder o cabeçalho não deixa uma faixa
-        // vazia por cima da imagem de entrada — a página começa no topo do ecrã e o
-        // cabeçalho entra por cima dela.
-        'safe-top fixed inset-x-0 top-0 z-40 border-b border-border shadow-sm glass-topbar text-white',
-        'transition-transform duration-300 ease-out',
+        'safe-top top-0 z-40 border-b border-border shadow-sm glass-topbar text-white',
+        // Onde a página abre com imagem de largura inteira, o cabeçalho sai do fluxo para
+        // a poder descobrir: em `sticky` continuava a ocupar lugar, e escondê-lo deixava
+        // uma faixa vazia por cima dela — exactamente o que se queria tirar.
+        //
+        // Onde a página abre com conteúdo normal — ficha de livro, perfil, confirmação de
+        // encomenda — não há imagem para descobrir, e escondê-lo só deixava o texto colado
+        // ao topo, sem navegação. Aí fica `sticky`, no fluxo, como sempre esteve.
+        pinned ? 'sticky' : 'fixed inset-x-0 transition-transform duration-300 ease-out',
         // Com o menu aberto o cabeçalho pode passar da altura do ecrã; aí desloca-se por
         // dentro em vez de cortar o fim da lista.
         mobileOpen && 'max-h-dvh overflow-y-auto',
-        revealed ? 'translate-y-0' : '-translate-y-full'
+        !pinned && (revealed ? 'translate-y-0' : '-translate-y-full')
       )}
     >
       {/* Barra superior — mensagem de boas-vindas */}

@@ -282,7 +282,7 @@ function ProductDetailPage() {
   if (loading) {
     return (
       <>
-        <Header onCartOpen={() => setIsCartOpen(true)} />
+        <Header pinned onCartOpen={() => setIsCartOpen(true)} />
         <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
         <div className="flex justify-center items-center h-[60vh]">
           <Loader2 className="h-16 w-16 text-primary animate-spin" />
@@ -295,7 +295,7 @@ function ProductDetailPage() {
   if (error || !product) {
     return (
       <>
-        <Header onCartOpen={() => setIsCartOpen(true)} />
+        <Header pinned onCartOpen={() => setIsCartOpen(true)} />
         <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
         <div className="container-custom py-12">
           <div className="text-center text-destructive p-8 bg-card border border-border rounded-xl">
@@ -327,7 +327,7 @@ function ProductDetailPage() {
         <meta name="description" content={(product.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 160) || product.title} />
       </Helmet>
 
-      <Header onCartOpen={() => setIsCartOpen(true)} />
+      <Header pinned onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
       <main className="container-custom py-12">

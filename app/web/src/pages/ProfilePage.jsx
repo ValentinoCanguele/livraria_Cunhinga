@@ -217,7 +217,7 @@ const ProfilePage = () => {
   return (
     <>
       <Helmet><title>{pageTitle('A Minha Conta')}</title></Helmet>
-      <Header onCartOpen={() => setIsCartOpen(true)} />
+      <Header pinned onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
       <main className="min-h-screen bg-muted/20">

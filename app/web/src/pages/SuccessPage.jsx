@@ -111,7 +111,7 @@ const SuccessPage = () => {
         <meta name="description" content={subtitle} />
       </Helmet>
 
-      <Header onCartOpen={() => setIsCartOpen(true)} />
+      <Header pinned onCartOpen={() => setIsCartOpen(true)} />
       <ShoppingCart isCartOpen={isCartOpen} setIsCartOpen={setIsCartOpen} />
 
       <main className="section-spacing bg-background min-h-[60vh] flex items-center">

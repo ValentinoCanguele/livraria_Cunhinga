@@ -21,7 +21,8 @@ import { pbErrorMessage, saveRecordWithMedia } from '@/lib/mediaSave';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PhoneInput from '@/components/PhoneInput';
 import { formatAngolaPhone, displayAngolaPhone } from '@/lib/angolaPhone';
-import { ANGOLA_PROVINCES_2024 } from '@/lib/angolaGeo';
+import { ANGOLA_PROVINCES_2024, avisoDeCoordenadas } from '@/lib/angolaGeo';
+import { distanciaKm } from '@/lib/localizacao';
 import { hasCoords, mapsUrl, mapEmbedUrl, parseCoords } from '@/lib/stores';
 
 const ANGOLA_PROVINCES = ANGOLA_PROVINCES_2024;
@@ -172,6 +173,14 @@ export default function StoresTab() {
       { enableHighAccuracy: true, timeout: 10000 },
     );
   };
+
+  // Confere se as coordenadas caem na província escolhida. Duas das três lojas estavam na
+  // província errada e nada aqui o dizia, porque as coordenadas eram válidas — só não eram
+  // as daquela loja.
+  const avisoGps = useMemo(
+    () => avisoDeCoordenadas({ latitude: form.latitude, longitude: form.longitude, province: form.province }, distanciaKm),
+    [form.latitude, form.longitude, form.province],
+  );
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -457,6 +466,15 @@ export default function StoresTab() {
                   <Input type="number" step="any" value={form.longitude} onChange={(e) => set('longitude', e.target.value)} placeholder="13.1840" />
                 </div>
               </div>
+              {avisoGps && (
+                <p
+                  className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200"
+                  role="alert"
+                >
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                  <span>{avisoGps.mensagem}</span>
+                </p>
+              )}
               <Button type="button" variant="outline" size="sm" onClick={useCurrentLocation} disabled={locating}>
                 {locating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <LocateFixed className="h-4 w-4 mr-2" />}
                 Usar a minha localização actual

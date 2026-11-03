@@ -258,3 +258,71 @@ este ambiente não isola o suficiente para distinguir melhoria de ruído. O que 
 ligação fixa. O público desta loja está em Angola, em rede móvel e em equipamentos mais
 modestos. Ligar o CrUX ou uma ferramenta de RUM é o passo que falta para saber como isto se
 comporta a sério — e é também a única forma de obter o INP.
+
+---
+
+# O CLS de `/shop` em telemóvel (commit `4b789aa`, 2026-11-03)
+
+Mesma máquina, mesmo navegador integrado, mesmo endereço de produção.
+
+## O que estava errado
+
+A tabela acima dá `CLS /shop mobile = 0,095`. Repetida hoje, antes de mexer em nada, a mesma
+medição deu **0,3225** — e **0,406** com a cache fria. Um único deslocamento, sempre com a
+mesma origem: `MAIN.container-custom py-10 min-h-screen`.
+
+Ao acompanhar a posição do `main` durante o carregamento, aos ~2 s ele descia de `y=338`
+para `y=883`. Os **545 px** são a soma exacta de duas secções que só nasciam quando os dados
+chegavam e ficam acima dele:
+
+| Secção | Altura em 375 px |
+|--------|-----------------:|
+| Faixa "Disponíveis para Encomenda" | 480 |
+| Fila de géneros | 65 |
+| **Total** | **545** |
+
+A medição anterior não estava errada: apanhou um carregamento em que os dados chegaram antes
+de a página assentar. O deslocamento sempre lá esteve — só não aparecia em todas as corridas.
+
+## O que foi feito
+
+Ambas passam a ter o lugar reservado desde o primeiro desenho. Não é preciso ter os dados
+para saber se vão aparecer: isso depende de `hasActiveBrowsing`, que vem do endereço.
+
+O lugar da faixa é a marcação dela repetida, não uma altura escrita à mão — as medidas mudam
+com a largura (`sm:w-40`, `md:py-10`, `md:gap-5`) e um número só acertaria numa delas. O
+cabeçalho leva o texto verdadeiro, porque o título e a descrição são conhecidos antes dos
+livros: a altura sai igual sozinha, incluindo as duas linhas que a descrição ocupa em 375 px
+e a única que ocupa em ecrã largo.
+
+## Como se fechou a diferença
+
+Medido no mesmo sítio — a posição do `main` antes e depois de os dados chegarem:
+
+| Passo | Deslocamento |
+|-------|-------------:|
+| Antes | 545 px |
+| Com o esqueleto de alturas aproximadas | 36 px |
+| Com o texto verdadeiro no cabeçalho | 16 px |
+| Com a linha de subtítulo no cartão | **2 px** |
+
+Os últimos 16 px eram o subtítulo: é opcional no cartão a sério, mas basta um livro o ter
+para ser ele a fixar a altura da fila.
+
+| Indicador | Antes | Depois | Objectivo | |
+|-----------|------:|-------:|----------:|---|
+| CLS `/shop` 375 px, produção | 0,3225 | **0,000** | ≤ 0,1 | ✅ |
+| CLS `/shop` 375 px, cache fria | 0,406 | **0,000** | ≤ 0,1 | ✅ |
+| CLS `/shop` 1280 px | — | **0,000** | ≤ 0,1 | ✅ |
+| Deslocamento do `main` | 545 px | 2 px | — | |
+
+## O LCP não foi medido nesta ronda
+
+O painel do navegador esteve oculto durante as medições de produção, e um separador que não
+desenha não produz `first-contentful-paint` nem `largest-contentful-paint` — as leituras
+saíram nulas, ou iguais ao instante em que uma captura de ecrã forçou a pintura (13 568 ms).
+**Esse número não é o LCP do site; é um artefacto do ambiente** e não entra em tabela nenhuma.
+
+O que se pode afirmar é o da compilação local, com o painel à vista: **LCP 2308 ms e CLS
+0,000 em 375 px**. O CLS de produção acima é fiável porque o cálculo do deslocamento depende
+do layout, que corre na mesma, e não da pintura.

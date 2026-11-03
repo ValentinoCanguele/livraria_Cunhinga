@@ -64,7 +64,7 @@ const FilterPanel = ({
               checked={activeFilters.inStockOnly}
               onCheckedChange={(v) => updateFilter('inStockOnly', !!v)}
             />
-            <Label htmlFor="in-stock" className="text-sm cursor-pointer">Apenas com stock</Label>
+            <Label htmlFor="in-stock" className="flex-1 py-1.5 text-sm cursor-pointer">Apenas com stock</Label>
           </div>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -72,7 +72,7 @@ const FilterPanel = ({
               checked={activeFilters.featuredOnly}
               onCheckedChange={(v) => updateFilter('featuredOnly', !!v)}
             />
-            <Label htmlFor="featured-only" className="text-sm cursor-pointer">Em destaque</Label>
+            <Label htmlFor="featured-only" className="flex-1 py-1.5 text-sm cursor-pointer">Em destaque</Label>
           </div>
         </div>
       </div>
@@ -113,7 +113,7 @@ const FilterPanel = ({
               return (
                 <div key={cat} className="flex items-center">
                   <Checkbox id={id} checked={isChecked} onCheckedChange={() => handleCategoryToggle(cat)} />
-                  <Label htmlFor={id} className="ml-2 text-sm font-normal cursor-pointer">{cat}</Label>
+                  <Label htmlFor={id} className="ml-2 flex-1 py-1.5 text-sm font-normal cursor-pointer">{cat}</Label>
                 </div>
               );
             })}
@@ -193,7 +193,7 @@ const FilterPanel = ({
                 return (
                   <div key={val} className="flex items-center">
                     <Checkbox id={id} checked={isChecked} onCheckedChange={() => handleOptionToggle(optionName, val)} />
-                    <Label htmlFor={id} className="ml-2 text-sm font-normal cursor-pointer">{val}</Label>
+                    <Label htmlFor={id} className="ml-2 flex-1 py-1.5 text-sm font-normal cursor-pointer">{val}</Label>
                   </div>
                 );
               })}

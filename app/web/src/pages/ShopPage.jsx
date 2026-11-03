@@ -73,6 +73,15 @@ const ShopPage = () => {
     applyShopTheme(settings);
   }, [settings]);
 
+  // Escape fecha o painel de filtros, como fecha o carrinho. Sem isto, quem navega pelo
+  // teclado só saía dele depois de percorrer todos os filtros lá dentro.
+  useEffect(() => {
+    if (!isMobileFilterOpen) return undefined;
+    const aoTeclar = (e) => { if (e.key === 'Escape') setIsMobileFilterOpen(false); };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [isMobileFilterOpen]);
+
   useEffect(() => {
     setSortBy(shop.shop_default_sort || 'featured');
   }, [shop.shop_default_sort]);
@@ -573,10 +582,23 @@ const ShopPage = () => {
         </div>
 
         {isMobileFilterOpen && (
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm lg:hidden">
-            <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} className="fixed inset-y-0 left-0 w-full max-w-sm bg-background border-r p-6 overflow-y-auto shadow-xl">
+          <div
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm lg:hidden"
+            onClick={() => setIsMobileFilterOpen(false)}
+          >
+            {/* Tocar na zona escurecida fecha — num telemóvel é o gesto que se tenta primeiro,
+                e aqui não fazia nada: só o X no canto fechava o painel. */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              className="fixed inset-y-0 left-0 w-full max-w-sm bg-background border-r p-6 overflow-y-auto shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="titulo-filtros"
+            >
               <div className="flex justify-between mb-6 pb-4 border-b">
-                <h2 className="text-xl font-semibold">Filtros</h2>
+                <h2 id="titulo-filtros" className="text-xl font-semibold">Filtros</h2>
                 <Button variant="ghost" size="icon" onClick={() => setIsMobileFilterOpen(false)}><X /></Button>
               </div>
               <FilterPanel

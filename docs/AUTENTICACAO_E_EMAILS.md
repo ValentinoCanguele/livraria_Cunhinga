@@ -11,11 +11,15 @@ Estado em 2026-11-02. Complementa [ARQUITETURA.md](ARQUITETURA.md) e [HANDOFF.md
 | Site (Cloudflare Pages) | **Publicado** no commit `21915fd` |
 | Agendador `pg_cron` | **A correr**, `*/5 * * * *`, verificado a receber `200` da função |
 | Segredos do agendador | **Criados** (`EMAIL_QUEUE_TOKEN` na função, `email_queue_url`/`email_queue_token` no Vault) |
-| `site_url` | **Definido** (`https://livraria-adventista.pages.dev`) |
+| `site_url` | **Definido** (`https://livraria-adventista.pages.dev`) — muda para `https://livrariaadventista.ao` quando o domínio estiver activo |
 | Categorias de email | **Todas activas** |
 | **SMTP / SendGrid** | **Bloqueado** — não há domínio de email (ver secção 0.1) |
 | **`order_email_enabled`** | **Desligado** — ligar sem SMTP só gera registos "não enviado" |
 | **SPF, DKIM, DMARC** | **Por configurar** no DNS do domínio |
+
+> O que desbloqueia o email é o domínio `livrariaadventista.ao`, ainda por registar: sem
+> domínio próprio não há SPF/DKIM nem remetente credível. Passos do registo e da delegação em
+> [LANCAMENTO.md](LANCAMENTO.md), secção 7.
 
 **Nenhum email sai enquanto o SMTP ou o SendGrid não estiverem configurados.** Tudo o resto
 do caminho está montado e verificado: o agendador chama a função, a função reclama a fila, e

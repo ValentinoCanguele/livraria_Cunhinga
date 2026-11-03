@@ -24,9 +24,14 @@
   # estilos directamente nos elementos, e o `style=` de cada um conta como estilo embutido.
   # O risco de um estilo injectado é muito menor do que o de um script.
   #
+  # `frame-src` inclui o OpenStreetMap e o Google Maps: o mapa de cada loja é um `iframe`
+  # de uma dessas origens — o OSM quando não há chave configurada, o Google quando há. Eles
+  # faltavam na primeira versão desta política e o mapa das lojas ficou em branco em
+  # produção, sem nada na página a dizê-lo; só a consola acusava o bloqueio.
+  #
   # `frame-ancestors 'self'` faz o mesmo que o `X-Frame-Options` acima, mas é a forma que os
   # navegadores actuais respeitam; os dois ficam, para os antigos também.
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://apis.google.com https://accounts.google.com https://www.googleapis.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://drive.google.com https://lh3.googleusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://accounts.google.com https://*.firebaseio.com https://*.firebaseapp.com; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://drive.google.com; worker-src 'self' blob:; media-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://apis.google.com https://accounts.google.com https://www.googleapis.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://drive.google.com https://lh3.googleusercontent.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://accounts.google.com https://*.firebaseio.com https://*.firebaseapp.com; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://drive.google.com https://www.openstreetmap.org https://www.google.com; worker-src 'self' blob:; media-src 'self' https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
 
 # Ficheiros com hash no nome: o conteúdo nunca muda para o mesmo nome.
 /assets/*

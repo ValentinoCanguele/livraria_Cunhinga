@@ -1,4 +1,4 @@
-const CACHE_NAME = 'livraria-v5';
+const CACHE_NAME = 'livraria-v6';
 const PRECACHE = ['/', '/shop', '/manifest.webmanifest', '/icons/icon-192.svg'];
 
 self.addEventListener('install', (event) => {

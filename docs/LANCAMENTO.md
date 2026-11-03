@@ -9,9 +9,9 @@ Checklist para pôr a loja em produção com o Supabase (backend) e o Cloudflare
 | Item | Detalhe |
 |------|---------|
 | Supabase | Projecto `bggqkjjqbjhbjsckzopj` (já criado, com esquema e dados) |
-| Cloudflare | Conta com Pages; o projecto é criado pelo primeiro deploy |
+| Cloudflare | Conta `canguelev@fata.adventist.org`; projecto Pages `livraria-editora-adventista` (já criado) |
 | GitHub | Conta sem bloqueios de pagamento (o Actions tem de correr) |
-| Domínio | Ex.: `livrariaadventista.ao`, apontado para o Cloudflare Pages |
+| Domínio | `livrariaadventista.ao` — **por registar** (ver secção 7) |
 | Meta Business | Conta verificada + app WhatsApp Cloud API (opcional) |
 | Email | Servidor SMTP (Hostinger, Brevo…) ou SendGrid |
 | Google Cloud | ID de cliente OAuth para o login com Google |
@@ -26,7 +26,7 @@ Em **Settings → Secrets and variables → Actions** do repositório:
 |------|------|-------|
 | Variável | `VITE_SUPABASE_URL` | `https://bggqkjjqbjhbjsckzopj.supabase.co` |
 | Variável | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave *publishable* (Supabase → API Keys) |
-| Variável | `CLOUDFLARE_PAGES_PROJECT` | Ex.: `livraria-adventista` |
+| Variável | `CLOUDFLARE_PAGES_PROJECT` | `livraria-editora-adventista` |
 | Variável | `SUPABASE_PROJECT_REF` | `bggqkjjqbjhbjsckzopj` |
 | Secret | `CLOUDFLARE_API_TOKEN` | Token com *Cloudflare Pages: Edit* |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | ID da conta Cloudflare |
@@ -108,14 +108,48 @@ Tudo é automático a partir do GitHub:
 | Quando | O que acontece |
 |--------|----------------|
 | Pull request para `main` | `ci.yml`: lint, build e `deno check` da Edge Function |
-| Push para `main` | `deploy-cloudflare.yml`: build e publicação no Cloudflare Pages (cria o projecto na primeira vez) |
+| Push para `main` | `deploy-cloudflare.yml`: build e publicação no Cloudflare Pages |
 | Push para `main` com mudanças em `supabase/` | `deploy-supabase.yml`: `supabase db push` e publicação da Edge Function `app` |
+
+Enquanto o Actions não correr, publicar à mão (faz lint, testes e build antes):
+
+```bash
+CLOUDFLARE_PAGES_PROJECT=livraria-editora-adventista npm run deploy:site
+```
 
 Para publicar a Edge Function à mão (com um token do Supabase):
 
 ```bash
 npx supabase functions deploy app --project-ref bggqkjjqbjhbjsckzopj --no-verify-jwt
 ```
+
+### Domínio `livrariaadventista.ao`
+
+**O Cloudflare não vende domínios `.ao`.** Desde Julho de 2023 o registo é feito só por
+revendedores autorizados do [DNS.ao](https://www.dns.ao) (loja oficial:
+[dominios.ao](https://www.dominios.ao)). É preciso entidade registada em Angola, empresário
+individual, cidadão angolano ou estrangeiro com NIF/representação legal. A activação demora
+24 a 72 horas úteis.
+
+Ordem dos passos:
+
+1. **Registar `livrariaadventista.ao`** num revendedor autorizado do DNS.ao.
+2. **Adicionar o domínio como zona no Cloudflare** (Add a site), que devolve dois nameservers.
+3. **Delegar os nameservers** no painel do revendedor. Em alguns é preciso abrir um pedido de
+   suporte a indicar os nameservers; a propagação leva até 24 horas.
+4. **Ligar ao Pages**, com a zona já activa no Cloudflare:
+
+   ```bash
+   npx wrangler@4 pages domain add livrariaadventista.ao --project-name=livraria-editora-adventista
+   npx wrangler@4 pages domain add www.livrariaadventista.ao --project-name=livraria-editora-adventista
+   ```
+
+   O certificado HTTPS é emitido pelo Cloudflare automaticamente.
+5. **Actualizar o Supabase → Authentication** (Site URL e Redirect URLs) e o
+   **Google Cloud OAuth** (origens e URIs de redireccionamento autorizados) para o domínio
+   novo. Sem isto o login com Google falha no domínio próprio.
+6. Só depois de o domínio responder é que se decide desligar o projecto antigo
+   `livraria-adventista`.
 
 ---
 

@@ -8,10 +8,14 @@ Estado em 2026-11-03. Ponto de partida para o próximo agente ou pessoa que pegu
 - **Ramo:** `claude/youthful-heisenberg-rq5gnw`, 47 commits à frente do `origin/main`.
 - **`main`:** a migração do Supabase (o antigo PR #3) está integrada no `main` desde 2026-11-02 (commit `f4d9885`). Atenção: um `main` **local** antigo, da era PocketBase, ainda existe em algumas cópias de trabalho e está 114 commits atrás — usar sempre `origin/main` como referência.
 - **Supabase:** projecto "Livraria Adventista", ref `bggqkjjqbjhbjsckzopj`, organização "Colpotor" (plano grátis), região eu-north-1.
-- **Cloudflare Pages:** projecto `livraria-adventista` (conta canguelev@fata.adventist.org), ramo de produção `main`.
-  - Produção em https://livraria-adventista.pages.dev, com o código do `main`. Foi publicada à mão com o Wrangler porque o Actions está bloqueado.
+- **Cloudflare Pages** (conta `canguelev@fata.adventist.org`), dois projectos:
+  - `livraria-editora-adventista` — **o novo**, criado a 2026-11-03, ramo de produção `main`, ainda **sem nenhum deploy**. É o que vai receber o domínio `livrariaadventista.ao`.
+  - `livraria-adventista` — **o que serve produção hoje**, em https://livraria-adventista.pages.dev, com o código do `main`. Fica como está até o domínio `.ao` estar activo e verificado; só depois se decide desligá-lo.
+  - **O domínio `livrariaadventista.ao` ainda não está registado** (sem NS nem A). O Cloudflare não vende `.ao`: o registo é só por revendedores autorizados do DNS.ao. Passos em [LANCAMENTO.md](LANCAMENTO.md), secção 7.
+  - Foi publicado à mão com o Wrangler porque o Actions está bloqueado.
   - Cada ramo tem o seu URL de pré-visualização (`<ramo>.livraria-adventista.pages.dev`, ver `wrangler pages deployment list`). O `main` antigo (PocketBase) está em `main-pocketbase`, e esse e os ramos `cursor/*` não têm backend.
-  - Publicar à mão: `npm run deploy:site` (produção) ou `npm run deploy:site -- --preview`. O script recusa publicar se o HEAD não for a ponta do ramo remoto, faz lint e build, publica e confirma que o último deploy de produção é esse commit e que o site responde. Várias sessões publicam no mesmo projecto: nunca publicar um build antigo. As variáveis `VITE_SUPABASE_*` vêm de `app/web/.env`.
+  - Publicar à mão: `npm run deploy:site` (produção) ou `npm run deploy:site -- --preview`. O script recusa publicar se o HEAD não for a ponta do ramo remoto, faz lint, testes e build, publica e confirma que o último deploy de produção é esse commit e que o site responde. Várias sessões publicam no mesmo projecto: nunca publicar um build antigo. As variáveis `VITE_SUPABASE_*` vêm de `app/web/.env`.
+  - Para publicar no projecto novo: `CLOUDFLARE_PAGES_PROJECT=livraria-editora-adventista npm run deploy:site`. Com um domínio próprio, acrescentar `SITE_URL=https://livrariaadventista.ao` para a verificação final bater no domínio e não no `.pages.dev`.
   - Workers, KV, D1 e R2 continuam por usar.
 
 ## Bloqueios (só o dono da conta resolve)

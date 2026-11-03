@@ -64,9 +64,19 @@ O #1 e o #3 estão integrados (merged) e o seu código está no `main`.
 
 ### 5. Cloudflare Pages
 
-O projecto `livraria-adventista` (conta `canguelev@fata.adventist.org`) continua o mesmo e
-publica por Wrangler, que não depende do GitHub. Se alguma vez se ligar o Pages directamente
-ao Git, é o repositório novo que tem de ser autorizado.
+Ambos os projectos vivem na conta `canguelev@fata.adventist.org` e publicam por Wrangler, que
+não depende do GitHub. Se alguma vez se ligar o Pages directamente ao Git, é o repositório
+novo que tem de ser autorizado.
+
+- `livraria-editora-adventista` — criado a 2026-11-03 para receber o domínio
+  `livrariaadventista.ao`. Ainda sem deploy nenhum.
+- `livraria-adventista` — continua a servir produção até o domínio estar activo.
+
+A variável `CLOUDFLARE_PAGES_PROJECT` do Actions (secção 1) tem de dizer
+`livraria-editora-adventista`, senão o deploy automático publica no projecto antigo.
+
+O domínio `livrariaadventista.ao` **não está registado** e não se compra no Cloudflare —
+passos em [LANCAMENTO.md](LANCAMENTO.md), secção 7.
 
 ### 6. Supabase
 

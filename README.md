@@ -261,7 +261,7 @@ Configuração no GitHub (Settings → Secrets and variables → Actions). Num r
 |------|------|-------|
 | Variável | `VITE_SUPABASE_URL` | URL do projecto Supabase |
 | Variável | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publishable |
-| Variável | `CLOUDFLARE_PAGES_PROJECT` | `livraria-adventista` |
+| Variável | `CLOUDFLARE_PAGES_PROJECT` | `livraria-editora-adventista` |
 | Variável | `SUPABASE_PROJECT_REF` | `bggqkjjqbjhbjsckzopj` |
 | Secret | `CLOUDFLARE_API_TOKEN` | Token com permissão *Cloudflare Pages: Edit* |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | ID da conta Cloudflare |

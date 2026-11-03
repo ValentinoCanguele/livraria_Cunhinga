@@ -4,6 +4,12 @@
 #   npm run deploy:site            → produção (só a partir de um ramo autorizado)
 #   npm run deploy:site -- --preview → pré-visualização com o nome do ramo actual
 #
+# Variáveis para escolher o destino:
+#   CLOUDFLARE_PAGES_PROJECT → projecto Pages (por omissão livraria-adventista, o que serve
+#                              produção hoje; o novo é livraria-editora-adventista)
+#   SITE_URL                 → o que a verificação final testa (por omissão <projecto>.pages.dev;
+#                              com domínio próprio, ex. https://livrariaadventista.ao)
+#
 # Garante que se publica exactamente a ponta do ramo remoto: várias sessões trabalham no
 # mesmo ramo e um build antigo publicado por cima apaga correcções já em produção.
 # Requisitos: `npx wrangler@4 login` feito e app/web/.env com VITE_SUPABASE_URL e
@@ -12,7 +18,7 @@ set -euo pipefail
 
 PROJECT="${CLOUDFLARE_PAGES_PROJECT:-livraria-adventista}"
 PROD_BRANCHES="${PROD_BRANCHES:-main claude/youthful-heisenberg-rq5gnw}"
-SITE_URL="https://${PROJECT}.pages.dev"
+SITE_URL="${SITE_URL:-https://${PROJECT}.pages.dev}"
 
 fail() { echo "✘ $*" >&2; exit 1; }
 

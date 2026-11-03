@@ -63,7 +63,7 @@ export default function ForgotPasswordPage() {
                 </Button>
               </form>
             )}
-            <Link to="/login" className="flex items-center justify-center gap-1 text-sm text-muted-foreground mt-6 hover:text-primary">
+            <Link to="/login" className="flex items-center justify-center gap-1 py-2 text-sm text-muted-foreground mt-4 hover:text-primary">
               <ArrowLeft className="h-4 w-4" /> Voltar ao login
             </Link>
           </div>

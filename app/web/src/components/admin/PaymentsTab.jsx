@@ -237,7 +237,7 @@ export default function PaymentsTab() {
     if (m) await toggleEnabled(m, false);
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   const codePreview = normalizeCode(form.code || form.name);
 
@@ -291,7 +291,7 @@ export default function PaymentsTab() {
                 </Button>
               </div>
               <div className="h-10 w-10 rounded-lg bg-[#0ea5c9]/10 flex items-center justify-center shrink-0">
-                <TypeIcon className="h-5 w-5 text-[#0ea5c9]" />
+                <TypeIcon className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold flex flex-wrap items-center gap-2">

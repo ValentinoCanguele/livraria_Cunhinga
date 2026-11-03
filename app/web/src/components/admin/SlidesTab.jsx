@@ -306,7 +306,7 @@ export default function SlidesTab({ onChange }) {
   const liveCount = slides.filter((x) => slideStatus(x).key === 'live').length;
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -353,7 +353,7 @@ export default function SlidesTab({ onChange }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-semibold truncate">{s.title}</h3>
                   {s.is_primary && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1"><Crown className="h-3 w-3" /> Principal</span>}
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0ea5c9]/10 text-[#0ea5c9] font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0ea5c9]/10 text-primary font-medium">
                     {SLIDE_TEMPLATES.find((t) => t.id === (s.template || 'classic'))?.label || 'Clássico'}
                   </span>
                 </div>
@@ -361,7 +361,7 @@ export default function SlidesTab({ onChange }) {
                 <div className="flex flex-wrap items-center gap-2 mt-1">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${status.className}`}>{status.label}</span>
                   <span className="text-[10px] text-muted-foreground">{PLACEMENT_LABELS[s.placement || 'home'] || s.placement}</span>
-                  {s.book_id && <span className="text-[10px] text-[#0ea5c9] flex items-center gap-1"><BookOpen className="h-3 w-3" /> Livro ligado</span>}
+                  {s.book_id && <span className="text-[10px] text-primary flex items-center gap-1"><BookOpen className="h-3 w-3" /> Livro ligado</span>}
                   {s.book_id && books.some((b) => b.id === s.book_id && !isBookVisible(b)) && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive">Livro oculto</span>
                   )}
@@ -493,7 +493,7 @@ export default function SlidesTab({ onChange }) {
                       <div>
                         <p className="font-semibold">{form.book_title}</p>
                         <p className="text-sm text-muted-foreground">{form.book_author}</p>
-                        {form.promo_price && <p className="text-[#0ea5c9] font-bold mt-1">Kz {Number(form.promo_price).toLocaleString('pt-AO')}</p>}
+                        {form.promo_price && <p className="text-primary font-bold mt-1">Kz {Number(form.promo_price).toLocaleString('pt-AO')}</p>}
                       </div>
                     </div>
                   )}
@@ -589,7 +589,7 @@ export default function SlidesTab({ onChange }) {
                     />
                   )}
                   <div className="rounded-xl border p-4 space-y-3">
-                    <p className="text-sm font-medium flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#0ea5c9]" /> Agendamento (opcional)</p>
+                    <p className="text-sm font-medium flex items-center gap-2"><CalendarClock className="h-4 w-4 text-primary" /> Agendamento (opcional)</p>
                     <div className="grid sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Começa em</Label>

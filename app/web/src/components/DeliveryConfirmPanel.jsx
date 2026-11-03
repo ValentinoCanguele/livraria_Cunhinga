@@ -75,7 +75,7 @@ export default function DeliveryConfirmPanel({ orderNumber, email, order, onConf
 
   return (
     <form onSubmit={handleSubmit} className="bg-card border rounded-2xl p-6 space-y-4">
-      <div className="flex items-center gap-2 font-semibold text-[#0ea5c9]">
+      <div className="flex items-center gap-2 font-semibold text-primary">
         <PenLine className="h-5 w-5" />
         Confirmar recepção da encomenda
       </div>

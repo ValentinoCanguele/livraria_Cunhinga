@@ -150,7 +150,7 @@ export default function DestaquesSemana({ onCartOpen }) {
                     className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4 justify-center">
-                    <span className="text-sm font-semibold bg-[#0ea5c9] text-white px-4 py-2 rounded-full">Ver detalhes</span>
+                    <span className="text-sm font-semibold bg-primary text-white px-4 py-2 rounded-full">Ver detalhes</span>
                   </div>
                 </button>
               </div>
@@ -189,7 +189,7 @@ export default function DestaquesSemana({ onCartOpen }) {
                       <BookOpen className="h-4 w-4 mr-2" /> Detalhes
                     </Button>
                     {currentBook.purchasable ? (
-                      <Button onClick={handleAddToCart} className="flex-1 sm:flex-initial bg-[#0ea5c9] hover:bg-[#0c90b0] text-white">
+                      <Button onClick={handleAddToCart} className="flex-1 sm:flex-initial bg-primary hover:bg-[#0c90b0] text-white">
                         <ShoppingCart className="h-4 w-4 mr-2" />
                         Comprar Agora
                       </Button>
@@ -212,7 +212,7 @@ export default function DestaquesSemana({ onCartOpen }) {
               key={i}
               onClick={() => setCurrentIndex(i)}
               className={`h-2 rounded-full transition-all duration-300 ${
-                i === currentIndex ? 'w-8 bg-[#0ea5c9]' : 'w-2 bg-slate-700 hover:bg-slate-600'
+                i === currentIndex ? 'w-8 bg-primary' : 'w-2 bg-slate-700 hover:bg-slate-600'
               }`}
               aria-label={`Ir para destaque ${i + 1}`}
             />

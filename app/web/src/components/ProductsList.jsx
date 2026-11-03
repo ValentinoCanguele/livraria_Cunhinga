@@ -123,7 +123,7 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid',
                 size="sm"
                 onClick={() => setSelectedCategory(category)}
                 className={`rounded-full shrink-0 text-xs px-4 h-9 ${
-                  isSelected ? 'btn-primary bg-[#0ea5c9] text-white hover:bg-[#0ea5c9]/90' : 'hover:border-[#0ea5c9]/30 hover:bg-[#0ea5c9]/5'
+                  isSelected ? 'btn-primary bg-primary text-white hover:bg-[#0ea5c9]/90' : 'hover:border-[#0ea5c9]/30 hover:bg-[#0ea5c9]/5'
                 }`}
               >
                 {category === 'all' ? 'Todos os Géneros' : category}
@@ -152,7 +152,7 @@ const ProductsList = ({ products = [], isLoading, onCartOpen, viewMode = 'grid',
                 setSearchQuery('');
                 setSelectedCategory('all');
               }}
-              className="rounded-xl border-[#0ea5c9] text-[#0ea5c9] hover:bg-[#0ea5c9]/10"
+              className="rounded-xl border-[#0ea5c9] text-primary hover:bg-[#0ea5c9]/10"
             >
               Limpar Filtros
             </Button>

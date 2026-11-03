@@ -199,11 +199,11 @@ export default function LivrariaAssistant() {
             </form>
 
             <p className="text-[10px] text-center text-muted-foreground pb-2 px-2">
-              <Link to="/faq" className="text-[#0ea5c9] hover:underline">FAQ</Link>
+              <Link to="/faq" className="text-primary hover:underline">FAQ</Link>
               {' · '}
-              <Link to="/contact" className="text-[#0ea5c9] hover:underline">Contacto</Link>
+              <Link to="/contact" className="text-primary hover:underline">Contacto</Link>
               {' · '}
-              <Link to="/shop" className="text-[#0ea5c9] hover:underline">Catálogo</Link>
+              <Link to="/shop" className="text-primary hover:underline">Catálogo</Link>
             </p>
           </motion.div>
         )}

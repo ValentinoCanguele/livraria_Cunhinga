@@ -61,7 +61,7 @@ export function UserMenu({ compact = false, className }) {
               <p className="font-semibold truncate">{getUserDisplayName(user)}</p>
               <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               {isAdmin && (
-                <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium text-[#0ea5c9]">
+                <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium text-primary">
                   <Shield className="h-3 w-3" /> Administrador
                 </span>
               )}
@@ -91,7 +91,7 @@ export function UserMenu({ compact = false, className }) {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link to="/admin" className="cursor-pointer text-[#0ea5c9]">
+              <Link to="/admin" className="cursor-pointer text-primary">
                 <LayoutDashboard className="mr-2" /> Painel Admin
               </Link>
             </DropdownMenuItem>

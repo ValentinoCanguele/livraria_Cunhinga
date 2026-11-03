@@ -65,11 +65,11 @@ export default function SalesReportsPanel({ orders }) {
       <div className="flex flex-wrap justify-between items-start gap-4">
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-[#0ea5c9]" /> Relatórios de Vendas
+            <BarChart3 className="h-5 w-5 text-primary" /> Relatórios de Vendas
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
             Histórico completo · exportação Excel · totais por canal
-            {hasFilters && <span className="text-[#0ea5c9]"> · {filtered.length} de {orders.length} pedidos</span>}
+            {hasFilters && <span className="text-primary"> · {filtered.length} de {orders.length} pedidos</span>}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -134,13 +134,13 @@ export default function SalesReportsPanel({ orders }) {
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-card border rounded-xl p-4">
           <p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5" /> Receita Total</p>
-          <p className="text-2xl font-bold text-[#0ea5c9] mt-1">{fmt(report.totalRevenue)}</p>
+          <p className="text-2xl font-bold text-primary mt-1">{fmt(report.totalRevenue)}</p>
           <p className="text-xs text-muted-foreground">{report.activeOrders} pedidos activos</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <p className="text-xs text-muted-foreground flex items-center gap-1"><ShoppingBag className="h-3.5 w-3.5" /> Compras Online</p>
           <p className="text-2xl font-bold mt-1">{report.onlineOrders}</p>
-          <p className="text-xs text-[#0ea5c9]">{fmt(report.onlineRevenue)}</p>
+          <p className="text-xs text-primary">{fmt(report.onlineRevenue)}</p>
         </div>
         <div className="bg-card border rounded-xl p-4">
           <p className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" /> Encomendas WhatsApp</p>
@@ -158,7 +158,7 @@ export default function SalesReportsPanel({ orders }) {
         <div className="grid lg:grid-cols-2 gap-6">
           <div className="bg-card border rounded-xl p-4">
             <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-[#0ea5c9]" /> Vendas diárias (14 dias)
+              <BarChart3 className="h-4 w-4 text-primary" /> Vendas diárias (14 dias)
             </h4>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -175,7 +175,7 @@ export default function SalesReportsPanel({ orders }) {
 
           <div className="bg-card border rounded-xl p-4">
             <h4 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-[#0ea5c9]" /> Livros mais vendidos
+              <BookOpen className="h-4 w-4 text-primary" /> Livros mais vendidos
             </h4>
             {report.topBooks?.length > 0 ? (
               <div className="h-64">
@@ -212,7 +212,7 @@ export default function SalesReportsPanel({ orders }) {
                 <tr key={month}>
                   <td className="p-3 capitalize">{month}</td>
                   <td className="p-3">{data.count}</td>
-                  <td className="p-3 text-right font-medium text-[#0ea5c9]">{fmt(data.total)}</td>
+                  <td className="p-3 text-right font-medium text-primary">{fmt(data.total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -227,7 +227,7 @@ export default function SalesReportsPanel({ orders }) {
             <div key={st} className="bg-card p-4">
               <p className="text-xs text-muted-foreground">{getOrderStatusLabel(st)}</p>
               <p className="font-bold">{data.count} pedidos</p>
-              <p className="text-sm text-[#0ea5c9]">{fmt(data.total)}</p>
+              <p className="text-sm text-primary">{fmt(data.total)}</p>
             </div>
           ))}
         </div>

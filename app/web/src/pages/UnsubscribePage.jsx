@@ -72,7 +72,7 @@ export default function UnsubscribePage() {
               </>
             ) : (
               <>
-                <MailX className="mx-auto h-11 w-11 text-[#0ea5c9]" aria-hidden />
+                <MailX className="mx-auto h-11 w-11 text-primary" aria-hidden />
                 <h1 className="mt-4 text-xl font-bold">Cancelar subscrição</h1>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Deixa de receber campanhas e novidades desta loja. As mensagens sobre as suas
@@ -89,8 +89,8 @@ export default function UnsubscribePage() {
             )}
 
             <div className="mt-6 flex justify-center gap-4 text-xs text-muted-foreground">
-              <Link to="/" className="hover:text-[#0ea5c9]">Voltar à loja</Link>
-              <Link to="/contact" className="hover:text-[#0ea5c9]">Contacto</Link>
+              <Link to="/" className="hover:text-primary">Voltar à loja</Link>
+              <Link to="/contact" className="hover:text-primary">Contacto</Link>
             </div>
           </div>
         </div>

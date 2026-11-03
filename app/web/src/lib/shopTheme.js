@@ -60,12 +60,15 @@ const toHex = ({ r, g, b }) =>
 /**
  * Alvo de contraste, com folga sobre os 4,5 da WCAG.
  *
- * Os 4,5 são o mínimo contra branco puro, mas nem todos os fundos da loja o são: a faixa de
- * livros assenta sobre um cinzento muito claro, e aí a mesma cor media 4,41 — falhava por
- * nove centésimas. A folga cobre esses fundos levemente tingidos sem escurecer a cor ao
- * ponto de ela deixar de parecer a cor da marca.
+ * Os 4,5 são o mínimo contra branco puro, mas poucos fundos da loja o são: há cinzentos
+ * muito claros na faixa de livros, cartões com tinta da marca a 5% e caixas de destaque. Com
+ * um alvo de 4,8 ainda sobrava um elemento a medir 4,45 sobre um desses fundos — falhava por
+ * cinco centésimas.
+ *
+ * 5,2 cobre-os com margem e continua a parecer a cor da marca; passar muito disto já daria
+ * um azul que ninguém reconheceria.
  */
-const CONTRASTE_ALVO = 4.8;
+const CONTRASTE_ALVO = 5.2;
 
 /**
  * A mesma cor, escurecida só o suficiente para se ler sobre branco.

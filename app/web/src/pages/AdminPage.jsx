@@ -370,7 +370,7 @@ const AdminPage = () => {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground hidden sm:inline">
-                {user?.name || user?.email} {isAdmin && <span className="text-[#0ea5c9] font-medium">· Admin</span>}
+                {user?.name || user?.email} {isAdmin && <span className="text-primary font-medium">· Admin</span>}
               </span>
               <Button variant="outline" size="sm" onClick={() => navigate('/profile')}>Perfil</Button>
               <Button variant="outline" size="sm" onClick={() => { logout(); navigate('/'); }}>
@@ -397,7 +397,7 @@ const AdminPage = () => {
                     {lowStockBooks.slice(0, 5).map((b) => (
                       <li key={b.id} className="flex flex-wrap items-center justify-between gap-2">
                         <span>
-                          <code className="text-xs font-mono text-[#0ea5c9]">{b.book_code}</code>
+                          <code className="text-xs font-mono text-primary">{b.book_code}</code>
                           {' '}{b.title} — <strong className={Number(b.stock) <= 0 ? 'text-red-600' : 'text-amber-700'}>{b.stock} un.</strong>
                           {b.stock_alert && <span className="ml-1 text-xs text-red-600">(esgotado)</span>}
                         </span>
@@ -422,7 +422,7 @@ const AdminPage = () => {
                   <p className="px-2 pt-0.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{group.label}</p>
                   <TabsList className="h-auto flex-wrap gap-1 bg-transparent p-0">
                     {group.tabs.map(({ value, label, icon: Icon }) => (
-                      <TabsTrigger key={value} value={value} className="data-[state=active]:bg-[#0ea5c9] data-[state=active]:text-white">
+                      <TabsTrigger key={value} value={value} className="data-[state=active]:bg-primary data-[state=active]:text-white">
                         <Icon className="h-4 w-4 mr-1.5" />{label}
                       </TabsTrigger>
                     ))}
@@ -433,63 +433,63 @@ const AdminPage = () => {
 
             {canManageSettings && (
               <TabsContent value="settings">
-                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <SettingsTab />
                 </Suspense>
               </TabsContent>
             )}
             {canManageUsers && (
               <TabsContent value="users">
-                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <UsersTab />
                 </Suspense>
               </TabsContent>
             )}
             {canManagePayments && (
               <TabsContent value="payments">
-                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <PaymentsTab />
                 </Suspense>
               </TabsContent>
             )}
             {canManageSettings && (
               <TabsContent value="stores">
-                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <StoresTab />
                 </Suspense>
               </TabsContent>
             )}
             {canManageMarketing && (
               <TabsContent value="contacts">
-                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <ContactsManager />
                 </Suspense>
               </TabsContent>
             )}
             {isAdmin && (
               <TabsContent value="apps">
-                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <AppsTab />
                 </Suspense>
               </TabsContent>
             )}
             {canAccessAdmin && (
               <TabsContent value="vendas-huambo">
-                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <VendasHuamboTab />
                 </Suspense>
               </TabsContent>
             )}
             {canManageCatalog && (
               <TabsContent value="collections">
-                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>}>
+                <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
                   <CollectionsTab books={books} onBooksChange={loadAll} />
                 </Suspense>
               </TabsContent>
             )}
 
             {loading ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" /></div>
+              <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
             ) : (
               <>
                 {canManageCatalog && (
@@ -595,7 +595,7 @@ const AdminPage = () => {
                               </div>
                             </td>
                             <td className="p-4">
-                              <code className="text-xs font-mono text-[#0ea5c9]">{b.book_code || '—'}</code>
+                              <code className="text-xs font-mono text-primary">{b.book_code || '—'}</code>
                               {b.sku && b.sku !== b.book_code && (
                                 <span className="block text-[10px] text-muted-foreground font-mono">{b.sku}</span>
                               )}
@@ -681,7 +681,7 @@ const AdminPage = () => {
                     </div>
                     <div className="bg-card border rounded-xl p-4">
                       <p className="text-sm text-muted-foreground">Receita Total</p>
-                      <p className="text-2xl font-bold text-[#0ea5c9]">Kz {totalRevenue.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
+                      <p className="text-2xl font-bold text-primary">Kz {totalRevenue.toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</p>
                     </div>
                   </div>
 
@@ -735,7 +735,7 @@ const AdminPage = () => {
                               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getOrderStatusColor(o.status)}`}>
                                 {getOrderStatusLabel(o.status)}
                               </span>
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${o.order_type === 'whatsapp_order' ? 'bg-green-100 text-green-800' : 'bg-[#0ea5c9]/10 text-[#0ea5c9]'}`}>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${o.order_type === 'whatsapp_order' ? 'bg-green-100 text-green-800' : 'bg-[#0ea5c9]/10 text-primary'}`}>
                                 {getOrderChannelLabel(o)}
                               </span>
                               {o.delivery_status && (
@@ -752,7 +752,7 @@ const AdminPage = () => {
                             </p>
                           </div>
                           <div className="flex items-center gap-3">
-                            <p className="font-bold text-[#0ea5c9]">Kz {Number(o.total).toFixed(2)}</p>
+                            <p className="font-bold text-primary">Kz {Number(o.total).toFixed(2)}</p>
                             {expandedOrder === o.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </div>
@@ -786,7 +786,7 @@ const AdminPage = () => {
                                         {[o.delivery_locality, o.delivery_municipality, o.delivery_province].filter(Boolean).join(' · ')}
                                       </span>
                                     )}
-                                    {o.delivery_reference && <span className="block text-xs text-[#0ea5c9]">Ref: {o.delivery_reference}</span>}
+                                    {o.delivery_reference && <span className="block text-xs text-primary">Ref: {o.delivery_reference}</span>}
                                     {o.delivery_confirmed_at && (
                                       <span className="block text-xs text-green-700 mt-1">
                                         ✓ Confirmado por {o.delivery_confirmed_by || o.delivery_recipient_name} em {new Date(o.delivery_confirmed_at).toLocaleString('pt-AO')}
@@ -805,7 +805,7 @@ const AdminPage = () => {
                                   Referência: <code className="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded">{o.payment_reference}</code>
                                   <button
                                     type="button"
-                                    className="text-xs text-[#0ea5c9] hover:underline"
+                                    className="text-xs text-primary hover:underline"
                                     onClick={() => navigator.clipboard?.writeText(o.payment_reference).then(() => toast({ title: 'Referência copiada' }))}
                                   >
                                     copiar

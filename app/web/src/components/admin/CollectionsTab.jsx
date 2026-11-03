@@ -246,7 +246,7 @@ export default function CollectionsTab({ books = [], onBooksChange }) {
   const otherCollectionName = (id) => collections.find((c) => c.id === id)?.title;
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -254,7 +254,7 @@ export default function CollectionsTab({ books = [], onBooksChange }) {
       <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Layers className="h-6 w-6 text-[#0ea5c9]" /> Coleções do catálogo
+            <Layers className="h-6 w-6 text-primary" /> Coleções do catálogo
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Agrupe livros em coleções temáticas. A ordem aqui é a ordem na página Coleções.
@@ -296,7 +296,7 @@ export default function CollectionsTab({ books = [], onBooksChange }) {
                   <img src={cover} alt={c.title} className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-lg shrink-0" />
                 ) : (
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-[#0ea5c9]/10 flex items-center justify-center shrink-0">
-                    <Layers className="h-6 w-6 text-[#0ea5c9]" />
+                    <Layers className="h-6 w-6 text-primary" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -399,7 +399,7 @@ export default function CollectionsTab({ books = [], onBooksChange }) {
                   {collectionBooks.map((b) => (
                     <li key={b.id} className="flex items-center justify-between text-sm p-2 rounded-lg bg-muted/30">
                       <span className="truncate flex items-center gap-2">
-                        <BookOpen className="h-3.5 w-3.5 text-[#0ea5c9] shrink-0" />
+                        <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
                         <span className="truncate">{b.title}</span>
                         {!isBookVisible(b) && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">oculto</span>}
                       </span>

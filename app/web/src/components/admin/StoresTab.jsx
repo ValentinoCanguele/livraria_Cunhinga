@@ -261,7 +261,7 @@ export default function StoresTab() {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   const previewEmbed = mapEmbedUrl(form, settings.google_maps_embed_key);
@@ -272,10 +272,10 @@ export default function StoresTab() {
       <div className="flex flex-wrap justify-between items-start gap-4">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Store className="h-6 w-6 text-[#0ea5c9]" /> Lojas físicas
+            <Store className="h-6 w-6 text-primary" /> Lojas físicas
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Aparecem na página <a href="/lojas" target="_blank" rel="noreferrer" className="text-[#0ea5c9] hover:underline">/lojas</a>, no rodapé, no menu e no levantamento do checkout.
+            Aparecem na página <a href="/lojas" target="_blank" rel="noreferrer" className="text-primary hover:underline">/lojas</a>, no rodapé, no menu e no levantamento do checkout.
           </p>
         </div>
         <Button className="btn-primary shrink-0" onClick={openCreate} type="button">
@@ -296,7 +296,7 @@ export default function StoresTab() {
             onClick={() => setStatus(status === key ? 'all' : key)}
             className={`text-left rounded-xl border p-4 transition-colors ${status === key ? 'border-[#0ea5c9] bg-[#0ea5c9]/5' : 'border-border bg-card hover:border-[#0ea5c9]/40'}`}
           >
-            <Icon className={`h-4 w-4 mb-2 ${warn ? 'text-amber-600' : 'text-[#0ea5c9]'}`} />
+            <Icon className={`h-4 w-4 mb-2 ${warn ? 'text-amber-600' : 'text-primary'}`} />
             <p className="text-2xl font-bold tabular-nums">{value}</p>
             <p className="text-xs text-muted-foreground">{label}</p>
           </button>
@@ -332,7 +332,7 @@ export default function StoresTab() {
                     <img src={image} alt={s.name} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground text-xs gap-1">
-                      <Store className="h-7 w-7 text-[#0ea5c9]/40" /> Sem foto
+                      <Store className="h-7 w-7 text-primary/40" /> Sem foto
                     </div>
                   )}
                   <div className="absolute top-2 left-2 flex flex-wrap gap-1">
@@ -359,7 +359,7 @@ export default function StoresTab() {
                   <p className="text-sm text-muted-foreground flex items-start gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />{s.address}</p>
                   {s.hours && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />{s.hours}</p>}
                   {s.phone && <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" />{displayAngolaPhone(s.phone)}</p>}
-                  <a href={mapsUrl(s)} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0ea5c9] hover:underline inline-flex items-center gap-1">
+                  <a href={mapsUrl(s)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
                     <ExternalLink className="h-3 w-3" /> Abrir no mapa
                   </a>
                   <div className="mt-auto pt-3 border-t border-border grid grid-cols-2 gap-2">

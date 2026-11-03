@@ -402,7 +402,7 @@ function ProductDetailPage() {
           >
             <h1 className="text-4xl md:text-5xl font-bold mb-3 text-foreground">{product.title}</h1>
             {product.marketing_hook && (
-              <p className="text-lg text-[#0ea5c9] font-medium mb-2">{product.marketing_hook}</p>
+              <p className="text-lg text-primary font-medium mb-2">{product.marketing_hook}</p>
             )}
             {product.subtitle && (
               <p className="text-xl text-muted-foreground mb-4">{product.subtitle}</p>
@@ -416,7 +416,7 @@ function ProductDetailPage() {
             {(product.book_code || product.sku || product.isbn) && (
               <div className="flex flex-wrap gap-3 mb-6 text-sm">
                 {product.book_code && (
-                  <span className="px-3 py-1 rounded-lg bg-muted font-mono text-[#0ea5c9]">
+                  <span className="px-3 py-1 rounded-lg bg-muted font-mono text-primary">
                     Código: {product.book_code}
                   </span>
                 )}
@@ -459,7 +459,7 @@ function ProductDetailPage() {
                 <ul className="space-y-2">
                   {product.benefit_bullets.map((b, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <CheckCircle className="h-4 w-4 text-[#0ea5c9] shrink-0 mt-0.5" />
+                      <CheckCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                       {b}
                     </li>
                   ))}
@@ -517,7 +517,7 @@ function ProductDetailPage() {
                 onClick={() => handleAddToCart(true)}
                 size="lg"
                 variant="outline"
-                className="flex-1 text-lg py-6 border-[#0ea5c9] text-[#0ea5c9] hover:bg-[#0ea5c9]/10"
+                className="flex-1 text-lg py-6 border-[#0ea5c9] text-primary hover:bg-[#0ea5c9]/10"
                 disabled={!canAddToCart || !product.purchasable}
               >
                 Adicionar ao Carrinho
@@ -535,7 +535,7 @@ function ProductDetailPage() {
             <Button
               onClick={() => setShowPreview(true)}
               variant="outline"
-              className="w-full mb-3 border-[#0ea5c9]/40 text-[#0ea5c9] hover:bg-[#0ea5c9]/5 py-6 text-lg rounded-xl"
+              className="w-full mb-3 border-[#0ea5c9]/40 text-primary hover:bg-[#0ea5c9]/5 py-6 text-lg rounded-xl"
             >
               <BookOpen className="mr-2 h-5 w-5" />
               Ler Amostra Grátis (Primeiras Páginas)
@@ -554,7 +554,7 @@ function ProductDetailPage() {
             {/* Google Calendar Book Launch Event Integration */}
             {product && (
               <div className="mt-6 border border-primary/20 rounded-xl p-5 bg-primary/5 flex flex-col gap-3">
-                <div className="flex gap-2 items-center text-[#0ea5c9]">
+                <div className="flex gap-2 items-center text-primary">
                   <Calendar className="h-5 w-5" />
                   <h4 className="font-bold text-sm">Evento de Lançamento Virtual</h4>
                 </div>
@@ -566,16 +566,16 @@ function ProductDetailPage() {
                   size="sm"
                   onClick={handleAddLaunchToCalendar}
                   disabled={addingCalendarEvent}
-                  className="w-full text-xs h-9 bg-background border-[#0ea5c9]/30 hover:bg-[#0ea5c9]/10 hover:text-[#0ea5c9] hover:border-[#0ea5c9]"
+                  className="w-full text-xs h-9 bg-background border-[#0ea5c9]/30 hover:bg-[#0ea5c9]/10 hover:text-primary hover:border-[#0ea5c9]"
                 >
                   {addingCalendarEvent ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#0ea5c9]" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" />
                       A adicionar ao calendário...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="mr-2 h-4 w-4 text-[#0ea5c9]" />
+                      <Sparkles className="mr-2 h-4 w-4 text-primary" />
                       Adicionar ao Google Calendar
                     </>
                   )}
@@ -655,7 +655,7 @@ function ProductDetailPage() {
               <TabsContent value="preview">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                   <p className="text-sm text-muted-foreground">Explore as primeiras páginas antes de comprar.</p>
-                  <Button size="sm" className="bg-[#0ea5c9] hover:bg-[#0ea5c9]/90 text-white" onClick={() => setSampleReaderOpen(true)}>
+                  <Button size="sm" className="bg-primary hover:bg-[#0ea5c9]/90 text-white" onClick={() => setSampleReaderOpen(true)}>
                     <BookOpen className="h-4 w-4 mr-1.5" /> Modo Leitura
                   </Button>
                 </div>
@@ -706,7 +706,7 @@ function ProductDetailPage() {
                       <p className="font-semibold">{v.title}</p>
                       {v.format && <p className="text-sm text-muted-foreground">{v.format}</p>}
                       {v.isbn && <p className="text-xs font-mono text-muted-foreground mt-1">ISBN: {v.isbn}</p>}
-                      <p className="text-[#0ea5c9] font-bold mt-2">{v.sale_price_formatted || v.price_formatted}</p>
+                      <p className="text-primary font-bold mt-2">{v.sale_price_formatted || v.price_formatted}</p>
                       <p className="text-xs text-muted-foreground mt-1">{v.inventory_quantity} em stock</p>
                     </div>
                   ))}
@@ -822,7 +822,7 @@ function ProductDetailPage() {
                           />
                         </div>
 
-                        <Button type="submit" disabled={submitting} className="w-full btn-primary h-11 bg-[#0ea5c9] text-white hover:bg-[#0ea5c9]/90">
+                        <Button type="submit" disabled={submitting} className="w-full btn-primary h-11 bg-primary text-white hover:bg-[#0ea5c9]/90">
                           {submitting ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -841,7 +841,7 @@ function ProductDetailPage() {
                     ) : (
                       <div className="text-center py-6">
                         <p className="text-sm text-muted-foreground mb-4">Inicie sessão para deixar uma avaliação e partilhar a sua experiência.</p>
-                        <Button asChild variant="outline" className="w-full border-[#0ea5c9] text-[#0ea5c9] hover:bg-[#0ea5c9]/10">
+                        <Button asChild variant="outline" className="w-full border-[#0ea5c9] text-primary hover:bg-[#0ea5c9]/10">
                           <Link to="/login" state={{ from: `/product/${product?.id}` }}>Entrar na Conta</Link>
                         </Button>
                       </div>
@@ -855,7 +855,7 @@ function ProductDetailPage() {
                   
                   {loadingReviews ? (
                     <div className="flex justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" />
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : reviews.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-2xl bg-muted/5">
@@ -869,7 +869,7 @@ function ProductDetailPage() {
                         <div key={r.id} className="p-4 border rounded-xl bg-card hover:shadow-sm transition-all">
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-full bg-[#0ea5c9]/10 text-[#0ea5c9] font-bold flex items-center justify-center text-sm shrink-0 border border-[#0ea5c9]/25">
+                              <div className="h-9 w-9 rounded-full bg-[#0ea5c9]/10 text-primary font-bold flex items-center justify-center text-sm shrink-0 border border-[#0ea5c9]/25">
                                 {r.userAvatar ? (
                                   <img src={r.userAvatar} alt={r.userName} className="h-full w-full rounded-full object-cover" />
                                 ) : (

@@ -40,7 +40,7 @@ const FAQPage = () => {
           <div className="space-y-8">
             {faqs.map((section, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-                <h2 className="text-2xl font-semibold mb-4 text-[#0ea5c9]">{section.category}</h2>
+                <h2 className="text-2xl font-semibold mb-4 text-primary">{section.category}</h2>
                 <Accordion type="single" collapsible className="space-y-2">
                   {section.questions.map((faq, j) => (
                     <AccordionItem key={j} value={`${i}-${j}`} className="bg-card border border-border rounded-xl px-6">

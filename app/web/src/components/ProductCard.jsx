@@ -174,7 +174,7 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
                   mesmo. "Destaque da semana" ou outro texto continua a aparecer. */}
               {product.ribbon_text && inStock && !isLowStock
                 && product.ribbon_text.trim().toLowerCase() !== 'destaque' && (
-                <span className="bg-[#0ea5c9] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
+                <span className="bg-primary text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-sm">
                   {product.ribbon_text}
                 </span>
               )}

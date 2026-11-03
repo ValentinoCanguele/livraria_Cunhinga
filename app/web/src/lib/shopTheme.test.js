@@ -36,10 +36,11 @@ describe('contrastRatio', () => {
 
 describe('ensureContrastOnWhite', () => {
   it('escurece até passar o mínimo, com folga', () => {
-    // Mira acima dos 4,5 da WCAG: nem todos os fundos da loja são branco puro, e sobre o
-    // cinzento claro da faixa de livros a mesma cor media 4,41 — falhava por nove centésimas.
+    // Mira acima dos 4,5 da WCAG: poucos fundos da loja são branco puro — há cinzentos
+    // claros, cartões com tinta da marca a 5% e caixas de destaque, e sobre esses a mesma
+    // cor ficava abaixo do mínimo.
     const corrigida = ensureContrastOnWhite('#0ea5c9');
-    expect(razaoSobreBranco(corrigida)).toBeGreaterThanOrEqual(4.8);
+    expect(razaoSobreBranco(corrigida)).toBeGreaterThanOrEqual(5.2);
   });
 
   it('mantém o tom — continua o mesmo azul, só mais fundo', () => {
@@ -66,7 +67,7 @@ describe('ensureContrastOnWhite', () => {
     // É por isto que se calcula em vez de fixar um valor: a cor da marca é editável.
     for (const hex of ['#0ea5c9', '#22c55e', '#facc15', '#f97316', '#ec4899', '#84cc16']) {
       const corrigida = ensureContrastOnWhite(hex);
-      expect(razaoSobreBranco(corrigida), `${hex} → ${corrigida}`).toBeGreaterThanOrEqual(4.79);
+      expect(razaoSobreBranco(corrigida), `${hex} → ${corrigida}`).toBeGreaterThanOrEqual(5.19);
     }
   });
 

@@ -62,7 +62,7 @@ function ImageCard({ to, image, title, subtitle, onNavigate, tall = false }) {
             onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-[#0ea5c9]/40"><BookOpen className="h-8 w-8" /></div>
+          <div className="w-full h-full flex items-center justify-center text-primary/40"><BookOpen className="h-8 w-8" /></div>
         )}
       </div>
       <div className="p-2.5">
@@ -81,7 +81,7 @@ function ShortcutList({ title, items, onNavigate }) {
         {items.map(({ to, href, label, description, icon: Icon }) => {
           const content = (
             <>
-              <span className="mt-0.5 h-8 w-8 shrink-0 rounded-lg bg-[#0ea5c9]/10 text-[#0ea5c9] flex items-center justify-center">
+              <span className="mt-0.5 h-8 w-8 shrink-0 rounded-lg bg-[#0ea5c9]/10 text-primary flex items-center justify-center">
                 <Icon className="h-4 w-4" aria-hidden="true" />
               </span>
               <span className="min-w-0">
@@ -125,7 +125,7 @@ function PanelLayout({ heading, lead, footerLink, children, aside }) {
 }
 
 const SeeAll = ({ to, label, onNavigate }) => (
-  <Link to={to} onClick={onNavigate} className="text-sm font-semibold text-[#0ea5c9] hover:underline inline-flex items-center gap-1 shrink-0">
+  <Link to={to} onClick={onNavigate} className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1 shrink-0">
     {label} <ArrowRight className="h-3.5 w-3.5" />
   </Link>
 );
@@ -275,7 +275,7 @@ export default function MegaMenu() {
                   onClick={close}
                   className="rounded-xl border border-border bg-gradient-to-br from-[#0ea5c9]/15 to-transparent p-5 flex flex-col justify-between hover:border-[#0ea5c9]/50 hover:shadow-md transition-all"
                 >
-                  <span className="h-10 w-10 rounded-lg bg-[#0ea5c9] text-white flex items-center justify-center"><Truck className="h-5 w-5" /></span>
+                  <span className="h-10 w-10 rounded-lg bg-primary text-white flex items-center justify-center"><Truck className="h-5 w-5" /></span>
                   <span>
                     <span className="block text-sm font-semibold text-foreground">Rastrear encomenda</span>
                     <span className="block text-xs text-muted-foreground mt-0.5">Número da encomenda e email da compra</span>
@@ -285,7 +285,7 @@ export default function MegaMenu() {
             </div>
           ) : (
             <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-              <MapPin className="h-6 w-6 mx-auto mb-2 text-[#0ea5c9]" />
+              <MapPin className="h-6 w-6 mx-auto mb-2 text-primary" />
               {settings.contact_address || 'Luanda, Angola'}
             </div>
           )}
@@ -332,7 +332,7 @@ export default function MegaMenu() {
                 onClick={close}
                 className="group/tile rounded-xl border border-border p-4 bg-gradient-to-br from-[#0ea5c9]/10 to-transparent hover:border-[#0ea5c9]/50 hover:shadow-md transition-all"
               >
-                <span className="h-10 w-10 rounded-lg bg-[#0ea5c9] text-white flex items-center justify-center mb-6 transition-transform group-hover/tile:scale-110">
+                <span className="h-10 w-10 rounded-lg bg-primary text-white flex items-center justify-center mb-6 transition-transform group-hover/tile:scale-110">
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span className="block text-sm font-semibold text-foreground">{label}</span>

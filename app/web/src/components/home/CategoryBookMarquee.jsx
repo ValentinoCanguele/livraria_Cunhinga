@@ -55,7 +55,7 @@ function MarqueeBookCard({ product, onSelect, accent }) {
       {product.book_code && (
         <code className="text-brand-ink text-[9px] font-mono mt-2 block">{product.book_code}</code>
       )}
-      <p className="text-xs font-semibold mt-0.5 line-clamp-2 leading-snug group-hover/card:text-[#0ea5c9] transition-colors">
+      <p className="text-xs font-semibold mt-0.5 line-clamp-2 leading-snug group-hover/card:text-primary transition-colors">
         {product.title}
       </p>
       {product.subtitle && (
@@ -151,7 +151,7 @@ export default function CategoryBookMarquee({
             </Button>
           )}
           <Link to={shopLink}>
-            <Button variant="ghost" size="sm" className="text-[#0ea5c9] hover:text-[#0c4a6e]">
+            <Button variant="ghost" size="sm" className="text-primary hover:text-[#0c4a6e]">
               Ver todos <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
           </Link>

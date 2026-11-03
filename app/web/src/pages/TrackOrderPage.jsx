@@ -100,7 +100,7 @@ export default function TrackOrderPage() {
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <div className="text-center mb-8">
               <div className="inline-flex h-14 w-14 rounded-2xl bg-[#0ea5c9]/10 items-center justify-center mb-4">
-                <Truck className="h-7 w-7 text-[#0ea5c9]" />
+                <Truck className="h-7 w-7 text-primary" />
               </div>
               <h1 className="text-3xl font-bold mb-2">Rastrear Encomenda</h1>
               <p className="text-muted-foreground">Acompanhe a entrega ao domicílio em tempo real</p>
@@ -111,7 +111,7 @@ export default function TrackOrderPage() {
                 <User className="h-3.5 w-3.5" />
                 Sessão iniciada como <strong>{user.email}</strong>
                 {' · '}
-                <Link to="/profile" state={{ tab: 'orders' }} className="text-[#0ea5c9] hover:underline">Ver todas as encomendas</Link>
+                <Link to="/profile" state={{ tab: 'orders' }} className="text-primary hover:underline">Ver todas as encomendas</Link>
               </p>
             )}
 
@@ -143,7 +143,7 @@ export default function TrackOrderPage() {
                   <div className="flex flex-wrap justify-between items-start gap-3 mb-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Encomenda</p>
-                      <p className="text-xl font-bold font-mono text-[#0ea5c9]">{order.order_number}</p>
+                      <p className="text-xl font-bold font-mono text-primary">{order.order_number}</p>
                       {order.customer_name && (
                         <p className="text-sm text-muted-foreground mt-1">{order.customer_name}</p>
                       )}
@@ -209,7 +209,7 @@ export default function TrackOrderPage() {
                           </p>
                         )}
                         {order.delivery_reference && (
-                          <p className="text-xs text-[#0ea5c9]">Ref: {order.delivery_reference}</p>
+                          <p className="text-xs text-primary">Ref: {order.delivery_reference}</p>
                         )}
                       </div>
                     </div>
@@ -218,7 +218,7 @@ export default function TrackOrderPage() {
 
                 <div className="bg-card border rounded-2xl p-6">
                   <h3 className="font-semibold mb-6 flex items-center gap-2">
-                    <Package className="h-5 w-5 text-[#0ea5c9]" /> {isPickup ? 'Estado do levantamento' : 'Estado da entrega'}
+                    <Package className="h-5 w-5 text-primary" /> {isPickup ? 'Estado do levantamento' : 'Estado da entrega'}
                   </h3>
                   {isPickup && order.pickup_store && (
                     <p className="text-sm text-muted-foreground -mt-4 mb-5">Levantamento em <strong className="text-foreground">{order.pickup_store}</strong></p>
@@ -235,14 +235,14 @@ export default function TrackOrderPage() {
                       return (
                         <div key={step} className="flex gap-4 pb-6 last:pb-0">
                           <div className="flex flex-col items-center">
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-[#0ea5c9] text-white' : 'bg-muted border-2 border-border'}`}>
+                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-primary text-white' : 'bg-muted border-2 border-border'}`}>
                               {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4 text-muted-foreground" />}
                             </div>
                             {idx < steps.length - 1 && (
-                              <div className={`w-0.5 flex-1 min-h-[24px] ${idx < currentStepIdx ? 'bg-[#0ea5c9]' : 'bg-border'}`} />
+                              <div className={`w-0.5 flex-1 min-h-[24px] ${idx < currentStepIdx ? 'bg-primary' : 'bg-border'}`} />
                             )}
                           </div>
-                          <div className={`pt-1 ${active ? 'font-semibold text-[#0ea5c9]' : done ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          <div className={`pt-1 ${active ? 'font-semibold text-primary' : done ? 'text-foreground' : 'text-muted-foreground'}`}>
                             {stepLabel(step)}
                           </div>
                         </div>
@@ -264,7 +264,7 @@ export default function TrackOrderPage() {
                           <div>
                             <p className="font-medium">{ev.title}</p>
                             {ev.description && <p className="text-muted-foreground text-xs">{ev.description}</p>}
-                            {ev.location && <p className="text-xs text-[#0ea5c9]">{ev.location}</p>}
+                            {ev.location && <p className="text-xs text-primary">{ev.location}</p>}
                           </div>
                         </div>
                       ))}
@@ -280,7 +280,7 @@ export default function TrackOrderPage() {
                 />
 
                 <p className="text-center text-sm text-muted-foreground">
-                  Dúvidas? <Link to="/contact" className="text-[#0ea5c9] hover:underline">Contacte-nos</Link>
+                  Dúvidas? <Link to="/contact" className="text-primary hover:underline">Contacte-nos</Link>
                   {settings.contact_phone && ` · ${displayAngolaPhone(settings.contact_phone)}`}
                 </p>
               </motion.div>

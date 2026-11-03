@@ -121,11 +121,11 @@ const SuccessPage = () => {
               {isWhatsApp ? (
                 <MessageCircle className="h-10 w-10 text-green-600" />
               ) : (
-                <CheckCircle className="h-10 w-10 text-[#0ea5c9]" />
+                <CheckCircle className="h-10 w-10 text-primary" />
               )}
             </div>
 
-            <span className={`inline-block text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full mb-4 ${isWhatsApp ? 'bg-green-500/10 text-green-700' : 'bg-[#0ea5c9]/10 text-[#0ea5c9]'}`}>
+            <span className={`inline-block text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full mb-4 ${isWhatsApp ? 'bg-green-500/10 text-green-700' : 'bg-[#0ea5c9]/10 text-primary'}`}>
               {isWhatsApp ? 'Encomenda via WhatsApp' : 'Compra Online'}
             </span>
 
@@ -135,13 +135,13 @@ const SuccessPage = () => {
             {hasOrder && (
               <div className="bg-card border border-border rounded-xl p-6 mb-6 text-left space-y-3">
                 <h2 className="font-semibold text-lg flex items-center gap-2">
-                  <Package className="h-5 w-5 text-[#0ea5c9]" />
+                  <Package className="h-5 w-5 text-primary" />
                   {isWhatsApp ? 'Detalhes do Pedido' : 'Detalhes da Compra'}
                 </h2>
                 {orderNumber && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Número</span>
-                    <code className="font-mono font-semibold text-[#0ea5c9]">{orderNumber}</code>
+                    <code className="font-mono font-semibold text-primary">{orderNumber}</code>
                   </div>
                 )}
                 {total && (
@@ -172,7 +172,7 @@ const SuccessPage = () => {
             {hasOrder && orderData && (
               <div className="bg-card border border-border rounded-xl p-6 mb-8 text-left">
                 <h2 className="font-semibold text-lg flex items-center gap-2 mb-2">
-                  <Receipt className="h-5 w-5 text-[#0ea5c9]" /> Como deseja receber o recibo?
+                  <Receipt className="h-5 w-5 text-primary" /> Como deseja receber o recibo?
                 </h2>
                 <p className="text-sm text-muted-foreground mb-4">Escolha uma opção para guardar o comprovativo da sua {isWhatsApp ? 'encomenda' : 'compra'}.</p>
                 <div className="grid sm:grid-cols-2 gap-3">
@@ -210,7 +210,7 @@ const SuccessPage = () => {
               <div className="space-y-4">
                 {nextSteps.map(({ step, title: stepTitle, desc }) => (
                   <div key={step} className="flex gap-4">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#0ea5c9]/10 flex items-center justify-center text-[#0ea5c9] font-semibold text-sm">{step}</div>
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#0ea5c9]/10 flex items-center justify-center text-primary font-semibold text-sm">{step}</div>
                     <div>
                       <h3 className="font-medium mb-1">{stepTitle}</h3>
                       <p className="text-sm text-muted-foreground">{desc}</p>
@@ -229,7 +229,7 @@ const SuccessPage = () => {
               </Link>
               {isAuthed ? (
                 <Link to="/profile" state={{ tab: 'orders' }}>
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto border-[#0ea5c9] text-[#0ea5c9]">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto border-[#0ea5c9] text-primary">
                     <User className="mr-2 h-5 w-5" /> Ver {isWhatsApp ? 'Pedidos' : 'Compras'}
                   </Button>
                 </Link>

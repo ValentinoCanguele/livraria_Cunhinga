@@ -119,7 +119,7 @@ const SignaturePad = forwardRef(function SignaturePad(
     <div className={`space-y-2 ${className}`}>
       <div className="flex justify-between items-center gap-2">
         <Label className="flex items-center gap-1.5">
-          <PenLine className="h-4 w-4 text-[#0ea5c9]" />
+          <PenLine className="h-4 w-4 text-primary" />
           {label}
         </Label>
         <Button type="button" variant="ghost" size="sm" onClick={clear} className="h-8 text-xs shrink-0" disabled={disabled}>

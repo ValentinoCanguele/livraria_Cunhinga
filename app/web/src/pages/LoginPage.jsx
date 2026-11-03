@@ -204,7 +204,7 @@ const LoginPage = () => {
                   <div className="flex justify-between items-center">
                     <Label htmlFor="password">Palavra-passe</Label>
                     {mode === 'login' && (
-                      <Link to="/forgot-password" className="text-xs text-[#0ea5c9] hover:underline">Esqueceu?</Link>
+                      <Link to="/forgot-password" className="text-xs text-primary hover:underline">Esqueceu?</Link>
                     )}
                   </div>
                   <div className="relative">
@@ -240,15 +240,15 @@ const LoginPage = () => {
 
               <p className="text-center text-sm text-muted-foreground mt-6">
                 {mode === 'login' ? 'Não tem conta?' : 'Já tem conta?'}{' '}
-                <button type="button" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setPendingConfirmation(''); }} className="text-[#0ea5c9] font-medium hover:underline">
+                <button type="button" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setPendingConfirmation(''); }} className="text-primary font-medium hover:underline">
                   {mode === 'login' ? 'Registe-se' : 'Entrar'}
                 </button>
               </p>
             </div>
 
             <div className="flex flex-wrap justify-center gap-4 mt-6 text-xs text-muted-foreground">
-              <Link to="/track" className="hover:text-[#0ea5c9]">Rastrear encomenda</Link>
-              <Link to="/shop" className="hover:text-[#0ea5c9]">Ir à loja</Link>
+              <Link to="/track" className="hover:text-primary">Rastrear encomenda</Link>
+              <Link to="/shop" className="hover:text-primary">Ir à loja</Link>
             </div>
           </motion.div>
         </div>

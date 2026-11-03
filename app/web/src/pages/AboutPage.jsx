@@ -121,7 +121,7 @@ const AboutPage = () => {
               {values.map((value, index) => (
                 <motion.div key={index} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-card rounded-xl p-8 border border-border">
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#0ea5c9]/10 mb-4">
-                    <value.icon className="h-6 w-6 text-[#0ea5c9]" />
+                    <value.icon className="h-6 w-6 text-primary" />
                   </div>
                   <h3 className="text-2xl font-semibold mb-3">{value.title}</h3>
                   <p className="text-muted-foreground">{value.description}</p>

@@ -43,7 +43,7 @@ export default function PwaInstallBanner() {
         {logoUrl ? (
           <img src={logoUrl} alt="" className="h-full w-full object-contain p-1" />
         ) : (
-          <Download className="h-5 w-5 text-[#0ea5c9]" />
+          <Download className="h-5 w-5 text-primary" />
         )}
       </div>
       <div className="flex-1 min-w-0">

@@ -92,7 +92,7 @@ export default function SampleReaderModal({ pages = [], title = 'Amostra', open,
             <p className="text-xs text-muted-foreground">{urls.length} página(s) de amostra</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" className="bg-[#0ea5c9] hover:bg-[#0ea5c9]/90 text-white" onClick={() => setReadingMode(true)}>
+            <Button size="sm" className="bg-primary hover:bg-[#0ea5c9]/90 text-white" onClick={() => setReadingMode(true)}>
               <BookOpen className="h-4 w-4 mr-1.5" /> Modo Leitura
             </Button>
             <Button variant="ghost" size="icon" onClick={onClose}><X className="h-5 w-5" /></Button>

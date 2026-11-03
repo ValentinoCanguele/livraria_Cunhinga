@@ -119,7 +119,7 @@ function WhatsAppBusinessConfigForm({ app, onSave }) {
   return (
     <div className="space-y-3 p-3 rounded-lg bg-muted/30 border text-sm">
       <p className="text-xs text-muted-foreground">
-        Configure em <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="text-[#0ea5c9] underline">Meta for Developers</a>.
+        Configure em <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="text-primary underline">Meta for Developers</a>.
         Com a API activa, checkout, CRM e recibos enviam mensagens <strong>sem abrir o browser</strong>.
       </p>
       <div className="flex items-center gap-3 p-2 rounded border bg-background">
@@ -370,7 +370,7 @@ export default function AppsTab() {
     );
   });
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-6">
@@ -570,7 +570,7 @@ export default function AppsTab() {
                           <p className="text-[10px] text-muted-foreground">
                             {new Date(log.created).toLocaleDateString('pt-AO')} às {new Date(log.created).toLocaleTimeString('pt-AO')}
                           </p>
-                          <p className="text-[9px] text-[#0ea5c9] font-mono font-bold uppercase tracking-wider">
+                          <p className="text-[9px] text-primary font-mono font-bold uppercase tracking-wider">
                             {LOG_CONTEXT[log.context] || log.context}{log.provider ? ` · ${log.provider}` : ''}
                           </p>
                         </div>
@@ -616,7 +616,7 @@ export default function AppsTab() {
                         {/* Visual Message Body content */}
                         <div className="space-y-1.5 border rounded-lg p-3.5 bg-background">
                           <p className="text-xs font-bold text-foreground border-b pb-1.5 mb-2 flex items-center gap-1">
-                            <BookOpen className="h-3.5 w-3.5 text-[#0ea5c9]" />
+                            <BookOpen className="h-3.5 w-3.5 text-primary" />
                             Visualização do Conteúdo
                           </p>
                           {isEmail ? (

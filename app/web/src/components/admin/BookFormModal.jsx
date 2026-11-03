@@ -99,7 +99,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
         <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-[#0ea5c9]/10 to-transparent">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-[#0ea5c9]/15 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-[#0ea5c9]" />
+              <Sparkles className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h2 className="text-xl font-bold">{editing ? 'Editar Livro' : template ? 'Duplicar Livro' : 'Adicionar Livro Premium'}</h2>
@@ -132,7 +132,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                         <span className="ml-2 text-sm text-muted-foreground line-through">Kz {Number(form.price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}</span>
                       </p>
                     ) : (
-                      <p className="text-[#0ea5c9] font-bold text-xl">
+                      <p className="text-primary font-bold text-xl">
                         Kz {Number(form.price).toLocaleString('pt-AO', { minimumFractionDigits: 2 })}
                       </p>
                     )
@@ -142,12 +142,12 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
                 <div className="rounded-xl bg-card border p-4 space-y-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" /> Código</span>
-                    <code className="font-mono text-[#0ea5c9] font-semibold">{form.book_code || AUTO_CODE}</code>
+                    <code className="font-mono text-primary font-semibold">{form.book_code || AUTO_CODE}</code>
                   </div>
                   {editing && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">ID Sistema</span>
-                      <button type="button" onClick={copyId} className="flex items-center gap-1 font-mono text-xs hover:text-[#0ea5c9]">
+                      <button type="button" onClick={copyId} className="flex items-center gap-1 font-mono text-xs hover:text-primary">
                         {editing.id.slice(0, 12)}…
                         {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
                       </button>
@@ -452,7 +452,7 @@ export default function BookFormModal({ open, onClose, onSave, editing, template
 
                 <TabsContent value="stats" className="space-y-4 mt-0">
                   <div className="rounded-xl bg-gradient-to-r from-[#0ea5c9]/10 to-[#0ea5c9]/5 border border-[#0ea5c9]/20 p-4 text-sm text-foreground">
-                    <h4 className="font-semibold text-[#0ea5c9] mb-1">Métricas reais</h4>
+                    <h4 className="font-semibold text-primary mb-1">Métricas reais</h4>
                     <p className="text-muted-foreground">Contadas automaticamente: vendas quando uma encomenda é registada e visualizações quando alguém abre a página do livro.</p>
                   </div>
                   {editing ? (

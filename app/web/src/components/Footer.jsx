@@ -213,7 +213,7 @@ const Footer = () => {
                       </div>
                       <Button 
                         type="submit" 
-                        className="w-full bg-[#0ea5c9] hover:bg-[#0891b2] text-white font-bold h-11 rounded-xl shadow-[0_4px_14px_rgba(14,165,201,0.3)] hover:shadow-[0_6px_20px_rgba(14,165,201,0.4)] transition-all flex items-center justify-center cursor-pointer" 
+                        className="w-full bg-primary hover:bg-[#0891b2] text-white font-bold h-11 rounded-xl shadow-[0_4px_14px_rgba(14,165,201,0.3)] hover:shadow-[0_6px_20px_rgba(14,165,201,0.4)] transition-all flex items-center justify-center cursor-pointer" 
                         disabled={submitting}
                       >
                         <Mail className="h-4 w-4 mr-2" />

@@ -130,7 +130,7 @@ export default function EmailTemplatesPanel() {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   if (error) {
@@ -317,7 +317,7 @@ export default function EmailTemplatesPanel() {
 
           <div className="bg-muted/40 p-4">
             {previewLoading && (
-              <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-[#0ea5c9]" /></div>
+              <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             )}
             {!previewLoading && showText && (
               <pre className="max-h-[560px] overflow-auto rounded-lg border bg-background p-4 text-xs leading-relaxed whitespace-pre-wrap">

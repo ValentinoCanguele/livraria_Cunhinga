@@ -186,7 +186,7 @@ export default function AngolaAddressSelector({ value, onChange, disabled = fals
 
   return (
     <div className="space-y-3 rounded-lg border border-[#0ea5c9]/20 bg-[#0ea5c9]/5 p-3">
-      <div className="flex items-center gap-2 text-sm font-medium text-[#0ea5c9]">
+      <div className="flex items-center gap-2 text-sm font-medium text-primary">
         <MapPin className="h-4 w-4" />
         Local de entrega em Angola
         <span className="text-[10px] font-normal text-muted-foreground ml-auto">Censo 2024 · 21 províncias</span>
@@ -283,7 +283,7 @@ export default function AngolaAddressSelector({ value, onChange, disabled = fals
 
         <div className="space-y-2 sm:col-span-2">
           <Label className="flex items-center gap-1.5">
-            <Phone className="h-3.5 w-3.5 text-[#0ea5c9]" />
+            <Phone className="h-3.5 w-3.5 text-primary" />
             Telefone de contacto *
           </Label>
           <PhoneInput

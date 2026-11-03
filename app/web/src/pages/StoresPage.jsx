@@ -96,7 +96,7 @@ export default function StoresPage() {
 
         <div className="container-custom py-8">
           {stores === null ? (
-            <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>
+            <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : stores.length === 0 ? (
             <div className="text-center py-20 text-muted-foreground">De momento não há lojas para mostrar.</div>
           ) : (
@@ -109,7 +109,7 @@ export default function StoresPage() {
                 {provinces.length > 1 && (
                   <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por província">
                     {['', ...provinces].map((p) => (
-                      <Button key={p || 'all'} type="button" size="sm" variant={province === p ? 'default' : 'outline'} onClick={() => setProvince(p)} className={province === p ? 'bg-[#0ea5c9] hover:bg-[#0ea5c9]/90' : ''}>
+                      <Button key={p || 'all'} type="button" size="sm" variant={province === p ? 'default' : 'outline'} onClick={() => setProvince(p)} className={province === p ? 'bg-primary hover:bg-[#0ea5c9]/90' : ''}>
                         {p || 'Todas'}
                       </Button>
                     ))}
@@ -136,11 +136,11 @@ export default function StoresPage() {
                               {s.image_url ? (
                                 <img src={s.image_url} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center"><Store className="h-7 w-7 text-[#0ea5c9]/40" /></div>
+                                <div className="w-full h-full flex items-center justify-center"><Store className="h-7 w-7 text-primary/40" /></div>
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-[11px] font-bold uppercase tracking-wider text-[#0ea5c9]">{s.province}{s.distance != null && ` · ${s.distance < 10 ? s.distance.toFixed(1) : Math.round(s.distance)} km`}</p>
+                              <p className="text-[11px] font-bold uppercase tracking-wider text-primary">{s.province}{s.distance != null && ` · ${s.distance < 10 ? s.distance.toFixed(1) : Math.round(s.distance)} km`}</p>
                               <h2 className="text-base md:text-lg font-semibold leading-snug">{s.name}</h2>
                               <p className="text-sm text-muted-foreground flex items-start gap-1 mt-1"><MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />{s.address}</p>
                               {s.hours && <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1"><Clock className="h-3.5 w-3.5 shrink-0" />{s.hours}</p>}
@@ -149,8 +149,8 @@ export default function StoresPage() {
                           {active && (
                             <div className="px-4 pb-4 space-y-3">
                               <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                                {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1.5 hover:text-[#0ea5c9]"><Phone className="h-4 w-4 text-[#0ea5c9]" />{displayAngolaPhone(s.phone)}</a>}
-                                {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1.5 hover:text-[#0ea5c9]"><Mail className="h-4 w-4 text-[#0ea5c9]" />{s.email}</a>}
+                                {s.phone && <a href={`tel:${s.phone}`} className="flex items-center gap-1.5 hover:text-primary"><Phone className="h-4 w-4 text-primary" />{displayAngolaPhone(s.phone)}</a>}
+                                {s.email && <a href={`mailto:${s.email}`} className="flex items-center gap-1.5 hover:text-primary"><Mail className="h-4 w-4 text-primary" />{s.email}</a>}
                               </div>
                               {s.pickup_enabled && (
                                 <p className="text-xs inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 font-medium">
@@ -191,7 +191,7 @@ export default function StoresPage() {
                     />
                   ) : (
                     <div className="aspect-[4/3] flex flex-col items-center justify-center gap-3 text-center p-8 text-muted-foreground">
-                      <MapPin className="h-10 w-10 text-[#0ea5c9]/50" />
+                      <MapPin className="h-10 w-10 text-primary/50" />
                       <p className="text-sm max-w-xs">{selected ? 'Esta loja ainda não tem coordenadas GPS. Use «Como chegar» para abrir a morada no Google Maps.' : 'Seleccione uma loja.'}</p>
                     </div>
                   )}

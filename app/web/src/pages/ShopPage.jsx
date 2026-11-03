@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  SlidersHorizontal, X, LayoutGrid, List, Sparkles,
+  SlidersHorizontal, Search, X, LayoutGrid, List, Sparkles,
   Layers, Star, ChevronRight, ChevronLeft, TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useProductFilters } from '@/hooks/useProductFilters.jsx';
 import ProductsList from '@/components/ProductsList.jsx';
 import FilterPanel from '@/components/FilterPanel.jsx';
-import Header from '@/components/Header.jsx';
+import Header, { openHeaderSearch } from '@/components/Header.jsx';
 import Footer from '@/components/Footer.jsx';
 import ShoppingCart from '@/components/ShoppingCart.jsx';
-import AdvancedSearchPanel from '@/components/AdvancedSearchPanel';
 import ShopHeroBackground from '@/components/ShopHeroBackground';
 import CategoryBookMarquee from '@/components/home/CategoryBookMarquee';
 import QuickViewModal from '@/components/QuickViewModal';
@@ -203,27 +202,6 @@ const ShopPage = () => {
           </motion.div>
       </ShopHeroBackground>
 
-      <section aria-labelledby="shop-search-title" className="border-b border-border bg-muted/30">
-        <div className="container-custom py-6 md:py-8">
-          <div className="mx-auto max-w-4xl rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6">
-            <div className="mb-4">
-              <h2 id="shop-search-title" className="text-lg font-semibold">Encontre o seu próximo livro</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Pesquise no catálogo ou escolha uma categoria e refine os resultados.</p>
-            </div>
-            <AdvancedSearchPanel
-              activeFilters={activeFilters}
-              updateFilter={updateFilter}
-              bookCollections={bookCollections}
-              publishers={availableFilters.publishers}
-              quickGenres={availableFilters.genres}
-              catalog={allProducts}
-              resultCount={hasActiveBrowsing ? filteredProducts.length : undefined}
-              filterCount={filterCount}
-            />
-          </div>
-        </div>
-      </section>
-
       {/* Faixa infinita — livros disponíveis */}
       {!hasActiveBrowsing && inStockProducts.length > 0 && (
         <div className="border-b border-border bg-muted/10">
@@ -386,6 +364,10 @@ const ShopPage = () => {
             {/* Barra de ferramentas */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-card border border-border p-4 rounded-2xl shadow-sm">
               <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={openHeaderSearch}>
+                  <Search className="h-4 w-4 mr-1" />
+                  Pesquisar
+                </Button>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="outline" size="sm" className="lg:hidden" onClick={() => setIsMobileFilterOpen(true)}>

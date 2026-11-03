@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Menu, X, User, ShoppingBag, LogOut, LayoutDashboard, BarChart3 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -24,6 +24,12 @@ const NAV_LINKS = [
   { to: '/contact', label: 'Contacto' },
 ];
 
+const OPEN_HEADER_SEARCH_EVENT = 'livraria:open-header-search';
+
+export const openHeaderSearch = () => {
+  window.dispatchEvent(new Event(OPEN_HEADER_SEARCH_EVENT));
+};
+
 const Header = ({ onCartOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -31,9 +37,29 @@ const Header = ({ onCartOpen }) => {
   const { user, isAuthed, isAdmin, canAccessAdmin, logout } = useAuth();
   const { settings } = useSiteSettings();
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const searchInputRef = useRef(null);
 
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  useEffect(() => {
+    setSearch(new URLSearchParams(location.search).get('search') || '');
+  }, [location.search]);
+
+  useEffect(() => {
+    const handleOpenSearch = () => {
+      setSearchOpen(true);
+      setMobileOpen(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener(OPEN_HEADER_SEARCH_EVENT, handleOpenSearch);
+    return () => window.removeEventListener(OPEN_HEADER_SEARCH_EVENT, handleOpenSearch);
+  }, []);
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -41,6 +67,7 @@ const Header = ({ onCartOpen }) => {
     if (!query) return;
     navigate(`/shop?search=${encodeURIComponent(query)}`);
     setMobileOpen(false);
+    setSearchOpen(false);
   };
 
   const closeMobile = () => setMobileOpen(false);
@@ -84,21 +111,22 @@ const Header = ({ onCartOpen }) => {
             <MegaMenu />
           </div>
 
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-sm mx-4" role="search" aria-label="Pesquisa rápida">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" aria-hidden="true" />
-              <Input
-                type="search"
-                placeholder="Pesquisar livros, autores..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-white/10 border-white/10 text-white placeholder-white/50 focus-visible:ring-[#22d3ee] rounded-full"
-                aria-label="Pesquisar livros, autores e coleções"
-              />
-            </div>
-          </form>
-
           <div className="flex items-center gap-1 sm:gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full text-white/80 hover:text-white hover:bg-white/10"
+              onClick={() => {
+                if (!searchOpen) openHeaderSearch();
+                else setSearchOpen(false);
+              }}
+              aria-expanded={searchOpen}
+              aria-controls="header-search"
+              aria-label={searchOpen ? 'Fechar pesquisa' : 'Abrir pesquisa'}
+            >
+              {searchOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Search className="h-5 w-5" aria-hidden="true" />}
+            </Button>
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -151,6 +179,35 @@ const Header = ({ onCartOpen }) => {
           </div>
         </div>
 
+        <form
+          id="header-search"
+          onSubmit={handleSearch}
+          role="search"
+          aria-label="Pesquisa de livros"
+          aria-hidden={!searchOpen}
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ${
+            searchOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="flex gap-2 pb-4">
+              <Input
+                ref={searchInputRef}
+                type="search"
+                placeholder="Pesquisar livros, autores..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="min-w-0 flex-1 rounded-full bg-white/10 border-white/10 text-white placeholder-white/50 focus-visible:ring-[#22d3ee]"
+                aria-label="Pesquisar livros, autores e coleções"
+                tabIndex={searchOpen ? 0 : -1}
+              />
+              <Button type="submit" className="rounded-full bg-[#22d3ee] text-neutral-950 hover:bg-[#22d3ee]/90">
+                Pesquisar
+              </Button>
+            </div>
+          </div>
+        </form>
+
         <div
           id="mobile-navigation-menu"
           className={`lg:hidden space-y-4 border-t border-white/10 pt-4 mobile-menu-container ${mobileOpen ? 'open' : ''}`}
@@ -174,21 +231,6 @@ const Header = ({ onCartOpen }) => {
               <GuestAuthButton fullWidth />
             </div>
           )}
-
-          <form onSubmit={handleSearch} role="search" aria-label="Pesquisa móvel">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50" aria-hidden="true" />
-              <Input
-                type="search"
-                placeholder="Pesquisar livros..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 rounded-full bg-white/10 border-white/10 text-white placeholder-white/40 focus-visible:ring-[#22d3ee]"
-                aria-label="Pesquisar livros no menu móvel"
-                tabIndex={mobileOpen ? 0 : -1}
-              />
-            </div>
-          </form>
 
           <nav className="flex flex-col gap-1" aria-label="Navegação Móvel">
             {NAV_LINKS.map(({ to, label }) => (

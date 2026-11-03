@@ -234,7 +234,7 @@ const ProfilePage = () => {
                   </p>
                   <div className="flex flex-wrap gap-2 mt-3">
                     {isAdmin && (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-[#0ea5c9]/15 text-[#0ea5c9]">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-[#0ea5c9]/15 text-primary">
                         <Shield className="h-3 w-3" /> Administrador
                       </span>
                     )}
@@ -260,23 +260,23 @@ const ProfilePage = () => {
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <Link to="/shop" className="bg-card border rounded-xl p-4 flex items-center gap-3 hover:border-[#0ea5c9]/40 transition-colors group">
                 <div className="h-10 w-10 rounded-lg bg-[#0ea5c9]/10 flex items-center justify-center">
-                  <BookOpen className="h-5 w-5 text-[#0ea5c9]" />
+                  <BookOpen className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
                   <p className="font-medium">Explorar Loja</p>
                   <p className="text-xs text-muted-foreground">Ver catálogo completo</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-[#0ea5c9]" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
               </Link>
               <Link to="/track" className="bg-card border rounded-xl p-4 flex items-center gap-3 hover:border-[#0ea5c9]/40 transition-colors group">
                 <div className="h-10 w-10 rounded-lg bg-[#0ea5c9]/10 flex items-center justify-center">
-                  <Truck className="h-5 w-5 text-[#0ea5c9]" />
+                  <Truck className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1">
                   <p className="font-medium">Rastrear Encomenda</p>
                   <p className="text-xs text-muted-foreground">Estado de entrega em tempo real</p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-[#0ea5c9]" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
               </Link>
               <div className="bg-card border rounded-xl p-4 flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
@@ -296,7 +296,7 @@ const ProfilePage = () => {
                     <p className="font-medium">Gestão de Livros</p>
                     <p className="text-xs text-muted-foreground">Admin · catálogo e slides</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-[#0ea5c9]" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
                 </Link>
               )}
             </div>
@@ -315,7 +315,7 @@ const ProfilePage = () => {
               <TabsContent value="orders">
                 <div className="bg-card border rounded-xl">
                   {loadingOrders ? (
-                    <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>
+                    <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                   ) : orders.length === 0 ? (
                     <div className="text-center py-16 px-4">
                       <ShoppingBag className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
@@ -331,7 +331,7 @@ const ProfilePage = () => {
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium">{formatOrderNumber(o)}</p>
                                 {o.order_number && (
-                                  <Button variant="ghost" size="sm" className="h-7 text-xs text-[#0ea5c9] px-2" asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 text-xs text-primary px-2" asChild>
                                     <Link to="/track" state={{ orderNumber: o.order_number, email: user?.email }}>
                                       <Truck className="h-3 w-3 mr-1" /> Rastrear
                                     </Link>
@@ -340,7 +340,7 @@ const ProfilePage = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-7 text-xs text-[#0ea5c9] px-2"
+                                  className="h-7 text-xs text-primary px-2"
                                   onClick={() => downloadReceipt(receiptFromOrder(o), receiptBrand(settings))}
                                 >
                                   Recibo
@@ -369,7 +369,7 @@ const ProfilePage = () => {
                                 </p>
                               )}
                               {o.tracking_number && (
-                                <p className="text-xs text-[#0ea5c9] mt-1 font-mono">
+                                <p className="text-xs text-primary mt-1 font-mono">
                                   Tracking: {o.tracking_number}{o.carrier ? ` (${o.carrier})` : ''}
                                 </p>
                               )}
@@ -382,7 +382,7 @@ const ProfilePage = () => {
                               </div>
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="font-bold text-[#0ea5c9]">
+                              <p className="font-bold text-primary">
                                 Kz {(() => {
                                   const totalVal = typeof o.total === 'number' ? o.total : parseFloat(o.total) || 0;
                                   return totalVal.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -453,7 +453,7 @@ const ProfilePage = () => {
                   {isPushSupported() && (
                     <div className="border-t pt-6">
                       <h3 className="font-bold text-lg mb-2 flex items-center gap-2">
-                        <Bell className="h-5 w-5 text-[#0ea5c9]" />
+                        <Bell className="h-5 w-5 text-primary" />
                         Notificações Push
                       </h3>
                       <p className="text-sm text-muted-foreground mb-4">
@@ -510,7 +510,7 @@ const ProfilePage = () => {
                   
                   {loadingWishlist ? (
                     <div className="flex justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" />
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : wishlist.length === 0 ? (
                     <div className="text-center py-12 border border-dashed rounded-xl">
@@ -534,7 +534,7 @@ const ProfilePage = () => {
                             </div>
                             <div className="min-w-0 flex-1">
                               <h4 className="font-bold text-sm truncate">{item.bookTitle}</h4>
-                              <p className="text-xs text-[#0ea5c9] font-semibold mt-1">
+                              <p className="text-xs text-primary font-semibold mt-1">
                                 {item.bookPrice > 0 ? `${item.bookPrice.toLocaleString('pt-AO')} Kz` : 'Grátis'}
                               </p>
                               <p className="text-[10px] text-muted-foreground mt-2">

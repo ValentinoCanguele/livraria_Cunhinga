@@ -58,7 +58,7 @@ export function FloatingScrollTop({
           exit={{ opacity: 0, scale: 0.8, y: 10 }}
           onClick={scrollToTop}
           className={cn(
-            'flex items-center gap-2 pl-4 pr-3.5 py-3.5 bg-[#0ea5c9] hover:bg-[#0c90b0] text-white rounded-full',
+            'flex items-center gap-2 pl-4 pr-3.5 py-3.5 bg-primary hover:bg-[#0c90b0] text-white rounded-full',
             'shadow-[0_4px_20px_rgba(14,165,201,0.4)] hover:shadow-[0_6px_24px_rgba(14,165,201,0.5)]',
             'transition-all border border-[#22d3ee]/30 focus:outline-none focus:ring-2 focus:ring-[#0ea5c9] focus:ring-offset-2 group',
             positionClass,

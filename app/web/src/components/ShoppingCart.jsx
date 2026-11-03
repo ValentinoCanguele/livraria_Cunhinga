@@ -379,8 +379,8 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
             {/* Steps indicator */}
             {cartItems.length > 0 && (
               <div className="flex gap-2 px-5 py-3 border-b border-border bg-muted/30">
-                <div className={`flex-1 h-1 rounded-full ${step === 'cart' ? 'bg-[#0ea5c9]' : 'bg-[#0ea5c9]/40'}`} />
-                <div className={`flex-1 h-1 rounded-full ${step === 'checkout' ? 'bg-[#0ea5c9]' : 'bg-muted'}`} />
+                <div className={`flex-1 h-1 rounded-full ${step === 'cart' ? 'bg-primary' : 'bg-[#0ea5c9]/40'}`} />
+                <div className={`flex-1 h-1 rounded-full ${step === 'checkout' ? 'bg-primary' : 'bg-muted'}`} />
               </div>
             )}
 
@@ -407,7 +407,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                         <div className="flex-grow min-w-0">
                           <h3 className="font-semibold text-sm line-clamp-2">{item.product.title}</h3>
                           <p className="text-xs text-muted-foreground">{item.product.subtitle}</p>
-                          <p className="text-sm text-[#0ea5c9] font-bold mt-1">
+                          <p className="text-sm text-primary font-bold mt-1">
                             {item.variant.sale_price_formatted || item.variant.price_formatted}
                           </p>
                         </div>
@@ -438,7 +438,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
               {step === 'checkout' && (
                 <div className="p-5 space-y-4">
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-[#0ea5c9]">
+                    <div className="flex items-center gap-2 text-sm font-medium text-primary">
                       <Truck className="h-4 w-4" /> Método de Entrega
                     </div>
                     <RadioGroup
@@ -457,10 +457,10 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                             <RadioGroupItem value={opt.id} id={`ship-${opt.id}`} className="mt-1" />
                             <Label htmlFor={`ship-${opt.id}`} className="cursor-pointer flex-1">
                               <span className="font-medium flex items-center gap-1.5">
-                                <Icon className="h-4 w-4 text-[#0ea5c9]" /> {opt.label}
+                                <Icon className="h-4 w-4 text-primary" /> {opt.label}
                               </span>
                               <span className="block text-xs text-muted-foreground">{opt.description}</span>
-                              <span className={`block text-xs font-semibold mt-0.5 ${cost === 0 ? 'text-green-600' : 'text-[#0ea5c9]'}`}>
+                              <span className={`block text-xs font-semibold mt-0.5 ${cost === 0 ? 'text-green-600' : 'text-primary'}`}>
                                 {cost === 0 ? 'Grátis' : formatCurrency(cost)}
                               </span>
                             </Label>
@@ -487,7 +487,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-[#0ea5c9]">
+                    <div className="flex items-center gap-2 text-sm font-medium text-primary">
                       <MapPin className="h-4 w-4" /> {form.shippingMethod === 'pickup' ? 'Dados de Contacto' : 'Dados de Entrega'}
                     </div>
                     <div className="space-y-2">
@@ -534,7 +534,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                   </div>
 
                   <div className="space-y-3 pt-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-[#0ea5c9]">
+                    <div className="flex items-center gap-2 text-sm font-medium text-primary">
                       <CreditCard className="h-4 w-4" /> Método de Pagamento
                     </div>
                     <RadioGroup value={form.paymentMethod} onValueChange={(v) => setForm({ ...form, paymentMethod: v, paymentReference: '' })}>
@@ -599,7 +599,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
 
                   {form.shippingMethod !== 'pickup' && (
                   <div className="space-y-3 pt-2 border-t border-border">
-                    <div className="flex items-center gap-2 text-sm font-medium text-[#0ea5c9]">
+                    <div className="flex items-center gap-2 text-sm font-medium text-primary">
                       <PenLine className="h-4 w-4" /> Assinatura
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -632,7 +632,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                   className="sm:hidden w-full flex items-center justify-between rounded-lg px-3 py-2 -mx-1 bg-background border border-border text-sm"
                 >
                   <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <Truck className="h-3.5 w-3.5 text-[#0ea5c9]" aria-hidden="true" />
+                    <Truck className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                     {summaryOpen ? 'Esconder resumo' : 'Ver resumo e portes'}
                   </span>
                   <span className="flex items-center gap-1.5 font-semibold">
@@ -651,7 +651,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                   form.shippingMethod === 'pickup' ? (
                     <div className="text-xs p-3 rounded-lg bg-muted/60 border border-border text-muted-foreground">
                       A levantar na loja não precisa de conta: pague e leve o recibo no balcão.{' '}
-                      <Link to="/login" state={{ from: loginReturnTo }} className="text-[#0ea5c9] font-medium hover:underline" onClick={() => setIsCartOpen(false)}>
+                      <Link to="/login" state={{ from: loginReturnTo }} className="text-primary font-medium hover:underline" onClick={() => setIsCartOpen(false)}>
                         Entrar
                       </Link>{' '}guarda os seus dados para a próxima.
                     </div>
@@ -669,7 +669,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                 <div className="flex gap-3 text-[10px] text-muted-foreground justify-center pb-1">
                   <span className="flex items-center gap-1"><Shield className="h-3 w-3 text-green-600" /> Compra segura</span>
                   <span className="flex items-center gap-1"><Lock className="h-3 w-3 text-green-600" /> Dados protegidos</span>
-                  <span className="flex items-center gap-1"><Truck className="h-3 w-3 text-[#0ea5c9]" /> Entrega nacional</span>
+                  <span className="flex items-center gap-1"><Truck className="h-3 w-3 text-primary" /> Entrega nacional</span>
                 </div>
                 <div className="space-y-1.5 text-sm">
                   {form.shippingMethod === 'delivery' && freeShippingRemaining > 0 && subtotalCents > 0 && (
@@ -679,7 +679,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                         <span>Faltam {formatCurrency(freeShippingRemaining)}</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full bg-[#0ea5c9] rounded-full transition-all" style={{ width: `${freeShippingProgress}%` }} />
+                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${freeShippingProgress}%` }} />
                       </div>
                     </div>
                   )}
@@ -696,7 +696,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                     className="w-full flex justify-between items-center rounded-lg px-2 py-1.5 -mx-2 hover:bg-muted/60 transition-colors text-left"
                   >
                     <span className="text-muted-foreground flex items-center gap-1">
-                      <Truck className="h-3.5 w-3.5 text-[#0ea5c9]" />
+                      <Truck className="h-3.5 w-3.5 text-primary" />
                       {getShippingLabel(form.shippingMethod)}
                       {shippingOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </span>
@@ -730,7 +730,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                         </p>
                       )}
                       {step === 'cart' && (
-                        <p className="text-[10px] text-[#0ea5c9] px-2">Continue para checkout para seleccionar loja de levantamento</p>
+                        <p className="text-[10px] text-primary px-2">Continue para checkout para seleccionar loja de levantamento</p>
                       )}
                     </div>
                   )}
@@ -740,7 +740,7 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                 {/* Total sempre à vista: no telemóvel é a única linha de valores fora do resumo. */}
                 <div className="flex justify-between font-bold text-base pt-1 border-t border-border">
                   <span>Total</span>
-                  <span className="text-[#0ea5c9]">{formatCurrency(totalCents)}</span>
+                  <span className="text-primary">{formatCurrency(totalCents)}</span>
                 </div>
 
                 {step === 'cart' ? (

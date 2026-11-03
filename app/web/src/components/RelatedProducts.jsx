@@ -9,7 +9,7 @@ export default function RelatedProducts({ products, author, onCartOpen }) {
   return (
     <section className="mt-16 pt-12 border-t border-border">
       <div className="flex items-center gap-2 mb-6">
-        <User className="h-5 w-5 text-[#0ea5c9]" />
+        <User className="h-5 w-5 text-primary" />
         <h2 className="text-2xl font-bold">
           {author ? `Mais de ${author}` : 'Também pode gostar'}
         </h2>
@@ -21,7 +21,7 @@ export default function RelatedProducts({ products, author, onCartOpen }) {
       </div>
       {products.length > 4 && (
         <div className="text-center mt-6">
-          <Link to={`/shop?author=${encodeURIComponent(author || '')}`} className="text-[#0ea5c9] font-medium hover:underline">
+          <Link to={`/shop?author=${encodeURIComponent(author || '')}`} className="text-primary font-medium hover:underline">
             Ver todos os livros deste autor →
           </Link>
         </div>

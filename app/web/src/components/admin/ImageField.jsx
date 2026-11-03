@@ -300,7 +300,7 @@ export default function ImageField({
                             style={{ aspectRatio: `${item.largura} / ${item.altura}` }}
                           />
                           <span className="block px-1.5 py-1 text-[10px] leading-tight text-muted-foreground truncate">{item.rotulo}</span>
-                          {chosen && <Check className="absolute top-1 right-1 h-4 w-4 rounded-full bg-[#0ea5c9] text-white p-0.5" />}
+                          {chosen && <Check className="absolute top-1 right-1 h-4 w-4 rounded-full bg-primary text-white p-0.5" />}
                         </button>
                       );
                     })}
@@ -322,7 +322,7 @@ export default function ImageField({
       </div>
 
       <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[#0ea5c9]/5 border border-[#0ea5c9]/15 text-[11px] text-muted-foreground">
-        <Info className="h-3.5 w-3.5 text-[#0ea5c9] shrink-0 mt-0.5" />
+        <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
         <span>{hint || defaultHint}</span>
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}

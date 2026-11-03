@@ -56,7 +56,7 @@ export default function CatalogShowcase({ onCartOpen }) {
     return (
       <section className="section-spacing bg-background">
         <div className="container-custom flex flex-col items-center justify-center py-20 gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-[#0ea5c9]" />
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <p className="text-muted-foreground">A carregar catálogo completo…</p>
         </div>
       </section>
@@ -174,7 +174,7 @@ export default function CatalogShowcase({ onCartOpen }) {
             Não encontrou o que procura? Explore o catálogo completo com filtros avançados.
           </p>
           <Link to="/shop">
-            <Button size="lg" variant="outline" className="border-[#0ea5c9] text-[#0ea5c9] hover:bg-[#0ea5c9]/10">
+            <Button size="lg" variant="outline" className="border-[#0ea5c9] text-primary hover:bg-[#0ea5c9]/10">
               Abrir loja completa <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>

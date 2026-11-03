@@ -374,7 +374,7 @@ export default function SettingsTab() {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#0ea5c9]" /></div>;
+    return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -389,7 +389,7 @@ export default function SettingsTab() {
                   <TabsTrigger
                     key={value}
                     value={value}
-                    className="justify-start gap-2 px-2.5 py-2 data-[state=active]:bg-[#0ea5c9]/10 data-[state=active]:text-[#0ea5c9] data-[state=active]:shadow-none"
+                    className="justify-start gap-2 px-2.5 py-2 data-[state=active]:bg-[#0ea5c9]/10 data-[state=active]:text-primary data-[state=active]:shadow-none"
                   >
                     <Icon className="h-4 w-4" />{label}
                   </TabsTrigger>
@@ -584,7 +584,7 @@ export default function SettingsTab() {
 
         <TabsContent value="messaging" className="space-y-6 max-w-xl">
           <div>
-            <h3 className="font-semibold flex items-center gap-2"><Mail className="h-4 w-4 text-[#0ea5c9]" /> Email de confirmação de encomenda</h3>
+            <h3 className="font-semibold flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Email de confirmação de encomenda</h3>
             <p className="text-xs text-muted-foreground mt-1">Enviado automaticamente após checkout (SendGrid ou SMTP).</p>
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg border">
@@ -644,8 +644,8 @@ export default function SettingsTab() {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="font-semibold flex items-center gap-2"><Bell className="h-4 w-4 text-[#0ea5c9]" /> Notificações Push (PWA)</h3>
-            <p className="text-xs text-muted-foreground mt-1">Gere chaves VAPID em <a href="https://vapidkeys.com" target="_blank" rel="noreferrer" className="text-[#0ea5c9] underline">vapidkeys.com</a></p>
+            <h3 className="font-semibold flex items-center gap-2"><Bell className="h-4 w-4 text-primary" /> Notificações Push (PWA)</h3>
+            <p className="text-xs text-muted-foreground mt-1">Gere chaves VAPID em <a href="https://vapidkeys.com" target="_blank" rel="noreferrer" className="text-primary underline">vapidkeys.com</a></p>
           </div>
           <div className="flex items-center gap-3 p-3 rounded-lg border">
             <Switch checked={form.push_enabled} onCheckedChange={(v) => set('push_enabled', v)} />
@@ -661,7 +661,7 @@ export default function SettingsTab() {
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#0ea5c9]" /> Assistente IA (chat)</h3>
+            <h3 className="font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Assistente IA (chat)</h3>
             <p className="text-xs text-muted-foreground mt-1">
               Widget de ajuda fixo no site com sugestões, catálogo e links. Recomendado: <strong>Gemini Flash Lite</strong> (mais barato). Fallback automático para FAQ sem chave.
             </p>
@@ -913,7 +913,7 @@ export default function SettingsTab() {
 
         <TabsContent value="header" className="space-y-4 max-w-xl">
           <p className="text-sm text-muted-foreground">
-            Personalize a barra superior do site. Use <code className="text-[#0ea5c9]">{'{nome}'}</code> para inserir o primeiro nome do utilizador.
+            Personalize a barra superior do site. Use <code className="text-primary">{'{nome}'}</code> para inserir o primeiro nome do utilizador.
           </p>
           <div className="space-y-2">
             <Label>Mensagem (utilizador logado)</Label>

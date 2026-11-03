@@ -25,6 +25,7 @@ import BookPreviewModal from '@/components/BookPreviewModal';
 import { sanitizeHtml } from '@/lib/sanitizeHtml';
 import SampleReaderModal from '@/components/SampleReaderModal';
 import RecentlyViewed from '@/components/RecentlyViewed.jsx';
+import StickyBuyBar from '@/components/StickyBuyBar.jsx';
 import { addRecentlyViewed } from '@/lib/recentlyViewed';
 
 // Star rating helper component
@@ -61,6 +62,10 @@ function ProductDetailPage() {
   const [sampleReaderOpen, setSampleReaderOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [product, setProduct] = useState(null);
+  // A barra de compra do fundo observa estes botões: só aparece quando eles saem do ecrã.
+  // Em estado, e não num `ref`: o observador precisa de saber quando o elemento aparece, e
+  // um `ref` não avisa ninguém de que foi preenchido.
+  const [botoesCompra, setBotoesCompra] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -334,8 +339,13 @@ function ProductDetailPage() {
           <span className="text-foreground">{product.title}</span>
         </nav>
 
+        {/* `min-w-0` nas duas colunas: um item de grid tem `min-width: auto` por omissão e
+            recusa-se a encolher abaixo do conteúdo. Era o que empurrava a coluna para 399px
+            dentro de um contentor de 343 e dava 40px de deslocamento horizontal no
+            telemóvel — a página inteira arrastava-se para o lado. */}
         <div className="grid lg:grid-cols-2 gap-12">
           <motion.div
+            className="min-w-0"
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
@@ -398,7 +408,7 @@ function ProductDetailPage() {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex flex-col"
+            className="flex flex-col min-w-0"
           >
             <h1 className="text-4xl md:text-5xl font-bold mb-3 text-foreground">{product.title}</h1>
             {product.marketing_hook && (
@@ -503,7 +513,7 @@ function ProductDetailPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div ref={setBotoesCompra} className="flex flex-col sm:flex-row gap-3 mb-4">
               <Button
                 onClick={handleBuyNow}
                 size="lg"
@@ -937,6 +947,15 @@ function ProductDetailPage() {
       <BookPreviewModal product={product} open={showPreview} onClose={() => setShowPreview(false)} onCartOpen={() => setIsCartOpen(true)} />
 
       <RecentlyViewed currentId={product.id} />
+
+      <StickyBuyBar
+        alvo={botoesCompra}
+        price={price}
+        originalPrice={originalPrice}
+        onBuy={handleBuyNow}
+        disabled={!canAddToCart || !product.purchasable}
+        label={product.purchasable ? 'Comprar' : 'Esgotado'}
+      />
 
       <Footer />
     </>

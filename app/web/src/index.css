@@ -399,6 +399,15 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Flutuantes do canto inferior: afastam-se da barra de gestos do sistema e também da
+   barra de compra, que aparece na ficha de um livro quando os botões reais já passaram.
+   Sem a segunda parcela, o botão de subir ficava por cima do preço e do botão de comprar.
+   Em classe própria e não na sintaxe arbitrária do Tailwind: `calc()` com `env()` e `var()`
+   leva vírgulas, e o que saía dali não chegava a gerar regra nenhuma. */
+.float-above-bar {
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px) + var(--barra-compra, 0px));
+}
+
 /* Para quem está preso ao fundo com `bottom`: afasta-se do indicador de gestos
    em vez de lhe ficar por baixo. */
 .safe-float-bottom {

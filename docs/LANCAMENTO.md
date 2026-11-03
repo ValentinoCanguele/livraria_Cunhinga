@@ -136,7 +136,7 @@ npx supabase functions deploy app --project-ref bggqkjjqbjhbjsckzopj --no-verify
 
 ## 9. Segurança antes do go-live
 
-- [ ] Nenhuma credencial real no repositório (é público)
+- [ ] Nenhuma credencial real no repositório (é privado, mas o histórico do git é permanente)
 - [ ] Supabase → Advisors (Security e Performance) sem avisos novos
 - [ ] SMTP próprio configurado no Supabase Auth
 - [ ] Domínio com HTTPS (automático no Cloudflare)

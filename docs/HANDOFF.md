@@ -1,22 +1,23 @@
 # Passagem de trabalho — Livraria Adventista
 
-Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegue neste projecto.
+Estado em 2026-11-03. Ponto de partida para o próximo agente ou pessoa que pegue neste projecto.
 
 ## Onde está o trabalho
 
-- **Ramo:** `claude/youthful-heisenberg-rq5gnw` (parte de `supabase/migracao`, que ainda não está no `main`).
-- **PR aberto:** [ValentinoCanguele/livraria_Cunhinga#3](https://github.com/ValentinoCanguele/livraria_Cunhinga/pull/3) para o `main`. A descrição do PR tem o resumo completo e a lista de verificação antes do merge.
+- **Repositório:** [fernandotunas6-bot/Livraria-Editora-Adventista](https://github.com/fernandotunas6-bot/Livraria-Editora-Adventista) (privado). O projecto foi migrado a 2026-11-03 de `ValentinoCanguele/livraria_Cunhinga`, com todo o histórico e os ramos. Ver [docs/MIGRACAO-REPOSITORIO.md](MIGRACAO-REPOSITORIO.md) para o que ficou por configurar do lado do GitHub.
+- **Ramo:** `claude/youthful-heisenberg-rq5gnw`, 47 commits à frente do `origin/main`.
+- **`main`:** a migração do Supabase (o antigo PR #3) está integrada no `main` desde 2026-11-02 (commit `f4d9885`). Atenção: um `main` **local** antigo, da era PocketBase, ainda existe em algumas cópias de trabalho e está 114 commits atrás — usar sempre `origin/main` como referência.
 - **Supabase:** projecto "Livraria Adventista", ref `bggqkjjqbjhbjsckzopj`, organização "Colpotor" (plano grátis), região eu-north-1.
 - **Cloudflare Pages:** projecto `livraria-adventista` (conta canguelev@fata.adventist.org), ramo de produção `main`.
-  - Produção em https://livraria-adventista.pages.dev, com o código do PR #3. Foi publicada à mão com o Wrangler porque o Actions está bloqueado.
+  - Produção em https://livraria-adventista.pages.dev, com o código do `main`. Foi publicada à mão com o Wrangler porque o Actions está bloqueado.
   - Cada ramo tem o seu URL de pré-visualização (`<ramo>.livraria-adventista.pages.dev`, ver `wrangler pages deployment list`). O `main` antigo (PocketBase) está em `main-pocketbase`, e esse e os ramos `cursor/*` não têm backend.
   - Publicar à mão: `npm run deploy:site` (produção) ou `npm run deploy:site -- --preview`. O script recusa publicar se o HEAD não for a ponta do ramo remoto, faz lint e build, publica e confirma que o último deploy de produção é esse commit e que o site responde. Várias sessões publicam no mesmo projecto: nunca publicar um build antigo. As variáveis `VITE_SUPABASE_*` vêm de `app/web/.env`.
   - Workers, KV, D1 e R2 continuam por usar.
 
 ## Bloqueios (só o dono da conta resolve)
 
-1. **A conta GitHub está bloqueada por um problema de pagamento.** Nenhum workflow do Actions arranca: a anotação diz "The job was not started because your account is locked due to a billing issue". A conta está no plano Free e não tem subscrições pagas. A causa é um cartão guardado cuja autorização falhou. A solução é remover o cartão em Settings → Faturamento e licenciamento → Informações de pagamento, ou abrir um pedido em support.github.com. As verificações do PR a vermelho são só isto; localmente, lint, build e `deno check` passam.
-2. **Segredos e variáveis do GitHub Actions** (Settings → Secrets and variables → Actions):
+1. **GitHub Actions: confirmar se a conta nova corre workflows.** Na conta antiga (`ValentinoCanguele`) nenhum workflow arrancava: a anotação dizia "The job was not started because your account is locked due to a billing issue" — um cartão guardado cuja autorização falhou, no plano Free e sem subscrições pagas. A solução era remover o cartão em Settings → Faturamento e licenciamento → Informações de pagamento, ou abrir um pedido em support.github.com. **Com a mudança para `fernandotunas6-bot` isto tem de ser verificado de novo:** se os workflows arrancarem, o bloqueio desapareceu com a migração; se não, o problema é da conta nova e resolve-se da mesma maneira. Enquanto não arrancarem, o gate real é o `scripts/deploy-site.sh`, que corre lint, testes e build antes de publicar.
+2. **Segredos e variáveis do GitHub Actions** (Settings → Secrets and variables → Actions). **Não migram com o código: têm de ser criados à mão no repositório novo.**
    - Segredos: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`
    - Variáveis: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `CLOUDFLARE_PAGES_PROJECT`, `SUPABASE_PROJECT_REF` (= `bggqkjjqbjhbjsckzopj`)
 3. **Supabase → Authentication:**
@@ -51,7 +52,7 @@ Estado em 2026-11-01. Ponto de partida para o próximo agente ou pessoa que pegu
   - `valentinocanguele@gmail.com` e `admin@livraria.ao` são admin.
   - A tabela `private.admin_emails` (só na base de dados, fora da API) pré-autoriza emails: o perfil passa a admin quando a conta fica confirmada.
   - Há 1 email na lista, que ainda não tem conta.
-  - **Não pôr emails desta lista no repositório (é público).**
+  - **Não pôr emails desta lista no repositório.** É privado, mas o histórico do git é permanente.
 - **Permissões reais:**
   - `private.has_permission(key)`: admin pode tudo; gestor só as chaves activas em `profiles.permissions`; cliente nenhuma.
   - Encomendas, catálogo, pagamentos e configurações exigem a permissão certa nas políticas RLS.

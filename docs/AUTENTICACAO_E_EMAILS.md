@@ -323,8 +323,8 @@ caracter diferente, e essa diferença de tempo permite descobrir o segredo carac
 
 #### Pôr o agendador a funcionar
 
-A migração cria a extensão, a função e o agendamento, mas **não traz segredos** — o
-repositório é público. Faltam três passos, uma vez:
+A migração cria a extensão, a função e o agendamento, mas **não traz segredos** — não se
+escrevem segredos no repositório. Faltam três passos, uma vez:
 
 **1. Gerar um token** (qualquer valor longo e aleatório):
 

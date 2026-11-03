@@ -26,7 +26,7 @@ Trabalha de forma autónoma. Só paras para perguntar quando a decisão é do do
   - Edge Function com `requirePermission()`;
   - interface com `app/web/src/lib/permissions.js`.
 - **Papéis:** `admin` pode tudo (é o "super admin"); `manager` tem só as chaves activas em `profiles.permissions`; `customer` não tem nenhuma.
-- **Privacidade:** o repositório é público. Não escrevas nele emails, telefones nem segredos (a lista `private.admin_emails` vive só na base de dados).
+- **Privacidade:** o repositório é privado, mas o histórico do git é permanente. Não escrevas nele emails, telefones nem segredos (a lista `private.admin_emails` vive só na base de dados).
 - **Verificar antes de cada commit:**
   - `npm run lint` em `app/web`;
   - `npm run build` na raiz;

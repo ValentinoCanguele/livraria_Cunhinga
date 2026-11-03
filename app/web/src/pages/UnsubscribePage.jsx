@@ -89,8 +89,8 @@ export default function UnsubscribePage() {
             )}
 
             <div className="mt-6 flex justify-center gap-4 text-xs text-muted-foreground">
-              <Link to="/" className="hover:text-primary">Voltar à loja</Link>
-              <Link to="/contact" className="hover:text-primary">Contacto</Link>
+              <Link to="/" className="block py-2 hover:text-primary">Voltar à loja</Link>
+              <Link to="/contact" className="block py-2 hover:text-primary">Contacto</Link>
             </div>
           </div>
         </div>

@@ -290,7 +290,7 @@ const ShopPage = () => {
             <Button
               size="sm"
               variant={activeFilters.categories.length === 0 && !activeFilters.collection ? 'default' : 'outline'}
-              className={`rounded-full shrink-0 h-8 ${activeFilters.categories.length === 0 && !activeFilters.collection ? 'btn-primary' : ''}`}
+              className={`rounded-full shrink-0 h-10 sm:h-8 ${activeFilters.categories.length === 0 && !activeFilters.collection ? 'btn-primary' : ''}`}
               onClick={() => { updateFilter('categories', []); updateFilter('collection', ''); }}
             >
               Todos ({catalogStats.total})
@@ -303,7 +303,7 @@ const ShopPage = () => {
                   key={g}
                   size="sm"
                   variant={active ? 'default' : 'outline'}
-                  className={`rounded-full shrink-0 h-8 ${active ? 'btn-primary' : ''}`}
+                  className={`rounded-full shrink-0 h-10 sm:h-8 ${active ? 'btn-primary' : ''}`}
                   onClick={() => updateFilter('categories', active ? [] : [g])}
                 >
                   {g} ({count})
@@ -317,9 +317,9 @@ const ShopPage = () => {
       <main className="container-custom py-10 min-h-screen">
         {/* Dynamic Breadcrumbs */}
         <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm text-muted-foreground mb-6 bg-card border border-border/80 px-4 py-3 rounded-xl shadow-xs shrink-0" id="shop-breadcrumbs">
-          <Link to="/" className="hover:text-primary transition-colors font-medium">Início</Link>
+          <Link to="/" className="-my-1.5 inline-block py-1.5 hover:text-primary transition-colors font-medium">Início</Link>
           <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-          <Link to="/shop" className="hover:text-primary transition-colors font-medium" onClick={clearFilters}>Loja</Link>
+          <Link to="/shop" className="-my-1.5 inline-block py-1.5 hover:text-primary transition-colors font-medium" onClick={clearFilters}>Loja</Link>
           {activeFilters.categories?.length > 0 && (
             <>
               <ChevronRight className="h-3.5 w-3.5 opacity-60" />
@@ -395,7 +395,7 @@ const ShopPage = () => {
                         key={cols}
                         variant={gridCols === cols ? 'secondary' : 'ghost'}
                         size="icon"
-                        className="h-9 w-9 rounded-none"
+                        className="h-11 w-11 sm:h-9 sm:w-9 rounded-none"
                         onClick={() => setGridCols(cols)}
                         title={label}
                       >
@@ -407,7 +407,7 @@ const ShopPage = () => {
                 <div className="flex border rounded-lg overflow-hidden">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9 rounded-none" onClick={() => setViewMode('grid')}>
+                      <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" className="h-11 w-11 sm:h-9 sm:w-9 rounded-none" onClick={() => setViewMode('grid')}>
                         <LayoutGrid className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
@@ -415,7 +415,7 @@ const ShopPage = () => {
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-9 w-9 rounded-none" onClick={() => setViewMode('list')}>
+                      <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" className="h-11 w-11 sm:h-9 sm:w-9 rounded-none" onClick={() => setViewMode('list')}>
                         <List className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
@@ -423,7 +423,7 @@ const ShopPage = () => {
                   </Tooltip>
                 </div>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[160px] h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-[160px] h-11 sm:h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {SORT_OPTIONS.map((o) => (
                       <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
@@ -506,6 +506,7 @@ const ShopPage = () => {
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
                   aria-label="Página anterior"
+                  className="min-w-11 h-11 sm:min-w-0 sm:h-8"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   <span className="hidden sm:inline ml-1">Anterior</span>
@@ -542,6 +543,7 @@ const ShopPage = () => {
                   onClick={() => goToPage(currentPage + 1)}
                   disabled={currentPage === pageCount}
                   aria-label="Página seguinte"
+                  className="min-w-11 h-11 sm:min-w-0 sm:h-8"
                 >
                   <span className="hidden sm:inline mr-1">Seguinte</span>
                   <ChevronRight className="h-4 w-4" />

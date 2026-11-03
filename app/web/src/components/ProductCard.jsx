@@ -80,7 +80,12 @@ function ProductCard({ product, onCartOpen, index = 0, viewMode = 'grid', onQuic
   const isList = viewMode === 'list';
 
   const cardActions = (
-    <div className={`flex items-center gap-1 ${isList ? 'justify-start' : 'justify-center px-2 pt-3'}`}>
+    // Os botões medem 32px mas a .tap-target estende-os a 44 num ecrã de toque. Com os
+    // 4px de intervalo que tinham, essas áreas invisíveis entravam 8px umas nas outras e
+    // um toque entre dois ícones calhava ao vizinho. 12px põem o passo exactamente nos
+    // 44 — encostadas, nunca sobrepostas. A partir de sm os botões já medem 40 e os 4px
+    // originais chegam para o mesmo passo.
+    <div className={`flex items-center gap-3 sm:gap-1 ${isList ? 'justify-start' : 'justify-center px-2 pt-3'}`}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button

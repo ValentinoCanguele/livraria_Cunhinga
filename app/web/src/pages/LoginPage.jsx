@@ -204,7 +204,7 @@ const LoginPage = () => {
                   <div className="flex justify-between items-center">
                     <Label htmlFor="password">Palavra-passe</Label>
                     {mode === 'login' && (
-                      <Link to="/forgot-password" className="text-xs text-primary hover:underline">Esqueceu?</Link>
+                      <Link to="/forgot-password" className="-my-2 block py-2 text-xs text-primary hover:underline">Esqueceu?</Link>
                     )}
                   </div>
                   <div className="relative">
@@ -221,7 +221,7 @@ const LoginPage = () => {
                     />
                     <button
                       type="button"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="tap-target absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       onClick={() => setShowPass((v) => !v)}
                       tabIndex={-1}
                     >
@@ -247,8 +247,8 @@ const LoginPage = () => {
             </div>
 
             <div className="flex flex-wrap justify-center gap-4 mt-6 text-xs text-muted-foreground">
-              <Link to="/track" className="hover:text-primary">Rastrear encomenda</Link>
-              <Link to="/shop" className="hover:text-primary">Ir à loja</Link>
+              <Link to="/track" className="block py-2 hover:text-primary">Rastrear encomenda</Link>
+              <Link to="/shop" className="block py-2 hover:text-primary">Ir à loja</Link>
             </div>
           </motion.div>
         </div>

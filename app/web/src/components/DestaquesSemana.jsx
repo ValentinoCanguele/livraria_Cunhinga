@@ -206,16 +206,23 @@ export default function DestaquesSemana({ onCartOpen }) {
         </div>
 
         {/* Slide indicators */}
-        <div className="flex justify-center gap-2 mt-12">
+        {/* O ponto mede 8px: em vez de o engordar, o botão à volta dele passa a medir 24,
+            o mínimo que a WCAG 2.5.8 pede em AA. O intervalo sai do contentor porque o
+            preenchimento de cada botão já afasta os pontos — somados, davam alvos
+            encostados a nada e uma fila larga de mais. */}
+        <div className="flex justify-center mt-12">
           {books.map((_, i) => (
             <button
               key={i}
+              type="button"
               onClick={() => setCurrentIndex(i)}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === currentIndex ? 'w-8 bg-primary' : 'w-2 bg-slate-700 hover:bg-slate-600'
-              }`}
+              className="group grid h-6 place-items-center px-2"
               aria-label={`Ir para destaque ${i + 1}`}
-            />
+            >
+              <span className={`block h-2 rounded-full transition-all duration-300 ${
+                i === currentIndex ? 'w-8 bg-primary' : 'w-2 bg-slate-700 group-hover:bg-slate-600'
+              }`} />
+            </button>
           ))}
         </div>
       </div>

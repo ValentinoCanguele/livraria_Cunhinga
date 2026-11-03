@@ -173,7 +173,7 @@ function App() {
                   <div className="text-center">
                     <h1 className="text-6xl font-bold text-foreground mb-4">404</h1>
                     <p className="text-xl text-muted-foreground mb-8">Página não encontrada</p>
-                    <a href="/" className="text-primary hover:underline font-medium">Voltar ao Início</a>
+                    <a href="/" className="inline-block px-4 py-3 text-primary hover:underline font-medium">Voltar ao Início</a>
                   </div>
                 </div>
               } />

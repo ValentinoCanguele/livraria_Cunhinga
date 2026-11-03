@@ -49,13 +49,13 @@ const DEFAULT_FOOTER_COLUMNS = [
 function FooterLink({ link }) {
   if (link.internal) {
     return (
-      <Link to={link.url} className="text-sm text-background/70 hover:text-[#22d3ee] transition-colors">
+      <Link to={link.url} className="block py-1.5 text-sm text-background/70 hover:text-[#22d3ee] transition-colors">
         {link.label}
       </Link>
     );
   }
   return (
-    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-background/70 hover:text-[#22d3ee] transition-colors">
+    <a href={link.url} target="_blank" rel="noopener noreferrer" className="block py-1.5 text-sm text-background/70 hover:text-[#22d3ee] transition-colors">
       {link.label}
     </a>
   );
@@ -162,7 +162,7 @@ const Footer = () => {
           {columns.map((col) => (
             <div key={col.title} className="lg:col-span-2">
               <h4 className="font-semibold mb-4 text-background">{col.title}</h4>
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 {(col.links || []).map((link) => (
                   <li key={link.label}><FooterLink link={link} /></li>
                 ))}
@@ -315,7 +315,7 @@ const Footer = () => {
                     href={`https://wa.me/${whatsappDigits}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-[#22d3ee] transition-colors"
+                    className="-my-1.5 inline-block py-1.5 hover:text-[#22d3ee] transition-colors"
                   >
                     Falar por WhatsApp
                   </a>

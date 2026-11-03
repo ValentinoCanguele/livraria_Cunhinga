@@ -143,7 +143,7 @@ export default function CategoryBookMarquee({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 gap-1.5 text-xs"
+              className="h-10 sm:h-8 gap-1.5 text-xs"
               onClick={() => setPaused((p) => !p)}
             >
               {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}

@@ -231,15 +231,21 @@ const HeroSlider = () => {
           <button type="button" onClick={next} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors backdrop-blur-sm" aria-label="Próximo slide">
             <ChevronRight className="h-6 w-6" />
           </button>
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {/* O ponto mede 8px: em vez de o engordar, o botão à volta dele passa a medir 24,
+              o mínimo que a WCAG 2.5.8 pede em AA. O intervalo sai do contentor porque o
+              preenchimento de cada botão já afasta os pontos — somados, davam alvos
+              encostados a nada e uma fila larga de mais. */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex">
             {slides.map((s, i) => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => goTo(i)}
-                className={`h-2 rounded-full transition-all duration-300 ${i === current ? 'w-8 bg-white' : 'w-2 bg-white/40 hover:bg-white/60'}`}
+                className="group grid h-6 place-items-center px-2"
                 aria-label={`Ir para slide ${i + 1}${s.is_primary ? ' (principal)' : ''}`}
-              />
+              >
+                <span className={`block h-2 rounded-full transition-all duration-300 ${i === current ? 'w-8 bg-white' : 'w-2 bg-white/40 group-hover:bg-white/60'}`} />
+              </button>
             ))}
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-20">

@@ -81,6 +81,15 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
     relativePhone: '',
   });
 
+  // Escape fecha o carrinho. É o que se espera de um painel que tapa a página inteira, e
+  // sem isso quem navega pelo teclado só sai dele depois de percorrer tudo o que tem dentro.
+  useEffect(() => {
+    if (!isCartOpen) return undefined;
+    const aoTeclar = (e) => { if (e.key === 'Escape') setIsCartOpen(false); };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [isCartOpen, setIsCartOpen]);
+
   useEffect(() => {
     if (!isCartOpen) return;
 
@@ -353,17 +362,20 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="absolute right-0 top-0 h-full w-full max-w-md bg-card text-card-foreground shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-carrinho"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-border">
               <div className="flex items-center gap-2">
                 {step === 'checkout' && (
-                  <Button variant="ghost" size="icon" onClick={() => setStep('cart')} className="h-8 w-8">
+                  <Button variant="ghost" size="icon" onClick={() => setStep('cart')} className="h-11 w-11 sm:h-8 sm:w-8">
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                 )}
                 <div>
-                  <h2 className="text-xl font-bold">
+                  <h2 id="titulo-carrinho" className="text-xl font-bold">
                     {step === 'cart' ? 'Carrinho' : 'Finalizar Compra'}
                   </h2>
                   {itemCount > 0 && (
@@ -415,17 +427,17 @@ const ShoppingCart = ({ isCartOpen, setIsCartOpen }) => {
                           <div className="flex items-center border border-border rounded-lg bg-background">
                             <Button
                               onClick={() => updateQuantity(item.variant.id, item.quantity - 1)}
-                              size="sm" variant="ghost" className="h-7 w-7 p-0"
+                              size="sm" variant="ghost" className="h-11 w-11 sm:h-7 sm:w-7 p-0"
                               disabled={item.quantity <= 1}
                             >−</Button>
                             <span className="w-7 text-center text-sm">{item.quantity}</span>
                             <Button
                               onClick={() => updateQuantity(item.variant.id, item.quantity + 1)}
-                              size="sm" variant="ghost" className="h-7 w-7 p-0"
+                              size="sm" variant="ghost" className="h-11 w-11 sm:h-7 sm:w-7 p-0"
                               disabled={item.quantity >= maxQty(item)}
                             >+</Button>
                           </div>
-                          <Button onClick={() => removeFromCart(item.variant.id)} size="sm" variant="ghost" className="text-destructive text-xs h-6 px-1">
+                          <Button onClick={() => removeFromCart(item.variant.id)} size="sm" variant="ghost" className="text-destructive text-xs h-9 sm:h-6 px-2 sm:px-1">
                             Remover
                           </Button>
                         </div>

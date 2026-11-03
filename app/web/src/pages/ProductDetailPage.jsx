@@ -332,9 +332,9 @@ function ProductDetailPage() {
 
       <main className="container-custom py-12">
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
-          <Link to="/" className="hover:text-primary transition-colors">Início</Link>
+          <Link to="/" className="-my-1.5 inline-block py-1.5 hover:text-primary transition-colors">Início</Link>
           <span>/</span>
-          <Link to="/shop" className="hover:text-primary transition-colors">Loja</Link>
+          <Link to="/shop" className="-my-1.5 inline-block py-1.5 hover:text-primary transition-colors">Loja</Link>
           <span>/</span>
           <span className="text-foreground">{product.title}</span>
         </nav>
